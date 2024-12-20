@@ -53,24 +53,25 @@ motivation (the example) interface (the interface) and design (the actual
 scheduler) }
 
 Developers express priorities to \sys{} via assigning functions to fixed dollar
-amounts per unit compute; so in a web server a page view might be assigned a
-high priority and cost 2c per cpu second, whereas a map reduce job can be set to
-a much lower priority which costs only 0.5c per cpu second. The provider offers
-a fixed list of priorities and associated pricing, so as to avoid a bidding war
-among clients. Prices are not expected to change often, but this is in alignment
-with what AWS does today: spot instances are on demand, are sold at market rate
-(rather than to the highest bidder), and the market rate is experientially very
-steady over time. Similarly, currently in AWS developers can attach a number of
-vcpus and an amount of memory to a lambda, which is then associated with the
-price of the lambda. To avoid unexpected costs in the case of for example a DOS
-attack or a bug, developers can also express a monthly budget that they are
-willing to pay. \sys{} does not guarantee that the budget will not be exceeded by
-small amounts, but can use it as a guideline and throttle invocations or
-decrease quality of service in the case that usage is not within reason given
-the expected budget. Finally, developers are required to express a maximum
-amount of memory per function. \hmng{ But they only pay for what they use? Def would
-be in keeping with the goal. Is there a penalty for being very off? At that
-point we might as well just use profiling information? }
+amounts per unit compute; so in a web server a home page view might be assigned
+a high priority and cost 2c per cpu second, a function that processes a user
+upload might be a assigned a middle-high priority and cost 1.5c per cpu second,
+and finally a map reduce job can be set to a low priority which costs only 0.5c
+per cpu second. The provider offers a fixed list of priorities and associated
+pricing, so as to avoid a bidding war among clients. Prices are not expected to
+change often, but this is in alignment with what AWS does today: spot instances
+are on demand, are sold at market rate (rather than to the highest bidder), and
+the market rate is experientially very steady over time. Similarly, currently in
+AWS developers can attach a number of vcpus and an amount of memory to a lambda,
+which is then associated with the price of the lambda. To avoid unexpected costs
+in the case of for example a DOS attack or a bug, developers can also express a
+monthly budget that they are willing to pay. \sys{} does not guarantee that the
+budget will not be exceeded by small amounts, but can use it as a guideline and
+throttle invocations or decrease quality of service in the case that usage is
+not within reason given the expected budget. Finally, developers are required to
+express a maximum amount of memory per function. \hmng{ But they only pay for
+what they use? Def would be in keeping with the goal. Is there a penalty for
+being very off? At that point we might as well just use profiling information? }
 
 Internally, \sys{} uses a process-per-request model that assumes cold starts are
 fast enough to be tolerated on the critical path; recent state of the art
