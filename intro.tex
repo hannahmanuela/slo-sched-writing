@@ -1,0 +1,97 @@
+%-------------------------------------------------------------------------------
+\section{Introduction}
+%-------------------------------------------------------------------------------
+
+The serverless ideal is beneficial to developers and providers in different
+ways: developers only pay for what they use while having flexibility to burst
+and still maintain performance; and cloud providers can pack more latency
+sensitive jobs because they don’t need to have guaranteed reserved capacity for
+each client.
+
+Today’s world remains far from the ideal state: serverless functions have
+execution time limits, cold start times, and timeshare compute and i/o with many
+other processes.
+
+It is certainly true that not all kinds of workloads are well suited for the
+serverless world: for instance, a KV store is not an easy fit for elasticity
+because of the large amount of state required to start up a new instance.
+However, applications that are stateless, or more specifically applications that
+are able to manage their data through a global storage system, really should be
+able to fully run as serverless work.
+
+A driving example for this work is that of a web server. In principle its
+characteristics make it well-suited for serverless, and the pay as you go model
+is particularly attractive to website developers who don’t want to have to worry
+about provisioning. However, it is rare to see web apps entirely hosted on
+serverless offerings today. One of the reasons for this is that there is no way
+to convey urgency or priority via existing serverless interfaces. If the
+developer cares about some functions more than others, the closest AWS lambda
+lets you do is what they call “reserved concurrency”, which specifies a number
+of warm containers that are specifically reserved for a given function. However
+with that interface developers lose the benefit of the flexibility that was the
+initial draw: they are now paying for resources they are not using (because they
+have to pay to keep all those containers warm), and they can’t burst when they
+need to while maintaining the desired performance (because once the number of
+invocations goes beyond the allocated warm containers it will contend with all
+the other functions for warm instances, or have to wait for a cold start).\hmng{
+feels a bit random to rig on lambdas here, but at the same time good to show
+state of the world (although I’m not doing a state of the art survey and talking
+about related work) }
+
+
+We propose \sys{}, a distributed scheduler for serverless workloads that enforces
+priorities on a per function invocation level.
+
+\hmng{ talk about challenges? Split into interface and internal design challenges?
+Design challenges kinda fall out of interface choices } 
+\hmng{ the split of content
+between intro and design feels like a bit of a mess, ig interface is more
+explained in the intro as motivated by how we think things should be, and then
+design is like the design of the actual system as motivated by the interface
+that we chose –-- maybe intro and design are the wrong headings, and it should be
+motivation (the example) interface (the interface) and design (the actual
+scheduler) }
+
+Developers express priorities to \sys{} via assigning functions to fixed dollar
+amounts per unit compute; so in a web server a page view might be assigned a
+high priority and cost 2c per cpu second, whereas a map reduce job can be set to
+a much lower priority which costs only 0.5c per cpu second. The provider offers
+a fixed list of priorities and associated pricing, so as to avoid a bidding war
+among clients. Prices are not expected to change often, but this is in alignment
+with what AWS does today: spot instances are on demand, are sold at market rate
+(rather than to the highest bidder), and the market rate is experientially very
+steady over time. Similarly, currently in AWS developers can attach a number of
+vcpus and an amount of memory to a lambda, which is then associated with the
+price of the lambda. To avoid unexpected costs in the case of for example a DOS
+attack or a bug, developers can also express a monthly budget that they are
+willing to pay. \sys{} does not guarantee that the budget will not be exceeded by
+small amounts, but can use it as a guideline and throttle invocations or
+decrease quality of service in the case that usage is not within reason given
+the expected budget. Finally, developers are required to express a maximum
+amount of memory per function. \hmng{ But they only pay for what they use? Def would
+be in keeping with the goal. Is there a penalty for being very off? At that
+point we might as well just use profiling information? }
+
+Internally, \sys{} uses a process-per-request model that assumes cold starts are
+fast enough to be tolerated on the critical path; recent state of the art
+systems have been able to support cold start times in the single digit ms realm,
+and we expect this trend to continue. \hmng{ does this need to come earlier in the
+story? Certainly was more central in the last framing, and feels like it’s a big
+assumption/scoping of the problem } \sys{} consists of a distributed global
+scheduler, which places incoming function invocations on machines, and a machine
+scheduler, which runs functions by highest priority first. The machine scheduler
+has a simple paradigm: processes have fixed priorities, and higher priorities
+preempt lower priorities. Being unfair and starving low priority processes is a
+feature, not a bug: map reduce jobs should not ever interrupt a page view
+request processing. \hmng{ talk about our notion of how we expect that the amount of
+work in different priorities will relate to the resources available in the
+datacenter? } Global scheduler shards place incoming function invocations on a
+machine, prioritizing finding machines that have the available memory and are
+running low priority processes (in that order). If there appears to be no
+machine with the memory available, the shard uses power of k choices to
+potentially find a machine that can kill an existing low priority process, here
+the goal is to minimize sunk cost when killing.
+
+\hmng{ do we want/need worked out contributions? Seems a bit difficult at this point
+because I don’t know if we have any other than like the collection of
+incidentals that makes up the design… scary }

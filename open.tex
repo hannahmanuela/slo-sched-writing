@@ -1,0 +1,45 @@
+%-------------------------------------------------------------------------------
+\section{Open Questions}
+\label{s:open}
+%-------------------------------------------------------------------------------
+
+There remain open questions from the challenges section that represent areas 
+for future work.
+
+\textbf{Redaction and upgrade specifications}
+% 
+Our prototype
+currently has a limited set of redaction primitives, and our design only supports
+redactions that select and apply to one row at a time. This prohibits some
+forms of redactions, for example redactions for a joined row, redactions over aggregations.
+Or perhaps a developer testing new application features should interact with a
+version of the database that contains fully synthetic data that follows
+realistic distributions of values. Or a
+data analyst should be allowed to perform aggregate queries over data they
+cannot query individually. These use cases require more
+elaborate redactions (and perhaps in places during query execution other than
+just on top of the input tables) which may be more expensive to apply, so
+supporting them will require us to come up with a theory of how redactions
+compose, and an execution strategy that applies them efficiently and correctly.
+
+\textbf{Avoiding overprompting}
+% 
+In addition to allowing some upgrades to be authorized by data subjects, 
+another way to lessen over-prompting is that the database could introduce a notion of rate-limited,
+audited upgrade templates that authorizing employees can sign once, and which automatically
+authorize a particular set of upgrades.
+The template could include not only upgrade content, but also the user role and
+other attributes that are conditions for automatic approval. However, templates also reduce 
+the oversight built into the system design, and a compromised employee might abuse them to exfiltrate data.
+Making such templates and their approval user-friendly is an interesting direction for further research,
+and will require new APIs and user interfaces.
+
+\textbf{Writes}
+% 
+Our current design chooses to only allow writes if the data to be written
+would be unredacted for the writer. This has the downside that it might 
+lead to frequently failing writes and consequent prompts to
+the client to upgrade, burdening both the client and authorizer. With this
+approach to writes, a Funhouse-like database must find a usable solution for
+write upgrades that avoids overprompting.
+

@@ -1,0 +1,42 @@
+\section{Related Work}
+
+Many other projects have explored how to do better serverless scheduling.
+ 
+Some projects simply change the mechanisms and try to optimize observed behavior
+by trying out different scheduling policies. Sparrow does this on the
+distributed level, and takes away that a distributed scheduler using
+power-of-k-choices has performance close to a centralized global scheduler.
+Hermod performs a from-first-principles analysis of different scheduling
+paradigms through a simulator, along three dimensions: late-vs early binding, PS
+vs FCFS vs SRPT, and least loaded vs locality based vs random load balancing.
+Kairos does a distributed approximation of Least Attained Service, as a way of
+avoiding trying to estimate future behavior based on past performance. 
+
+Other projects do just that: generate better scheduling decisions by getting
+access to more information about the workload. There are two different ways of
+going about this: learn the behaviors, or ask developers to specify. 
+
+ALPS, for instance, observes and learns the behaviors of existing functions and
+then makes scheduling decisions based on those. Another example is Morpheus,
+which learns SLOs from historical runs, and then translates these to recurring
+reservations. 
+
+Other projects ask developers to specify the desired behavior. Each has come up
+with a different way of expressing priorities or policies, and then built a
+scheduler to implement those priorities. Sequoia, for instance, adds a metric of
+QOS, and then builds a prioritization in front of AWS lambda. Another project
+creates a language of Allocation Priority Policies (APP), which is a declarative
+language to express policies, then builds a scheduler around that.\hmng{ should I
+talk about the actual contents of the languages and how they express priorities?
+Some are pretty complex, but this is also the category that we fall into, and I
+talk about it for AWS so; but AWS’s is also way simpler } AWS lambda itself also
+goes this route, by offering two different ways for developers to influence
+lambda function scaling: provisioned and reserved concurrency. Provisioned
+concurrency specifies a number of instances to keep warm, and reserved
+concurrency does the same but ensures that those warm instances are kept for a
+specific function. 
+
+XX goes the route of asking developers to provide information about desired
+behavior, but has a much simpler interface than Sequoia or APP. Lambda also has
+a simple interface, but it is focused on mitigating effects of cold starts,
+rather than actually prioritizing the scheduling of the functions.

@@ -1,0 +1,27 @@
+\begin{abstract}
+    The promise of serverless currently remains an elusive and extremely
+    attractive paradigm: get what you need as you need it, but only pay for what
+    you use. 
+    
+    For example, building an elastic web server on top of a serverless
+    infrastructure is not something that can be done easily today, but is in
+    principle a good candidate for the serverless setting: its load is
+    unpredictable and bursty, and it does not require managing its data locally. 
+    
+    Many challenges remain in making the ideal of serverless a reality; \sys{}
+    tackles scheduling: in a world where a large and heterogeneous set of jobs
+    is being run on as serverless functions, there has to be a way to
+    differentiate between functions’ requirements and urgency. 
+    
+    \sys{} is a distributed scheduler that allows developers to express priorities
+    and enforces them. Developers express priorities to \sys{} via assigning
+    functions to fixed dollar amounts per unit of compute, and cap the overall
+    usage by specifying a monthly budget. Memory costs per unit time used are
+    the same across all priorities, and developers specify a maximum amount of
+    memory for each function.\hmng{ Do I need the memory blurb? I added it because I
+    mention memory below } \sys{} places incoming jobs on machines that have memory
+    available, and implements a machine scheduler that enforces priorities. 
+    
+    \hmng{ TODO impl/eval blurb }
+
+\end{abstract}
