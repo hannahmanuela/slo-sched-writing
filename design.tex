@@ -1,67 +1,117 @@
 \section{Design}
 
-Developers using \sys{} write function handlers and define triggers just like they
-would for any existing serverless offering. They then additionally attach the
-following pieces of information to each function: 
-\begin{enumerate}
-  \item cpuPriority --- An amount of money they are willing to spend per cpu
-  second; this is chosen from a list of possible values
-
-  \item maxMem --- A maximum amount of memory the function will use; again chosen
-  from a list of possible values
-\end{enumerate}
-Additionally, developers specify a monthly budget. 
 
 
-Internally, \sys{} consists of two main pieces. A distributed global scheduler,
-which places new function invocations, and a machine scheduler, which enforces
-priorities on the machines.
 
-When a new function invocation is triggered, that function is sent to a randomly
-assigned global scheduler shard. Each global scheduler shard maintains a
-multi-queue of functions, as well as a set of machines that have idle/available
-resources. Machines are tagged with the amount of memory they have available, as
-well as the priority of currently running jobs. The information may be outdated,
-but machines only add themselves and their availability information to one shard
-at a time so the information there will always be a pessimistic estimate of the
-current state of the machine. Shards choose what function to place next by the
-ratio of priority to amount of time spent in the queue, so high priority
-functions don’t have to wait as long as lower priority functions to be chosen
-next. This mechanism is inspired by Shinjuku. \hmng{ Do I need to say this? I don’t
-mention Shinjuku in related work because its from another context/solving a
-different problem - maybe I should? } When placing a function, the shard will
-first look for a machine that has the function’s maxMem available. If there are
-multiple such machines, the shard chooses the machine last seen running the
-lowest priority; this choice minimizes cpu idleness under low load settings. If
-there are no machines with the memory available, the shard switches over to a
-power-of-k-choices mechanism: it polls k machines, giving them the cpuPriority
-and the maxMem of the function currently being placed. Each of the k machines
-responds with a number that represents the time it would take for it to start
-making a profit off of the decision of placing the process there. This number is
-influenced by what process it would kill, how long that has been running, and
-what the price differential is between the two. This value captures the sunk
-cost of killing a process, as well as the implicit opportunity cost in that the
-lower priority process being killed would otherwise keep running. The shard then
-can choose to place the new function on the machine with the minimum value, or
-if all of them are too high the shard re-queues the function, this time with a
-lower priority. \hmng{ Is that actually necessary? But otherwise the shard would just
-pick it right back up, right? Given how it’s picking the next proc to place from
-the multi q }
+Developers using \sys{} write function handlers and define triggers just like
+they would for any existing serverless offering. Additionally, developers
+express priorities to \sys{}, and \sys{} enforces these priorities.
 
-Checking in with clients’ budgets to ensure that usage is not significantly
-outpacing the budget is done asynchronously: each time a function for a client
-is triggered a global counter is asynchronously updated. If the counter's rate
-of change increases absurdly with regards to previous behavior as well as the
-budget as a whole, this triggers a throttling for that function.
 
+
+\subsection{Interface}
+
+Developers express priorities to \sys{} via assigning functions to fixed dollar
+amounts per unit compute. So in the example of the web server, the home page
+view might be assigned a high priority and cost 2c per cpu second, a the user
+profile view might be a assigned a middle-high priority and cost 1.5c per cpu
+second, and finally the map reduce job can be set to a low priority which costs
+only 0.5c per cpu second.
  
-On the single machine level, the cpu scheduler enforces the functions’
-priorities via a simple highest-priority-first scheme. Under memory pressure, a
-daemon kills the process that has the highest ratio of memory used to money
-wasted if killed (reflecting that lower priority jobs should be more likely to
-be killed, but won’t help much if they weren’t using any memory to begin with).
-\hmng{ Do we need the second part? Only if we oversubscribe, which probably we will ---
-esp if we only charge for memory being used. I don’t actually know how this
-would work like would we need a running daemon or can you put in some sort of
-handler or something; given that it would also need to notify someone that the
-process has been killed and restart it }
+To avoid unexpected costs in the case of for example a DOS attack or a bug,
+developers also express a monthly budget that they are willing to pay.
+\sys{} does not guarantee that the budget will not be exceeded by small amounts,
+but can use it as a guideline and throttle invocations or decrease quality of
+service in the case that usage is not within reason given the expected budget.
+
+Finally, developers are required to express a maximum amount of memory per
+function.\hmng{ But they only pay for what they use? Def would be in keeping
+with the goal. Is there a penalty for being very off? At that point we might as
+well just use profiling information? --- let's just have this be part of the discussion }
+
+
+
+\subsection{Internals}
+
+\sys{} consists of a distributed global scheduler, which places new function
+invocations, and a machine scheduler, which enforces priorities on the machines.
+
+
+\textbf{Machine Scheduler.} 
+The machine scheduler has a simple paradigm: processes have fixed priorities,
+and higher priorities preempt lower priorities. Being unfair and starving low
+priority processes is a feature, not a bug: map reduce jobs should not ever
+interrupt a page view request processing.\hmng{ talk about our notion of how we
+expect that the amount of work in different priorities will relate to the
+resources available in the datacenter? That might fit better into the discussion
+section }
+
+Each machine is also running a dispatcher that is in charge of communicating
+with global scheduler shards. The dispatcher starts new jobs that have been
+assigned to that machine, and informs gloabl scheduler shards in the event that
+it has idle resources (ie if memory utilization is low). It is also in charge of
+killing and then requeing jobs under memory pressure. It chooses the job to kill
+by looking at both memory used and money wasted if killed (lower priority jobs
+should be the ones to be killed if possible, but won't help much if they weren't
+using any memory to begin with).
+
+
+
+\textbf{Global Scheduler.}
+The global scheduler is sharded, and each shard maintains a multi-queue of
+functions assigned (one queue per priority), as well as a list of machines that
+have idle/available resources. 
+
+Machines are responsible for adding themselves to that list; and are tagged with
+the amount of memory they have available, as well as the highest priority of
+currently running jobs. Machines only add themselves and their availability
+information to one shard at a time, so although the information may be outdated,
+it will always be a pessimistic estimate of the current state of the machine.
+
+\begin{algorithm}[ht!]
+\caption{Chooses a machine for a job j}\label{alg:place}
+\begin{algorithmic}
+    \State$N = \{ $ machines with memAvail > j.maxMem $\}$
+    \If{$|N| > 0$} \\
+        \Return$ $min(N.maxPriorityRunning)
+    \EndIf
+    \State$M = $ timeToProfit of k polled machines
+    \If{min(M.timeToProfit$) < THRESH$} \\
+        \Return$ $min($M$)
+    \Else
+        \State$ $reQ j, with priority -= 1
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+
+Shards choose what job to place next by the ratio of priority to amount of
+time spent in the queue, so high priority jobs don't have to wait as long
+as lower priority jobs to be chosen next.\hmng{ are we expecting that there
+will be queue buildup at GSSs? } 
+
+When placing a job, the shard finds a machine to run the it, as also shown in
+the pseudocode in Algorithm \ref{alg:place}. \\
+The shard will first look for a machine that has the job's maximum memory
+available; if there are multiple such machines, the shard chooses the machine
+last seen running the lowest priority; this choice minimizes cpu idleness under
+low load settings. \\
+If there are no machines with the memory available, the shard switches over to
+power-of-k-choices: it polls k machines, sending the priority and the maximum
+memory of the job currently being placed, and getting back a number that
+represents the time it would take for it to start making a profit off of the
+decision of placing the process there. This number is influenced by what process
+it would kill, how long that has been running, and what the price differential
+is between the two. This value captures the sunk cost of killing a process, as
+well as the implicit opportunity cost in that the lower priority process being
+killed would otherwise keep running. \\ 
+The shard then can choose to place the new job on the machine with the minimum
+value, or if all of them are too high the shard re-queues the job, this time
+with a lower priority.\hmng{ Is that actually necessary? But otherwise the shard
+would just pick it right back up, right? Given how it's picking the next proc to
+place from the multi q }
+
+Checking in with clients' budgets to ensure that usage is not significantly
+outpacing a rate compatible with the budget is done asynchronously: each time a
+job for a client is triggered a global counter is asynchronously updated. If the
+counter's rate of change increases absurdly with regards to previous behavior as
+well as the budget as a whole, this triggers a throttling for that job.

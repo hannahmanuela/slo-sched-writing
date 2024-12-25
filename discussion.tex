@@ -1,0 +1,16 @@
+%-------------------------------------------------------------------------------
+\section{Discussion}
+%-------------------------------------------------------------------------------
+
+
+
+--- talk about max proportions of each priority and how it relates to how lower
+priority have latency degradation vs just never running
+
+
+--- talk about memory/killing and overprovisioning; if we want good memory
+utilization we should overprovision, and be prepared to kill something. Ideally
+have a pay-per-usage model, but then have a problem of right-sliding. Do
+profiling? But that will affect our decision of whether to place or not, whether
+we end up needing to kill or not. Maybe have conditional placements or
+something?

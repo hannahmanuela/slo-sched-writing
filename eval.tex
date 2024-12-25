@@ -1,15 +1,16 @@
 %-------------------------------------------------------------------------------
-\section{Implementation And Preliminary Results}
+\section{Preliminary Results}
 %-------------------------------------------------------------------------------
 
-To understand the dynamics of the single machine scheduler, we implement a
-prototype that uses linux’ SCHED-FIFO to enforce priorities.\hmng{ also talk about
-options that we thought about in terms of EEVDF/EDF, nice values, etc? Might
-come out of nowhere given that this wasn’t a huge deal in the design, but on the
-other hand it is what I’ve spent the most time on }
+% To understand the dynamics of the single machine scheduler, we implement a
+% prototype that uses linux' SCHED-FIFO to enforce priorities.\hmng{ also talk about
+% options that we thought about in terms of EEVDF/EDF, nice values, etc? Might
+% come out of nowhere given that this wasn't a huge deal in the design, but on the
+% other hand it is what I've spent the most time on }
 
-< graph 1: representative microbench comparing straight CFS linux vs cgroups vs nice values vs priority >
+% < graph 1: representative microbench comparing straight CFS linux vs cgroups vs nice values vs priority >
 
-To model the whole systems’ dynamics, we built a simulator. \hmng{List assumptions and variables?}
+To model the whole systems' dynamics, we built a simulator.\hmng{List assumptions and variables?}
 
 < graph 2: graph of latency (and matching graph of utilization?) as load increases; per priority >
+
