@@ -59,22 +59,37 @@ should not be trusted to: their own jobs will always seem more important than
 others', so if given a scale their high priority work will always have the
 highest priority available.
 
-Another challenge is that of managing memory. Once a global ordering of all the
-processes' priorities has been established, implementing (un)-fairness in
-scheduling cpu time is somewhat straighforward. In a world with unlimited
-memory, it would be simple to preempt profile view jobs with landing page view
-jobs when they come in. However, in a memory-limited setting, it is not clear
-how to know whether the profile view job might be need to be killed, and if so
-whether it is worth it to do so, or better to just requeue the new job.
+Another challenge is that of managing memory. Supposing no multi-tenancy and
+unlimited memory, it would be simple to preempt profile view jobs with landing
+page view jobs when they come in. However, in a memory-limited setting, it is
+not clear how to know whether running the landing page view would mean the
+profile view job would be need to be killed, and if so whether it is worth it to
+do so, or better to just requeue the new job.
 
 A third challenge is that of placing jobs. In a datacenter setting, where both
 the number of new jobs coming in and the amount of resources are extremely
 large, knowing where the free and idle resources are is a challenge central to
-any distributed system. There is generally an understanding that the total load
-does not fluctuate by any significant factor. This supported by the law of large
-numbers (it is very unlikely that all a cloud providers customers will burst at
-once), and can be seen in the ways AWS prices things: spot instances are sold at
-a market rate determined by the amount of resources available in a given
-zone\cite{TODO}, and the market rate is experientially very steady over
-time\cite{TODO}; the prices for lambdas and ec2 instances also only changes very
-slowly\cite{TODO}.
+any distributed system. Because the scheduler has access to priority information
+about processes, this can give the scheduler a notion of how quickly things will
+need to be placed, but not how many resources they will use. It also interacts
+with the memory management challenge: placing a job requires balancing the
+tradeoffs between potentially needing to kill already running jobs, or putting
+the new job on a machine where it may have to wait for other high priority jobs
+to finish. Additionally, if a machine will preempt low priority processes with
+high priority ones, then it may even be desirable to place a high priority job
+on a machine with a longer queue (as long as they are mostly low priority jobs),
+rather than on a machine with few high priority processes.\hmng{this challenge
+definitely feels the least worked out}
+
+
+% There is generally an understanding that the total load does not fluctuate by
+% a significant factor. This supported by the strong law of large numbers (it is
+% very unlikely that all the jobs' random  bursts align), and can be seen in the
+% ways AWS prices things: spot instances are sold at a market rate determined by
+% the amount of resources available in a given zone\cite{TODO}, and the market
+% rate is experientially very steady over time\cite{TODO}. The prices for
+% lambdas and ec2 instances also only changes very slowly\cite{TODO}.
+
+\hmng{we also never get back to these challenges yet. Maybe have discussion
+section centered around them? The existing discussion `subsections'
+could probably be made to fit into the challenges}

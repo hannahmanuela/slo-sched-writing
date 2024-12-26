@@ -4,8 +4,8 @@
 
 
 
-There are still a number of open questions that the design only partially addresses, or
-is not completely satisfactory about.
+There are still a number of open questions that the design only partially
+addresses, or does not have a completely satisfactory answer to.
 
 \textbf{Economics of memory.}
 One of the key pieces of the design is the notion that jobs have an associated
@@ -21,16 +21,20 @@ In the world where developers only pay for what they use, asking for a limit
 with no repurcussions if the estimate is off would be useless; everyone would
 just put the largest amount allowed. Adding penalties for being off seems
 unreasonable: some jobs simply have a high variance in their memory usage and
-penalizing developers that run such jobs is undesirable.
+penalizing developers that run such jobs is undesirable. 
+
+Ideally, memory would be a pay-per-use model and no further information would be
+requied; however that would require being able to reactively deal with memory
+pressure extremely quickly and well.
 
 \textbf{Dealing with memory pressure.}
-Whether the meory usage per job is capped or not, because usage varies having
-high memory utilization will requite overprovisioning machines on memory. The
-current design deals with high memory pressure by simply killing the process
-that is the most convenient: lowest priority and using enough memory to make a
-difference.
+Whether the memory usage per job is capped or not, because actual memory usage
+varies between job invocations, having high memory utilization will requite
+overprovisioning machines on memory. The current design deals with high memory
+pressure by simply killing the process that is the most convenient: lowest
+priority and using enough memory to make a difference.
 
-This is not really a satisfying solutiong. Ideally, the system would avoid the
+This is not really a satisfying solution. Ideally, the system would avoid the
 situation altogether, or if it occured would be able to solve it without
 killing, ie wasting resources. 
 
@@ -40,9 +44,9 @@ Profiling is improving as ML models improve, and might be a good use case
 given the inputs to invocations could work well, since the inputs are likely to
 be the determining factor for memory usage). On the other hand, profiling is
 still just an estimate that could always be wrong, and the system needs to be
-able to handle that. If we are able to come up with a mechanism that is reative
+able to handle that. If we are able to come up with a mechanism that is reactive
 and at the right time scale, ie acts quickly enough that there is no buildup and
-the problem goes away, would be ideal. \\
+the problem goes away, that would be ideal. \\
 One option for this might be snapshotting: lower priority functions that we are now
 reactively killing might be allowed to snapshot themselves and then be placed
 somewhere else and re-started. In this case, the timescale would have to be such
@@ -58,35 +62,36 @@ for having been paged out).
 \textbf{Does priority increase with waiting.}
 One of the observations the system design is built on is that Processor Sharing
 (PS) is not the right approach in a serverless setting, where jobs run once and
-then are done (as opposed to long running processes that need consistent access
-to resources). Instead, \sys{} uses preemptive priority scheduling, where
-at any moment in time the process running is the one with the highest priority
-on the machine. This means that if it is possible for load in the highest
-priority class to take up all the resources, nothing of any lower resource would
-ever run at all. 
+then are done. Instead, \sys{} uses preemptive priority scheduling, where at any
+moment in time the process running is the one with the highest priority on the
+machine. This means that if it is possible for load in the highest priority
+class to take up all the resources, nothing of any lower resource would ever run
+at all. 
 
 It is not necessarily clear that this is desirable, for instance in the web
 server example if a user profile view has waited for long enough it seems fine
-for a landing page view to be blocked for a second while the profile view job
-runs. This would point to it being desirable that processes gain priority as
-they wait. On the other hand, this would not be true of a map reduce job: page
-views should never be interrupted because a map review job had been waiting for
-a long time.
+for a landing page view to be blocked for the time it takes while the profile
+view job runs. This would point to it being desirable that processes gain
+priority as they wait. On the other hand, this would not be true of a map reduce
+job: page views should never be interrupted because a map review job had been
+waiting for a long time.
 
 One solution to this problem is ensure that it can never be the case the there
 is so much load on high priority jobs that the data center will be full with
-them to such a degree that high-ish priority jobs can't run. As we said earlier,
-there is evidence for and we expect that load will mostly be stable. Random
-short bursts occur for different clients but generally not related (or when they
-are there is a cause and cloud providers will know the cause and be able to
-expect it, for example live stream web servers having higher load during the
-superbowl). This means that providers can mostly choose the rough breakdown of
-the load they will have at any given time (ie they can choose a percentage of
-how many jobs they want in each priority, and change it by adjusting prices or
-not sllowing users to select that level anymore). 
+them to such a degree that high-ish priority jobs can't run. There is evidence
+for and we expect that load will mostly be stable: this supported by the strong
+law of large numbers (it is very unlikely that all the jobs' random  bursts
+align), and can be seen in the ways AWS prices things: spot instances are sold
+at a market rate determined by the amount of resources available in a given
+zone\cite{TODO}, and the market rate is experientially very steady over
+time\cite{TODO}. The prices for lambdas and ec2 instances also only changes very
+slowly\cite{TODO}. This means that providers can mostly choose the rough
+breakdown of the load they will have at any given time (ie they can choose a
+percentage of how many jobs they want in each priority, and change it by
+adjusting prices or not sllowing users to select that level anymore). 
 
-We discuss what a good breakdown would look like in the next section? Put eval
+\hmng{We discuss what a good breakdown would look like in the next section? Put eval
 next? Or just don't discuss and leave it at that, although that seems a little
-vague.
+vague.}
 
 

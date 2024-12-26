@@ -27,9 +27,9 @@ unknown unknowns, ie there may be a related work that I don't know about for
 which this is not true. Hard to make specific enough so that is unlikely, while
 still actually going beyond just the literal design }
 
-Sequoia\cite{TODO}, for instance, adds a metric of QOS. Unlike \sys{}, Sequoia
-does not implement a scheduler, but builds a prioritization in front of AWS
-lambda. 
+Sequoia\cite{TODO}, for instance, creates a metric of QOS for serverless
+functions. Unlike \sys{}, Sequoia does not implement a new scheduler, but builds
+a layer in front of AWS lambda. 
 
 Another project\cite{TODO} creates a language of Allocation Priority Policies
 (APP), which is a declarative language to express policies, then builds a
@@ -40,8 +40,8 @@ scheduling automatically.
 
 AWS lambda itself also goes this route, by offering two different ways for
 developers to influence lambda function scaling: provisioned and reserved
-concurrency. Provisioned concurrency specifies a number of instances to keep
-warm, and reserved concurrency does the same but ensures that those warm
+concurrency\cite{TODO}. Provisioned concurrency specifies a number of instances
+to keep warm, and reserved concurrency does the same but ensures that those warm
 instances are kept for a specific function. However, these knobs are more
 centered around mitigating the effects of cold start rather than actually
 affecting the way the  jobs are scheduled.

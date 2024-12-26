@@ -25,9 +25,8 @@ but can use it as a guideline and throttle invocations or decrease quality of
 service in the case that usage is not within reason given the expected budget.
 
 Finally, developers are required to express a maximum amount of memory per
-function.\hmng{ But they only pay for what they use? Def would be in keeping
-with the goal. Is there a penalty for being very off? At that point we might as
-well just use profiling information? --- let's just have this be part of the discussion }
+function.\hmng{ Should I have a forward reference to the discussion section
+here? }
 
 
 
@@ -41,15 +40,12 @@ invocations, and a machine scheduler, which enforces priorities on the machines.
 The machine scheduler has a simple paradigm: processes have fixed priorities,
 and higher priorities preempt lower priorities. Being unfair and starving low
 priority processes is a feature, not a bug: map reduce jobs should not ever
-interrupt a page view request processing.\hmng{ talk about our notion of how we
-expect that the amount of work in different priorities will relate to the
-resources available in the datacenter? That might fit better into the discussion
-section }
+interrupt a page view request processing.
 
-Each machine is also running a dispatcher that is in charge of communicating
+On each machine is also running a dispatcher that is in charge of communicating
 with global scheduler shards. The dispatcher is in charge of informing a gloabl
 scheduler shard in the event that it has idle resources (ie if memory
-utilization is low). Each shard has an attached `idle list', the dispatcher
+utilization is low). Each shard has an attached `free list', the dispatcher
 chooses which list to add itself to using a power-of-k-choices mechanism: it
 looks at k shards and chooses the one with the least other machines in it. 
 
@@ -63,18 +59,19 @@ if they weren't using any memory to begin with).
 
 \textbf{Global Scheduler.}
 The global scheduler is sharded, and each shard maintains a multi-queue of
-functions assigned (one queue per priority), as well asthe aforementioned `idle list'. 
+functions assigned (one queue per priority), as well as the aforementioned `free
+list'. 
 
 Because machines only add themselves and their availability information to one
-shard at a time, the information in the `idle list' may be outdated, but it will
+shard at a time, the information in the `free list' may be outdated, but it will
 always be a pessimistic estimate of the current state of the machine.
 
-\begin{algorithm}[ht!]
+\begin{algorithm}[t]
 \caption{Chooses a machine for a job j}\label{alg:place}
 \begin{algorithmic}
-    \State$N = \{ $ machines with memAvail > j.maxMem $\}$
+    \State$N = \{ $ machines in freeList with memAvail > j.maxMem $\}$
     \If{$|N| > 0$} \\
-        \Return$ $min(N.maxPriorityRunning)
+        \Return$ $min(N.maxPriorityRunning, N.qSize)
     \EndIf
     \State$M = $ timeToProfit of k polled machines
     \If{min(M.timeToProfit$) < THRESH$} \\
@@ -87,30 +84,29 @@ always be a pessimistic estimate of the current state of the machine.
 
 Shards choose what job to place next by the ratio of priority to amount of
 time spent in the queue, so high priority jobs don't have to wait as long
-as lower priority jobs to be chosen next.\hmng{ are we expecting that there
-will be queue buildup at GSSs? } 
+as lower priority jobs to be chosen next.
 
 When placing a job, the shard finds a machine to run the it, as also shown in
 the pseudocode in Algorithm \ref{alg:place}. \\
-The shard will first look for a machine that has the job's maximum memory
-available; if there are multiple such machines, the shard chooses the machine
-last seen running the lowest priority; this choice minimizes cpu idleness under
-low load settings.\hmng{if that's the goal, why not just look at number of jobs
-it has right now} \\
-If there are no machines with the memory available, the shard switches over to
-power-of-k-choices: it polls k machines, sending the priority and the maximum
-memory of the job currently being placed, and getting back a number that
-represents the time it would take for it to start making a profit off of the
-decision of placing the process there. This number is influenced by what process
-it would kill, how long that has been running, and what the price differential
-is between the two. This value captures the sunk cost of killing a process, as
-well as the implicit opportunity cost in that the lower priority process being
-killed would otherwise keep running. \\ 
+The shard will first look in its `free list' for a machine that has the job's
+maximum memory available; if there are multiple such machines, the shard looks
+at each machines highest currently running priority and number of jobs. The goal
+is to minimize cpu idleness and job latency in low load settings.\hmng{playing
+with how to relate these to each other and how to make this decision in the
+scheduler right now} \\
+If there are no machines in the `free list' with the memory available, the shard
+switches over to power-of-k-choices: it polls k machines, sending the priority
+and the maximum memory of the job currently being placed. The shard gets back a
+number that represents the time it would take for the machine to start making a
+profit off of the decision of placing the job there. This number is influenced
+by what job the machine would kill, how long that has been running, and what the
+price differential is between the new and the potentially killed job. This value
+captures the sunk cost of killing a job, as well as the implicit opportunity
+cost in that the lower priority job being killed would otherwise keep running.
+\\ 
 The shard then can choose to place the new job on the machine with the minimum
 value, or if all of them are too high the shard re-queues the job, this time
-with a lower priority.\hmng{ Is that actually necessary? But otherwise the shard
-would just pick it right back up, right? Given how it's picking the next proc to
-place from the multi q }
+with a lower priority.
 
 Checking in with clients' budgets to ensure that usage is not significantly
 outpacing a rate compatible with the budget is done asynchronously: each time a
