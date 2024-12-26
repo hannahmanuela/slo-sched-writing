@@ -94,7 +94,8 @@ the pseudocode in Algorithm \ref{alg:place}. \\
 The shard will first look for a machine that has the job's maximum memory
 available; if there are multiple such machines, the shard chooses the machine
 last seen running the lowest priority; this choice minimizes cpu idleness under
-low load settings. \\
+low load settings.\hmng{if that's the goal, why not just look at number of jobs
+it has right now} \\
 If there are no machines with the memory available, the shard switches over to
 power-of-k-choices: it polls k machines, sending the priority and the maximum
 memory of the job currently being placed, and getting back a number that
