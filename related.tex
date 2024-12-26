@@ -21,8 +21,11 @@ directly from the developers as part of its interface.
 
 Other existing systems ask developers to specify the desired behavior, like
 \sys{} does. However, they don't change the actual underlying machine-level
-scheduling, and expressing priority is more complex than in \sys{} and/or
-has a different goal.
+scheduling, and expressing priority is more complex than in \sys{}, and/or has a
+different goal.\hmng{this feels a bit awk/not on the nail. Also hard because of
+unknown unknowns, ie there may be a related work that I don't know about for
+which this is not true. Hard to make specific enough so that is unlikely, while
+still actually going beyond just the literal design }
 
 Sequoia\cite{TODO}, for instance, adds a metric of QOS. Unlike \sys{}, Sequoia
 does not implement a scheduler, but builds a prioritization in front of AWS
