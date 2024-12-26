@@ -47,26 +47,27 @@ resources available in the datacenter? That might fit better into the discussion
 section }
 
 Each machine is also running a dispatcher that is in charge of communicating
-with global scheduler shards. The dispatcher starts new jobs that have been
-assigned to that machine, and informs gloabl scheduler shards in the event that
-it has idle resources (ie if memory utilization is low). It is also in charge of
-killing and then requeing jobs under memory pressure. It chooses the job to kill
-by looking at both memory used and money wasted if killed (lower priority jobs
-should be the ones to be killed if possible, but won't help much if they weren't
-using any memory to begin with).
+with global scheduler shards. The dispatcher is in charge of informing a gloabl
+scheduler shard in the event that it has idle resources (ie if memory
+utilization is low). Each shard has an attached `idle list', the dispatcher
+chooses which list to add itself to using a power-of-k-choices mechanism: it
+looks at k shards and chooses the one with the least other machines in it. 
+
+The dispatcher is also in charge of starting new jobs assigned to its machine,
+as well as killing and then requeing jobs under memory pressure. It chooses the
+job to kill by looking at both memory used and money wasted if killed (lower
+priority jobs should be the ones to be killed if possible, but won't help much
+if they weren't using any memory to begin with).
 
 
 
 \textbf{Global Scheduler.}
 The global scheduler is sharded, and each shard maintains a multi-queue of
-functions assigned (one queue per priority), as well as a list of machines that
-have idle/available resources. 
+functions assigned (one queue per priority), as well asthe aforementioned `idle list'. 
 
-Machines are responsible for adding themselves to that list; and are tagged with
-the amount of memory they have available, as well as the highest priority of
-currently running jobs. Machines only add themselves and their availability
-information to one shard at a time, so although the information may be outdated,
-it will always be a pessimistic estimate of the current state of the machine.
+Because machines only add themselves and their availability information to one
+shard at a time, the information in the `idle list' may be outdated, but it will
+always be a pessimistic estimate of the current state of the machine.
 
 \begin{algorithm}[ht!]
 \caption{Chooses a machine for a job j}\label{alg:place}
