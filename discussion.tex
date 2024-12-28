@@ -3,19 +3,15 @@
 %-------------------------------------------------------------------------------
 
 
+There remain a number of interesting open questions.
 
-There are still a number of open questions that the design only partially
-addresses, or does not have a completely satisfactory answer to.
-
-\textbf{Economics of memory.}
-One of the key pieces of the design is the notion that jobs have an associated
-amount of memory, and when the job is placed that estimate is used in order to
-understand the consequences of placing a job (whether this will result in a kill
-of not). However, we did not discuss the payment model: do developers only pay
-for the memory they use, or do they pay based on the max amount of the memory
-they give? The former would result in gross overestimations because there is no
-downside to being on the cautious side, while the latter breaks the central
-maxim that developers only pay for what they use.
+\textbf{How is memory usage billed?}
+% 
+Do developers only pay for the memory they use, or do they pay based on the max
+amount of the memory they stupilate? The former would result in gross
+overestimations because there is no downside to being on the cautious side,
+while the latter breaks the central maxim that developers only pay for what they
+use.
 
 In the world where developers only pay for what they use, asking for a limit
 with no repurcussions if the estimate is off would be useless; everyone would
@@ -27,26 +23,24 @@ Ideally, memory would be a pay-per-use model and no further information would be
 requied; however that would require being able to reactively deal with memory
 pressure extremely quickly and well.
 
-\textbf{Dealing with memory pressure.}
-Whether the memory usage per job is capped or not, because actual memory usage
-varies between job invocations, having high memory utilization will requite
-overprovisioning machines on memory. The current design deals with high memory
-pressure by simply killing the process that is the most convenient: lowest
-priority and using enough memory to make a difference.
+\textbf{How should \sys{} deal with memory pressure?} 
+% 
+Ideally, \sys{} would avoid the situation altogether, or if it occured would be
+able to solve it without killing, ie wasting resources. 
 
-This is not really a satisfying solution. Ideally, the system would avoid the
-situation altogether, or if it occured would be able to solve it without
-killing, ie wasting resources. 
+Avoiding memory pressure situations would require knowing with high accuracy in
+advance how much memory a job will use. Profiling is improving as ML models
+improve, and might be a good use case (especially for jobs with a high variance
+of memory usage, using a model that is given the inputs to invocations could
+work well, since the inputs are likely to be the determining factor for memory
+usage). 
 
-Well-know solutions for this are profiling or reactively snapshotting/paging.
-Profiling is improving as ML models improve, and might be a good use case
-(especially for jobs with a high variance of memory usage, using a model that is
-given the inputs to invocations could work well, since the inputs are likely to
-be the determining factor for memory usage). On the other hand, profiling is
-still just an estimate that could always be wrong, and the system needs to be
-able to handle that. If we are able to come up with a mechanism that is reactive
-and at the right time scale, ie acts quickly enough that there is no buildup and
-the problem goes away, that would be ideal. \\
+On the other hand, profiling is still just an estimate that could always
+be wrong, and the system needs to be able to handle that. If we are able to come
+up with a mechanism that is reactive and at the right time scale, ie acts
+quickly enough that there is no buildup and the problem goes away, that would be
+ideal.
+
 One option for this might be snapshotting: lower priority functions that we are now
 reactively killing might be allowed to snapshot themselves and then be placed
 somewhere else and re-started. In this case, the timescale would have to be such
@@ -59,22 +53,15 @@ compute one could imagine some sort of recompense for the runtime that job pays
 for having been paged out).
 
 
-\textbf{Does priority increase with waiting.}
-One of the observations the system design is built on is that Processor Sharing
-(PS) is not the right approach in a serverless setting, where jobs run once and
-then are done. Instead, \sys{} uses preemptive priority scheduling, where at any
-moment in time the process running is the one with the highest priority on the
-machine. This means that if it is possible for load in the highest priority
-class to take up all the resources, nothing of any lower resource would ever run
-at all. 
-
-It is not necessarily clear that this is desirable, for instance in the web
-server example if a user profile view has waited for long enough it seems fine
-for a landing page view to be blocked for the time it takes while the profile
-view job runs. This would point to it being desirable that processes gain
-priority as they wait. On the other hand, this would not be true of a map reduce
-job: page views should never be interrupted because a map review job had been
-waiting for a long time.
+\textbf{Does priority increase with waiting?}
+% 
+Preemptive priority scheduling means that at any moment in time the process
+running is the one with the highest priority on the machine. This ensures that
+the web server's page views run with high performance, and the map reduce jobs
+do not interrupt but rather wait for lulls in load to run. The flipside of this
+is that if there are no such lulls, ie if there are so many high priority jobs
+that they take up all the resources all the time, it is possible that nothing of
+any lower priority would ever run at all. 
 
 One solution to this problem is ensure that it can never be the case the there
 is so much load on high priority jobs that the data center will be full with

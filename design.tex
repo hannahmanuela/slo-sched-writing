@@ -1,11 +1,9 @@
 \section{Design}
 
 
-
-
 Developers using \sys{} write function handlers and define triggers just like
 they would for any existing serverless offering. Additionally, developers
-express priorities to \sys{}, and \sys{} enforces these priorities.
+express jobs' priorities to \sys{}, and \sys{} enforces these priorities.
 
 
 
@@ -19,10 +17,11 @@ second, and finally the map reduce job can be set to a low priority which costs
 only 0.5c per cpu second.
  
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
-developers also express a monthly budget that they are willing to pay.
-\sys{} does not guarantee that the budget will not be exceeded by small amounts,
-but can use it as a guideline and throttle invocations or decrease quality of
-service in the case that usage is not within reason given the expected budget.
+developers also express a monthly budget that they are willing to pay.\ \sys{}
+uses this budget as a guideline and throttles invocations or decreases quality
+of service in the case that usage is not within reason given the expected
+budget, though it does not guarantee that the budget will not be exceeded by
+small amounts.
 
 Finally, developers are required to express a maximum amount of memory per
 function.\hmng{ Should I have a forward reference to the discussion section
@@ -30,44 +29,56 @@ here? }
 
 
 
-\subsection{Internals}
+\subsection{\sys{} Design}
 
-\sys{} consists of a distributed global scheduler, which places new function
-invocations, and a machine scheduler, which enforces priorities on the machines.
+\sys{}'s main structure can be seen in Figure \textbf{TODO}.\ \sys{} consists of
+a distributed global scheduler, which places new function invocations, a
+dispatcher, which runs on each machine and communicates with the global
+scheduler shards, and a machine scheduler, which enforces priorities on the
+machines. 
 
-
-\textbf{Machine Scheduler.} 
-The machine scheduler has a simple paradigm: processes have fixed priorities,
-and higher priorities preempt lower priorities. Being unfair and starving low
-priority processes is a feature, not a bug: map reduce jobs should not ever
-interrupt a page view request processing.
-
-On each machine is also running a dispatcher that is in charge of communicating
-with global scheduler shards. The dispatcher is in charge of informing a gloabl
-scheduler shard in the event that it has idle resources (ie if memory
-utilization is low). Each shard has an attached `free list', the dispatcher
-chooses which list to add itself to using a power-of-k-choices mechanism: it
-looks at k shards and chooses the one with the least other machines in it. 
-
-The dispatcher is also in charge of starting new jobs assigned to its machine,
-as well as killing and then requeing jobs under memory pressure. It chooses the
-job to kill by looking at both memory used and money wasted if killed (lower
-priority jobs should be the ones to be killed if possible, but won't help much
-if they weren't using any memory to begin with).
+Attached to each global scheduler shard is a \textit{free list}, which holds
+machines that have a significant amount of memory available; similarly to the
+way a free list in a local operating system maintains free blocks of memory,
+except distributed and at a much coarser granularity. In the shards free list
+each machine's entry is also associated with some metadata about compute
+pressure.\hmng{figuring out exactly what we want those values to be in the
+simulator right now, currently looking at max running priority and q size}
 
 
+\textbf{Machine Scheduler.}
+The machine scheduler is simple: jobs have fixed priorities, and higher
+priorities preempt lower priorities. Being unfair and starving low priority
+jobs is desirable, since map reduce jobs should not interrupt a page view
+request processing, but vice versa is expected.
 
-\textbf{Global Scheduler.}
-The global scheduler is sharded, and each shard maintains a multi-queue of
-functions assigned (one queue per priority), as well as the aforementioned `free
-list'. 
 
-Because machines only add themselves and their availability information to one
-shard at a time, the information in the `free list' may be outdated, but it will
-always be a pessimistic estimate of the current state of the machine.
+\textbf{Dispatcher.}
+The dispatcher is in charge of adding itself to a shard's free list when memory
+utilization is low. If it is already on a list somewhere it will update that
+entry if it's value has changed significantly. Otherwise, the dispatcher chooses
+which list to add itself to using power-of-k-choices: it looks at k shards' free
+lists and chooses the one with the least other machines in it. 
+
+The dispatcher is also in charge of killing jobs under memory pressure. It
+chooses the job to kill by looking at both memory used and money wasted if
+killed (lower priority jobs should be the ones to be killed if possible, but
+won't help much if they weren't using any memory to begin with). Killed jobs are
+requeued at a randomly chosen shard.
+
+The dispatcher also responds to probes by shards: given a potential job that a
+shard might want to run on the machine, the dispatcher computes the \textit{time
+to profit}, which is the time it would take for the machine to start making a
+profit off of the decision of placing the job there. If there is enough memory
+free to fit the new job's max memory, that number is 0. If the dispatcher might
+have to kill a process due to memory pressure, it computes which job it would
+kill, which is the job with minimal price where $j.memUsg > newJ.maxMem$. The
+time to profit then is $(jToKill.timeRun \cdot jToKill.price) / (newJ.price
+- jToKill.price)$.
+
 
 \begin{algorithm}[t]
-\caption{Chooses a machine for a job j}\label{alg:place}
+\caption{Choosing a machine for a job j}\label{alg:place}
 \begin{algorithmic}
     \State$N = \{ $ machines in freeList with memAvail > j.maxMem $\}$
     \If{$|N| > 0$} \\
@@ -82,31 +93,31 @@ always be a pessimistic estimate of the current state of the machine.
 \end{algorithmic}
 \end{algorithm}
 
-Shards choose what job to place next by the ratio of priority to amount of
-time spent in the queue, so high priority jobs don't have to wait as long
-as lower priority jobs to be chosen next.
+
+\textbf{Global Scheduler.}
+
+Shards maintain a multi-q of incoming jobs that need to be placed. They choose
+what job to place next by the ratio of priority to amount of time spent in the
+queue, so high priority jobs don't have to wait as long as lower priority jobs
+to be chosen next.
 
 When placing a job, the shard finds a machine to run the it, as also shown in
-the pseudocode in Algorithm \ref{alg:place}. \\
-The shard will first look in its `free list' for a machine that has the job's
-maximum memory available; if there are multiple such machines, the shard looks
-at each machines highest currently running priority and number of jobs. The goal
-is to minimize cpu idleness and job latency in low load settings.\hmng{playing
-with how to relate these to each other and how to make this decision in the
-scheduler right now} \\
-If there are no machines in the `free list' with the memory available, the shard
-switches over to power-of-k-choices: it polls k machines, sending the priority
-and the maximum memory of the job currently being placed. The shard gets back a
-number that represents the time it would take for the machine to start making a
-profit off of the decision of placing the job there. This number is influenced
-by what job the machine would kill, how long that has been running, and what the
-price differential is between the new and the potentially killed job. This value
-captures the sunk cost of killing a job, as well as the implicit opportunity
-cost in that the lower priority job being killed would otherwise keep running.
-\\ 
-The shard then can choose to place the new job on the machine with the minimum
-value, or if all of them are too high the shard re-queues the job, this time
-with a lower priority.
+the pseudocode in Algorithm \ref{alg:place}. 
+
+The shard will first look in its free list for a machine that has the job's
+maximum memory available. If there are multiple such machines, the shard looks
+at each machines compute pressure metrics; the goal being to minimize cpu
+idleness and job latency in low load settings.\hmng{playing with deatils of this
+in the scheduler right now} If a machine from the free list is chosen, the
+response from the dispatcher on placing the job will include updated info,
+which the shard will use to update the free list entry.
+
+If there are no machines in the free list with the memory available, the shard
+switches over to power-of-k-choices: it polls k machines, sending the price and
+the maximum memory of the job currently being placed, and getting back the time
+to profit. The shard then can choose to place the new job on the machine with
+the minimum value, or if all of them are too high the shard re-queues the job,
+this time with a lower priority.
 
 Checking in with clients' budgets to ensure that usage is not significantly
 outpacing a rate compatible with the budget is done asynchronously: each time a

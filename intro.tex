@@ -2,94 +2,92 @@
 \section{Introduction}
 %-------------------------------------------------------------------------------
 
-A world where all cloud compute is run in the format of a serverless job is
-attractive to developers and providers: developers only pay for what they use
-while having access to lots of resources; and cloud providers have flexibility
-in scheduling and can achieve good utilization.
-
-This paper focuses on building a usable and efficient priority mechanism for a
-world of universal serverless, and assumes that cold start times are small
-enough to be acceptable on the critical path --- recent state of the art systems
-have been able to support cold start times in the single digit ms
-range\cite{TODO}, and we expect this trend to continue. 
+A world where all cloud compute is run in the format of serverless jobs is
+attractive to developers and providers: developers pay only for what they use
+while having access to many resources when needed; and cloud providers have
+control over scheduling and can use that to drive up utilization.
 
 
-% However, for many applications it is rare to see them entirely hosted on
-% serverless offerings today\cite{TODO}. 
-A driving example for this work is that of a web server. Its characteristics of
-unpredictable and bursty traffic make it well-suited for serverless, and the pay
-as you go model is particularly attractive to website developers who don't want
-to have to worry about provisioning.
+However, for many applications it is rare to see them entirely hosted on
+serverless offerings today\cite{TODO}. A driving example for this work is that
+of a web server. Its characteristics of unpredictable and bursty traffic make it
+well-suited for serverless, and the pay as you go model is particularly
+attractive to website developers who don't want to have to worry about
+provisioning.
 
 Suppose a simple web server consists of two different page views, one for the
 landing page and another for users' profile pages, and also has map reduce jobs
-for data processing. 
+for data processing. It is important that the page views finish quickly, with
+the landing page slightly taking precedence over the profile pages, and the map
+reduce jobs don't really matter.
 
-If the web developer wanted to host the web server in an existing serverless
-offering, a popular option is AWS lambda\cite{TODO}. In order to influence the
-ways that different functions scale, AWS lets developers specify their desired
-`reserved concurrency', ie the number of warm containers that are specifically
-reserved for a given lambda\cite{TODO}. However, with that interface, the
-developer loses the benefit of the flexibility that was the initial draw: they
-are now paying for resources they are not using (because they have to pay to
-keep all those containers warm), and they can't burst when they need to (because
-once the number of invocations goes beyond the allocated warm containers it will
-contend with all the other functions for warm instances, or have to wait for a
-cold start).
+If a web developer wanted to host their web in an existing serverless offering,
+a popular option is AWS lambda\cite{TODO}. In order to  ensure that page views
+have their required latency, developers can influence the ways that different
+functions scale\cite{TODO}. They can used `provisioned concurrency' (a number of
+warm containers kept for the given lambda) in order to ensure a request rate up
+to which page views will not experience cold start. They can also use `reserved
+concurrency' (an amount of concurrency, not necessarily warm, reserved for the
+given lambda) to ensure that the map reduce job cannot use too much of the
+accounts concurrency, by reserving large portions for each of the two page
+views.
+
+However, with that interface, the developer loses the benefit of the flexibility
+that was the initial draw: they are now paying for resources they are not using
+(because they have to pay to keep the containers warm), and they potentially
+can't burst when they need to (because once the number of invocations goes
+beyond the allocated warm containers it will contend with all the other
+functions for warm instances, and if it's beyond the reserved concurrency will
+have to contend to run at all).
+
+It becomes clear when looking at Lambda's interface that they are mostly
+concerned about slow cold start times. However, cold start latencies are a
+popular area of research and as a result have been reduced significantly ---
+recent state of the art systems have been able to support latencies in the
+single digit ms range\cite{TODO}. This is an opportunity: as cold start times go
+down, more and more latency sensitive jobs can support a potential cold start on
+their critical path. With low single digit ms cold start times, a page view that
+takes 20-30ms to run can be run as a serverless task without requiring a warm
+container to be able to meet its latency goals. For this paper, we assume that
+this is generally the case, ie that cold start times are small enough compared
+to the jobs being run that cold starts on the critical path are acceptable. It
+is then up to the scheduler to place and prioritize these jobs as desired.
 
 
-% Spot instances are not a good fit: there are no guarantees about getting an
-% instance, the instances take long to set up, and last for in the
-% hours\cite{TODO}. A key characteristic of the serverless format is that there is
-% a process per request, this is what ensures that the developer is only paying
-% for what they need --- because they only get allocated resources when they need
-% them, ie when a request comes in.
+This paper focuses on building a usable and efficient scheduling mechanism to
+support differentiating between jobs of different priorities in a world of
+universal serverless. In doing so, it faces multiple significant challenges.
 
+One of the challenges is that of multi-tenancy. The fact that page views are
+more important to a web server than map reduce jobs is a relative statement:
+there is no way of mapping that prioritization to other peoples jobs, in order
+to be able to directly compare which job should run when. And, in fact,
+developers cannot be trusted to make such a comparison, their own jobs will
+always seem more important than others': if given an absolute scale from 0-99 (0
+being the highest priority), the highest priority job will always get a 0 and
+the rest will be relative to that. However, that does not reflect that in fact
+different clients do have different requirements and expectations, and need
+to be treated differently.
 
-Designing a scheduling system that enforces priorities while maintaining a
-purely on-demand usage structure faces some significant challenges.\hmng{this is
-a bit of an awkward transition}
-
-
-One of the challenges is that of multi-tenancy. Priorities alone are only
-relative: the developer of our web server knows that they want landing page
-views to run before profile page views to run before map reduce jobs; but have
-no way of expressing that priority relative to other peoples jobs. And, in fact,
-should not be trusted to: their own jobs will always seem more important than
-others', so if given a scale their high priority work will always have the
-highest priority available.
-
-Another challenge is that of managing memory. Supposing no multi-tenancy and
-unlimited memory, it would be simple to preempt profile view jobs with landing
-page view jobs when they come in. However, in a memory-limited setting, it is
-not clear how to know whether running the landing page view would mean the
-profile view job would be need to be killed, and if so whether it is worth it to
-do so, or better to just requeue the new job.
+Another challenge is that of managing memory. Given that machines are limited in
+memory, placing a new high priority job invocation on a machine already running
+many jobs may or may not lead to enough memory pressure to require killing an
+already placed job (rather than just preempting other jobs). It is difficult to
+know whether that would be the case, and if so whether it is worth it, or better
+to just requeue the new job.
 
 A third challenge is that of placing jobs. In a datacenter setting, where both
 the number of new jobs coming in and the amount of resources are extremely
-large, knowing where the free and idle resources are is a challenge central to
-any distributed system. Because the scheduler has access to priority information
-about processes, this can give the scheduler a notion of how quickly things will
-need to be placed, but not how many resources they will use. It also interacts
-with the memory management challenge: placing a job requires balancing the
-tradeoffs between potentially needing to kill already running jobs, or putting
-the new job on a machine where it may have to wait for other high priority jobs
-to finish. Additionally, if a machine will preempt low priority processes with
-high priority ones, then it may even be desirable to place a high priority job
-on a machine with a longer queue (as long as they are mostly low priority jobs),
-rather than on a machine with few high priority processes.\hmng{this challenge
-definitely feels the least worked out}
+large, knowing where the free and idle resources are is a challenge. 
 
-
-% There is generally an understanding that the total load does not fluctuate by
-% a significant factor. This supported by the strong law of large numbers (it is
-% very unlikely that all the jobs' random  bursts align), and can be seen in the
-% ways AWS prices things: spot instances are sold at a market rate determined by
-% the amount of resources available in a given zone\cite{TODO}, and the market
-% rate is experientially very steady over time\cite{TODO}. The prices for
-% lambdas and ec2 instances also only changes very slowly\cite{TODO}.
-
-\hmng{we also never get back to these challenges yet. Maybe have discussion
-section centered around them? The existing discussion `subsections'
-could probably be made to fit into the challenges}
+% Because the scheduler has access to priority information about processes, this
+% can give the scheduler a notion of how quickly things will need to be placed,
+% but not how many resources they will use. It also interacts with the memory
+% management challenge: placing a job requires balancing the tradeoffs between
+% potentially needing to kill already running jobs, or putting the new job on a
+% machine where it may have to wait for other high priority jobs to finish.
+% Additionally, if a machine will preempt low priority processes with high
+% priority ones, then it may even be desirable to place a high priority job on a
+% machine with a longer queue (as long as they are mostly low priority jobs),
+% rather than on a machine with few high priority processes.\hmng{this challenge
+% definitely feels the least worked out}
