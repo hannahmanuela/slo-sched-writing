@@ -31,11 +31,21 @@ here? }
 
 \subsection{\sys{} Design}
 
-\sys{}'s main structure can be seen in Figure \textbf{TODO}.\ \sys{} consists of
-a distributed global scheduler, which places new function invocations, a
+\begin{figure}[t]
+    \centering
+      \includegraphics[width=9cm]{img/overview.png}
+      \caption{ global scheduler shards queue and place jobs (in orange), 
+      on each machine a dispatcher thread keeps track of memory utilization 
+      and if it's low writes itself to a free list (in blue) }
+    \label{fig:overview}
+\end{figure}
+  
+
+\sys{}'s main structure can be seen in Figure\ref{fig:overview}: \sys{} consists
+of a distributed global scheduler, which places new function invocations, a
 dispatcher, which runs on each machine and communicates with the global
 scheduler shards, and a machine scheduler, which enforces priorities on the
-machines. 
+machines.\hmng{should I draw the scheduler on there?}
 
 Attached to each global scheduler shard is a \textit{free list}, which holds
 machines that have a significant amount of memory available; similarly to the
@@ -44,6 +54,9 @@ except distributed and at a much coarser granularity. In the shards free list
 each machine's entry is also associated with some metadata about compute
 pressure.\hmng{figuring out exactly what we want those values to be in the
 simulator right now, currently looking at max running priority and q size}
+
+The global scheduler stores the jobs waiting to be placed in a multi queue, with
+one queue per priority.
 
 
 \textbf{Machine Scheduler.}
@@ -96,10 +109,9 @@ time to profit then is $(jToKill.timeRun \cdot jToKill.price) / (newJ.price
 
 \textbf{Global Scheduler.}
 
-Shards maintain a multi-q of incoming jobs that need to be placed. They choose
-what job to place next by the ratio of priority to amount of time spent in the
-queue, so high priority jobs don't have to wait as long as lower priority jobs
-to be chosen next.
+Shards choose what job to place next by the ratio of priority to amount of time
+spent in the queue, so high priority jobs don't have to wait as long as lower
+priority jobs to be chosen next.
 
 When placing a job, the shard finds a machine to run the it, as also shown in
 the pseudocode in Algorithm \ref{alg:place}. 
