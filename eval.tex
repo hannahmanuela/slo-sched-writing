@@ -2,7 +2,18 @@
 \section{Preliminary Results}
 %-------------------------------------------------------------------------------
 
-To understand the dyanmics of \sys{}, we built a simulator. 
+To understand the dyanmics of \sys{}, we built a simulator in go. 
+
+It runs three different scenarios: an ideal scheduling, an implementation of
+\sys{}'s design, and an implementation of ??. 
+
+The idealized scheduler runs in a centralized setting: it pretends as if the
+whole datacenter is one machine. As such there is no memory fragmentation, and
+its utilization represents an optimal solution. It is in essence running an
+ideal centralized highest priority first. It still has the same limited memory
+as the datacenter though, so will kill using the same mechanism as \sys{}.
+
+
 
 < graph 2: graph of latency (and matching graph of utilization?) as load increases; per priority >
 

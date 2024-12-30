@@ -68,10 +68,12 @@ request processing, but vice versa is expected.
 
 \textbf{Dispatcher.}
 The dispatcher is in charge of adding itself to a shard's free list when memory
-utilization is low. If it is already on a list somewhere it will update that
-entry if it's value has changed significantly. Otherwise, the dispatcher chooses
-which list to add itself to using power-of-k-choices: it looks at k shards' free
-lists and chooses the one with the least other machines in it. 
+utilization is low. If it is on a list somewhere, it will update that entry if
+it's value has changed significantly (either by jobs finishing and memory being
+freed or by memory utilization increasing because of new jobs or memory
+antagonists). If utilization is low and it is not yet on a list, the dispatcher
+chooses which list to add itself to using power-of-k-choices: it looks at k
+shards' free lists and chooses the one with the least other machines in it.
 
 The dispatcher is also in charge of killing jobs under memory pressure. It
 chooses the job to kill by looking at both memory used and money wasted if
