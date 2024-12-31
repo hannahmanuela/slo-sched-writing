@@ -2,80 +2,80 @@
 \section{Discussion}
 %-------------------------------------------------------------------------------
 
+\subsection{Memory}
 
-There remain a number of interesting open questions.
+In section\ \ref{design}, \sys{} makes decisions based on maximum
+memory usage estimates for each job, provided by the developer. However, in
+reality, making scheduling decisions based off of this sort of estimate of a
+maximum can lead to underutilization. Jobs often have highly variable memory
+usage; for instance the distribution of content among users of social media
+platforms is notoriously skewed\cite{TODO}, so jobs that fetch information for a
+user and process it will be run over very different amounts of data depending on
+who the user is.
 
-\textbf{How is memory usage billed?}
-% 
-Do developers only pay for the memory they use, or do they pay based on the max
-amount of the memory they stupilate? The former would result in gross
-overestimations because there is no downside to being on the cautious side,
-while the latter breaks the central maxim that developers only pay for what they
-use.
+So we are forced to play a game of overprovisioning, because reserving the
+maximum amount of memory would lead to, in most cases, low memory
+utilization.\hmng{who is `we' now? it's not \sys{}, but it's also not some other
+concrete system, it's kinda the hypothetical one we're discussing} A central
+concern is then deadling with memory pressure.
 
-In the world where developers only pay for what they use, asking for a limit
-with no repurcussions if the estimate is off would be useless; everyone would
-just put the largest amount allowed. Adding penalties for being off seems
-unreasonable: some jobs simply have a high variance in their memory usage and
-penalizing developers that run such jobs is undesirable. 
+One option is profiling: it is improving as ML models improve, and could be a
+good use case. Especially for jobs with a high variance of memory usage, using a
+model that is given the inputs to invocations could work well, since the inputs
+are likely to be the determining factor for memory usage. However, profiling is
+still just an estimate that could always be wrong, and the system needs to be
+able to handle that. Profiling will also be slow to adapt to changes in code and
+in the underlying data.
 
-Ideally, memory would be a pay-per-use model and no further information would be
-requied; however that would require being able to reactively deal with memory
-pressure extremely quickly and well.
-
-\textbf{How should \sys{} deal with memory pressure?} 
-% 
-Ideally, \sys{} would avoid the situation altogether, or if it occured would be
-able to solve it without killing, ie wasting resources. 
-
-Avoiding memory pressure situations would require knowing with high accuracy in
-advance how much memory a job will use. Profiling is improving as ML models
-improve, and might be a good use case (especially for jobs with a high variance
-of memory usage, using a model that is given the inputs to invocations could
-work well, since the inputs are likely to be the determining factor for memory
-usage). 
-
-On the other hand, profiling is still just an estimate that could always
-be wrong, and the system needs to be able to handle that. If we are able to come
-up with a mechanism that is reactive and at the right time scale, ie acts
-quickly enough that there is no buildup and the problem goes away, that would be
-ideal.
-
-One option for this might be snapshotting: lower priority functions that we are now
-reactively killing might be allowed to snapshot themselves and then be placed
-somewhere else and re-started. In this case, the timescale would have to be such
-that the snapshotting does not (in its use of memory or compute) prohibively
-block the other jobs on the machine from running. Another option could be
-paging: the lower priority processes' memory are paged out; later when there is
-lower load and they start running again their latency will be affected but they
-are lower priority so we don't care as much (since developers pay per usage for
-compute one could imagine some sort of recompense for the runtime that job pays
-for having been paged out).
+Another option is snapshotting: lower priority functions are allowed to snapshot
+themselves and then are placed somewhere else and re-started. This way none of
+their already done computation is wasted, and the memory is freed. However, the
+timescale would have to be such that the snapshotting does not (in its use of
+memory or compute) prohibitively block the other jobs on the machine from
+running. This works against the incentives of the situation: ideally we want to
+free a large amount of memory, but the time it takes to snapshot a job scales
+with the amount of memory it is using.
+ 
+A stronger option is priority-based paging: the lower priority processes' memory
+are paged out. Because machines run highest priority first scheduling, we know
+that the paged job will not be run until the higher priority processes have
+finished (and thus freed their memory).\hmng{there's a caveat here where they
+could block on i/o, but the likelihood that all the processes except the last
+one block on i/o is low} Later, when there is lower load, and the previously
+paged job is ready to run again, the machine can page back in all of its memory.
+Thus the paged job pays no latency overhead for having been paged, and the
+amount of time spent paging memory is low: once to move all the memory out, and
+once to move it back in. This is the minimal amount of data movement necessary
+to free up the required memory without deleting/killing.
 
 
-\textbf{Does priority increase with waiting?}
-% 
-Preemptive priority scheduling means that at any moment in time the process
-running is the one with the highest priority on the machine. This ensures that
-the web server's page views run with high performance, and the map reduce jobs
-do not interrupt but rather wait for lulls in load to run. The flipside of this
-is that if there are no such lulls, ie if there are so many high priority jobs
-that they take up all the resources all the time, it is possible that nothing of
-any lower priority would ever run at all. 
+\subsection{Compute}
 
-One solution to this problem is ensure that it can never be the case the there
-is so much load on high priority jobs that the data center will be full with
-them to such a degree that high-ish priority jobs can't run. There is evidence
-for and we expect that load will mostly be stable: this supported by the strong
-law of large numbers (it is very unlikely that all the jobs' random  bursts
-align), and can be seen in the ways AWS prices things: spot instances are sold
-at a market rate determined by the amount of resources available in a given
-zone\cite{TODO}, and the market rate is experientially very steady over
-time\cite{TODO}. The prices for lambdas and ec2 instances also only changes very
-slowly\cite{TODO}. This means that providers can mostly choose the rough
-breakdown of the load they will have at any given time (ie they can choose a
-percentage of how many jobs they want in each priority, and change it by
-adjusting prices or not sllowing users to select that level anymore). 
+\sys{} uses preemptive priority scheduling on the machine scheduler level. This
+means that at any moment in time, the process currently running is the one with
+the highest priority on the machine. This ensures that the web server's page
+views run with high performance, and the map reduce jobs do not interrupt but
+rather wait for lulls in load to run. The flipside of this is that if there are
+no such lulls, ie if there are so many high priority jobs that they take up all
+the resources all the time, it is possible that nothing of any lower priority
+would ever run at all.
+
+We propose to solve this problem by ensuring that it can never be the case the
+there is so much load on high priority jobs that the data center will be full
+with them to such a degree that other jobs can't run. There is evidence for and
+we expect that load will mostly be stable: this supported by the strong law of
+large numbers (it is very unlikely that all the jobs' random bursts align), and
+can be seen in the ways AWS prices things: spot instances are sold at a market
+rate determined by the amount of resources available in a given zone\cite{TODO},
+and the market rate is experientially very steady over time\cite{TODO}. The
+prices for lambdas and ec2 instances also only changes very
+slowly\cite{TODO}.\hmng{Hermod had a good way of putting this slightly more
+concisely and cleanly, look at what they did}
+
+This means that providers can mostly choose the rough breakdown of the load they
+will have at any given time (ie they can choose a percentage of how many jobs
+they want in each priority, and change it by adjusting prices or not sllowing
+users to select that level anymore). 
 
 \hmng{We discuss what a good breakdown would look like in the next section? Put eval
 next? Or just don't discuss and leave it at that, although that seems a little

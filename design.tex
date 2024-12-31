@@ -1,4 +1,4 @@
-\section{Design}
+\section{Design}\label{design}
 
 
 Developers using \sys{} write function handlers and define triggers just like
@@ -9,12 +9,15 @@ express jobs' priorities to \sys{}, and \sys{} enforces these priorities.
 
 \subsection{Interface}
 
-Developers express priorities to \sys{} via assigning functions to fixed dollar
-amounts per unit compute. So in the example of the web server, the home page
-view might be assigned a high priority and cost 2c per cpu second, a the user
-profile view might be a assigned a middle-high priority and cost 1.5c per cpu
-second, and finally the map reduce job can be set to a low priority which costs
-only 0.5c per cpu second.
+Developers express priorities to \sys{} via assigning functions to fixed
+priorities that map directly to dollar amounts per unit compute. For instance in
+the example of the web server, the home page view might be assigned a high
+priority and cost 2c per cpu second, a the user profile view might be a assigned
+a middle-high priority and cost 1.5c per cpu second, and finally the map reduce
+job can be set to a low priority which costs only 0.5c per cpu second. This
+enables the priorities to be globally comparable, while disincentivizing
+developers to always choose the highest possible priority for their most
+important job.
  
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.\ \sys{}
@@ -45,15 +48,14 @@ here? }
 of a distributed global scheduler, which places new function invocations, a
 dispatcher, which runs on each machine and communicates with the global
 scheduler shards, and a machine scheduler, which enforces priorities on the
-machines.\hmng{should I draw the scheduler on there?}
+machines.
 
-Attached to each global scheduler shard is a \textit{free list}, which holds
-machines that have a significant amount of memory available; similarly to the
-way a free list in a local operating system maintains free blocks of memory,
-except distributed and at a much coarser granularity. In the shards free list
-each machine's entry is also associated with some metadata about compute
-pressure.\hmng{figuring out exactly what we want those values to be in the
-simulator right now, currently looking at max running priority and q size}
+Attached to each global scheduler shard is an \textit{idle list}, which holds
+machines that have a significant amount of memory available. In the shards idle
+list each machine's entry is associated with the amount of free memory as well
+as some information about compute pressure. This allows the global scheduler to
+place high priority processes without incurring the latency overheads of finding
+available resources.
 
 The global scheduler stores the jobs waiting to be placed in a multi queue, with
 one queue per priority.
@@ -67,19 +69,15 @@ request processing, but vice versa is expected.
 
 
 \textbf{Dispatcher.}
-The dispatcher is in charge of adding itself to a shard's free list when memory
-utilization is low. If it is on a list somewhere, it will update that entry if
-it's value has changed significantly (either by jobs finishing and memory being
-freed or by memory utilization increasing because of new jobs or memory
-antagonists). If utilization is low and it is not yet on a list, the dispatcher
-chooses which list to add itself to using power-of-k-choices: it looks at k
-shards' free lists and chooses the one with the least other machines in it.
-
-The dispatcher is also in charge of killing jobs under memory pressure. It
-chooses the job to kill by looking at both memory used and money wasted if
-killed (lower priority jobs should be the ones to be killed if possible, but
-won't help much if they weren't using any memory to begin with). Killed jobs are
-requeued at a randomly chosen shard.
+The dispatcher is in charge of adding itself to a shard's idle list when memory
+utilization is low. The dispatcher chooses which list to add itself to using
+power-of-k-choices: it looks at k shards' idle lists and chooses the one with
+the least other machines in it. If the machine is already on an idle list on
+shard $i$, but the amount of available memory has changed significantly (either
+by jobs finishing and memory being freed or by memory utilization increasing
+because of new jobs or memory antagonists), the dispatcher will update shard
+$i$'s idle list. These interactions from the dispatcher to free lists are
+represented by the blue arrows in Figure\ref{fig:overview}.
 
 The dispatcher also responds to probes by shards: given a potential job that a
 shard might want to run on the machine, the dispatcher computes the \textit{time
@@ -90,6 +88,12 @@ have to kill a process due to memory pressure, it computes which job it would
 kill, which is the job with minimal price where $j.memUsg > newJ.maxMem$. The
 time to profit then is $(jToKill.timeRun \cdot jToKill.price) / (newJ.price
 - jToKill.price)$.
+
+The dispatcher is also in charge of killing jobs under memory pressure, should
+it occur. It chooses the job to kill by looking at both memory used and money
+wasted if killed (lower priority jobs should be the ones to be killed if
+possible, but won't help much if they weren't using any memory to begin with).
+The dispatcher requeues killed jobs at a randomly chosen shard.
 
 
 \begin{algorithm}[t]
