@@ -65,14 +65,8 @@ would ever run at all.
 We propose to solve this problem by ensuring that it can never be the case the
 there is so much load on high priority jobs that the data center will be full
 with them to such a degree that other jobs can't run. There is evidence for and
-we expect that load will mostly be stable: this supported by the strong law of
-large numbers (it is very unlikely that all the jobs' random bursts align), and
-can be seen in the ways AWS prices things: spot instances are sold at a market
-rate determined by the amount of resources available in a given zone\cite{TODO},
-and the market rate is experientially very steady over time\cite{TODO}. The
-prices for lambdas and ec2 instances also only changes very
-slowly\cite{TODO}.\hmng{Hermod had a good way of putting this slightly more
-concisely and cleanly, look at what they did}
+we expect that load on a high level will mostly be stable, with diurnal and
+annual patterns.\cite{TODO}
 
 This means that providers can mostly choose the rough breakdown of the load they
 will have at any given time (ie they can choose a percentage of how many jobs
