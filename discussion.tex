@@ -13,19 +13,21 @@ platforms is notoriously skewed\cite{TODO}, so jobs that fetch information for a
 user and process it will be run over very different amounts of data depending on
 who the user is.
 
-So we are forced to play a game of overprovisioning, because reserving the
-maximum amount of memory would lead to, in most cases, low memory
-utilization.\hmng{who is `we' now? it's not \sys{}, but it's also not some other
-concrete system, it's kinda the hypothetical one we're discussing} A central
-concern is then deadling with memory pressure.
+So we are forced to either get better estimates, or play a game of
+overprovisioning, because reserving the maximum amount of memory would lead to,
+in most cases, low memory utilization.\hmng{who is `we' now? it's not \sys{},
+but it's also not some other concrete system, it's kinda the hypothetical one
+we're discussing}
 
-One option is profiling: it is improving as ML models improve, and could be a
-good use case. Especially for jobs with a high variance of memory usage, using a
-model that is given the inputs to invocations could work well, since the inputs
-are likely to be the determining factor for memory usage. However, profiling is
-still just an estimate that could always be wrong, and the system needs to be
-able to handle that. Profiling will also be slow to adapt to changes in code and
-in the underlying data.
+One option is profiling: as ML models improve, so our ability to predict things
+improves, including predicting memory usage. Especially for jobs with a high
+variance of memory usage, using a model that is given the inputs to invocations
+could work well, since the inputs are likely to be the determining factor for
+memory usage (for instance, the model could learn which users are the ones that
+have huge amounts of data). However, predictions are still just estimates that
+could always be wrong, and the system needs to be able to handle that. They also
+need to be based on profiling information, which will be slow to adapt to
+changes in code and in the underlying data.
 
 Another option is snapshotting: lower priority functions are allowed to snapshot
 themselves and then are placed somewhere else and re-started. This way none of

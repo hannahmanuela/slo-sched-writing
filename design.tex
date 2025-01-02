@@ -27,8 +27,7 @@ budget, though it does not guarantee that the budget will not be exceeded by
 small amounts.
 
 Finally, developers are required to express a maximum amount of memory per
-function.\hmng{ Should I have a forward reference to the discussion section
-here? }
+function.
 
 
 
@@ -44,11 +43,10 @@ here? }
 \end{figure}
   
 
-\sys{}'s main structure can be seen in Figure\ref{fig:overview}: \sys{} consists
-of a distributed global scheduler, which places new function invocations, a
-dispatcher, which runs on each machine and communicates with the global
-scheduler shards, and a machine scheduler, which enforces priorities on the
-machines.
+\sys{} consists of a distributed global scheduler, which places new function
+invocations, a dispatcher, which runs on each machine and communicates with the
+global scheduler shards, and a machine scheduler, which enforces priorities on
+the machines.
 
 Attached to each global scheduler shard is an \textit{idle list}, which holds
 machines that have a significant amount of memory available. In the shards idle
@@ -59,6 +57,8 @@ available resources.
 
 The global scheduler stores the jobs waiting to be placed in a multi queue, with
 one queue per priority.
+
+An overview of \sys{}'s structure can be seen in Figure\ \ref{fig:overview}.
 
 
 \textbf{Machine Scheduler.}
@@ -77,7 +77,7 @@ shard $i$, but the amount of available memory has changed significantly (either
 by jobs finishing and memory being freed or by memory utilization increasing
 because of new jobs or memory antagonists), the dispatcher will update shard
 $i$'s idle list. These interactions from the dispatcher to free lists are
-represented by the blue arrows in Figure\ref{fig:overview}.
+represented by the blue arrows in Figure\ \ref{fig:overview}.
 
 The dispatcher also responds to probes by shards: given a potential job that a
 shard might want to run on the machine, the dispatcher computes the \textit{time
@@ -122,15 +122,17 @@ priority jobs to be chosen next.
 When placing a job, the shard finds a machine to run the it, as also shown in
 the pseudocode in Algorithm \ref{alg:place}. 
 
-The shard will first look in its free list for a machine that has the job's
+The shard will first look in its idle list for a machine that has the job's
 maximum memory available. If there are multiple such machines, the shard looks
 at each machines compute pressure metrics; the goal being to minimize cpu
 idleness and job latency in low load settings.\hmng{playing with deatils of this
-in the scheduler right now} If a machine from the free list is chosen, the
-response from the dispatcher on placing the job will include updated info,
-which the shard will use to update the free list entry.
+in the scheduler right now} 
 
-If there are no machines in the free list with the memory available, the shard
+If a machine from the idle list is chosen, the response from the dispatcher upon
+placing the job will include updated utilization information, which the shard
+will use to update the idle list entry.
+
+If there are no machines in the idle list with the memory available, the shard
 switches over to power-of-k-choices: it polls k machines, sending the price and
 the maximum memory of the job currently being placed, and getting back the time
 to profit. The shard then can choose to place the new job on the machine with

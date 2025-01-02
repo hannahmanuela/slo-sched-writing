@@ -3,7 +3,7 @@
 %-------------------------------------------------------------------------------
 
 A world where all cloud compute is run in the format of serverless jobs is
-attractive to developers and providers: developers pay only for what they use
+attractive to developers and providers: developers pay only for what they use,
 while having access to many resources when needed; and cloud providers have
 control over scheduling and can use that to drive up utilization.
 
@@ -22,11 +22,13 @@ jobs can be run in the background and be delayed.
 
 If a web developer wanted to host their web in an existing serverless offering,
 a popular option is AWS lambda\cite{TODO}. However, AWS offers no way to
-distibguish between different lambdas in terms of their priority. A developer
-using AWS lambda could use cold start avoidance mechanisms (such as reserved
-concurrency) for higher priority functions; or giving them more concurrency
-(through `vCPUs'), but neither of these give real priority to the
-functions.\hmng{that is not on the nose}
+distinguish between different lambdas in order to ensure that the page views run
+quickly, while having the notion that map reduce jobs don't have to. A developer
+using AWS lambda could implicitly prioritize page views by avoiding cold starts
+for only them (using reserved and provisioned concurrency); or could give them
+more concurrency (through `vCPUs'). However, neither of these give priority to
+the page views when they run.\hmng{I feel like this is too vague to be a strong
+and convincing thing to say}
 
 This paper focuses on building a usable and efficient scheduling mechanism to
 support differentiating between jobs of different priorities in a world of
@@ -35,15 +37,15 @@ universal serverless. In doing so, it faces multiple significant challenges.
 One of the challenges is that of placing jobs quickly enough. This means that a
 job that takes 20ms to run cannot spend 100ms in scheduler queues and waiting
 for an execution environment before even starting to run. One part of this
-challenge is cold starts. For this paper, we assume that that generally cold
+challenge is cold starts, but for this paper, we assume that that generally cold
 start times are small enough compared to the jobs being run that cold starts on
 the critical path are acceptable.\footnote{Cold start latencies are a popular
 area of research and as a result have been reduced significantly --- recent
 state of the art systems have been able to support latencies in the single digit
-ms range\cite{TODO}.} We focus on the aspect of scheduling latency: in a
-datacenter, where both the number of new jobs coming in and the amount of
-resources are extremely large, the challenge is knowing where the free and idle
-resources are, or finding out quickly.
+ms range\cite{TODO}. We expect this trend to continue.} We focus on the aspect
+of scheduling latency: in a datacenter, where both the number of new jobs coming
+in and the amount of resources are extremely large, the challenge is knowing
+where the free and idle resources are, or finding out quickly.
 
 Another challenge is that of multi-tenancy. The fact that page views are more
 important to a web server than map reduce jobs is a relative statement: there is
@@ -61,7 +63,6 @@ limited in memory, placing a new high priority job invocation on a machine
 already running many jobs may or may not lead to enough memory pressure to
 require killing an already placed job (rather than just preempting other jobs).
 It is difficult to know whether that would be the case, and if so whether it is
-worth it, or better to just requeue the new job.\hmng{I think this challenge is
-a little weak; I should work it out more}
+worth it, or better to just requeue the new job.
 
  
