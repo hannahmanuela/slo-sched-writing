@@ -100,11 +100,9 @@ primarily for the page view jobs. A strong result for \sys{} would show that
 latencies for higher priority jobs start going up at a higher load than for
 Hermod, which would indicate that Hermod's scheduling cannot perform as well in
 high load settings on high priority jobs. Figure~\ref{fig:graph} shows the
-results. We can see that as expected, Hermod's slowdown, even in middle load
-settings, extends to the high priority jobs, while in \sys{} the low priority
-jobs are the only ones that are affected.\hmng{ok but how is this not obvious:
-we made a new metric and look we did better at it than other systems that did
-not use that metric wow what a surprise}
+results.\hmng{ok but how is this not obvious: we made a new metric and look we
+did better at it than other systems that did not use that metric wow what a
+surprise}
 
 
 \subsection{Is \sys{} good at binpacking?}
