@@ -1,23 +1,28 @@
 \section{Design}\label{design}
 
-
-Developers using \sys{} write function handlers and define triggers just like
-they would for any existing serverless offering. Additionally, developers
-express jobs' priorities to \sys{}, and \sys{} enforces these priorities.
+We propose \sys{}, a serverless scheduler that takes into account jobs'
+priorities. Developers using \sys{} write function handlers and define triggers
+just like they would for any existing serverless offering. Additionally,
+developers express jobs' priorities to \sys{}, and \sys{} enforces these
+priorities.
 
 
 
 \subsection{Interface}
 
-Developers express priorities to \sys{} via assigning functions to fixed
-priorities that map directly to dollar amounts per unit compute. For instance in
-the example of the web server, the home page view might be assigned a high
-priority and cost 2c per cpu second, a the user profile view might be a assigned
-a middle-high priority and cost 1.5c per cpu second, and finally the map reduce
-job can be set to a low priority which costs only 0.5c per cpu second. This
-enables the priorities to be globally comparable, while disincentivizing
-developers to always choose the highest possible priority for their most
-important job.
+Developers express priorities to \sys{} by assigning functions a priority value
+in a fixed range. This range is the same for everyone, which enables \sys{} to
+directly compare different jobs' priorities. Priorities are meaningful because
+they are directly mapped to cost per cpu second. This ensures that developers
+don't simply choose the highest priority available for their most important job.
+For instance in the example of the web server, the home page view might be
+assigned a higher priority and cost 2c per cpu second, a the user profile view
+might be a assigned a middle-high priority and cost 1.5c per cpu second, and
+finally the image processing job can be set to a low priority which costs only
+0.5c per cpu second.\hmng{the numbers here are way too high, but writing
+\$0.0000002 is unfortunate}
+
+Developers are also required to express a maximum amount of memory per function.
  
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.\ \sys{}
@@ -25,9 +30,6 @@ uses this budget as a guideline and throttles invocations or decreases quality
 of service in the case that usage is not within reason given the expected
 budget, though it does not guarantee that the budget will not be exceeded by
 small amounts.
-
-Finally, developers are required to express a maximum amount of memory per
-function.
 
 
 
@@ -38,34 +40,33 @@ function.
       \includegraphics[width=9cm]{img/overview.png}
       \caption{ global scheduler shards queue and place jobs (in orange), 
       on each machine a dispatcher thread keeps track of memory utilization 
-      and if it's low writes itself to a free list (in blue) }
+      and if it's low writes itself to an idle list (in blue) }
     \label{fig:overview}
 \end{figure}
   
 
-\sys{} consists of a distributed global scheduler, which places new function
+As shown in Figure~\ref{fig:overview}, \sys{} sits behind a load balancer, and
+consists of: a distributed global scheduler, which places new function
 invocations, a dispatcher, which runs on each machine and communicates with the
 global scheduler shards, and a machine scheduler, which enforces priorities on
 the machines.
 
-Attached to each global scheduler shard is an \textit{idle list}, which holds
+Each global scheduler shard maintains an \textit{idle list}, which holds
 machines that have a significant amount of memory available. In the shards idle
 list each machine's entry is associated with the amount of free memory as well
-as some information about compute pressure. This allows the global scheduler to
-place high priority processes without incurring the latency overheads of finding
-available resources.
+as some information about compute pressure. This information allows the global
+scheduler to place high priority processes quickly, without incurring the
+latency overheads of finding available resources.
 
-The global scheduler stores the jobs waiting to be placed in a multi queue, with
-one queue per priority.
-
-An overview of \sys{}'s structure can be seen in Figure\ \ref{fig:overview}.
+Global scheduler shards store the jobs waiting to be placed in a multi queue,
+with one queue per priority.
 
 
 \textbf{Machine Scheduler.}
-The machine scheduler is simple: jobs have fixed priorities, and higher
-priorities preempt lower priorities. Being unfair and starving low priority
-jobs is desirable, since map reduce jobs should not interrupt a page view
-request processing, but vice versa is expected.
+The machine scheduler is a preemptive priority scheduler: it preempts lower
+priority jobs to run higher priority ones. Being unfair and starving low
+priority jobs is desirable in \sys{}, since image processing jobs should not
+interrupt a page view request processing, but vice versa is expected.
 
 
 \textbf{Dispatcher.}
@@ -77,7 +78,7 @@ shard $i$, but the amount of available memory has changed significantly (either
 by jobs finishing and memory being freed or by memory utilization increasing
 because of new jobs or memory antagonists), the dispatcher will update shard
 $i$'s idle list. These interactions from the dispatcher to free lists are
-represented by the blue arrows in Figure\ \ref{fig:overview}.
+represented by the blue arrows in Figure~\ref{fig:overview}.
 
 The dispatcher also responds to probes by shards: given a potential job that a
 shard might want to run on the machine, the dispatcher computes the \textit{time
@@ -95,7 +96,9 @@ wasted if killed (lower priority jobs should be the ones to be killed if
 possible, but won't help much if they weren't using any memory to begin with).
 The dispatcher requeues killed jobs at a randomly chosen shard.
 
-
+\makeatletter
+\renewcommand{\ALG@name}{Procedure}
+\makeatother
 \begin{algorithm}[t]
 \caption{Choosing a machine for a job j}\label{alg:place}
 \begin{algorithmic}
@@ -113,20 +116,20 @@ The dispatcher requeues killed jobs at a randomly chosen shard.
 \end{algorithm}
 
 
-\textbf{Global Scheduler.}
+\textbf{Global Scheduler Shards.}
 
-Shards choose what job to place next by the ratio of priority to amount of time
-spent in the queue, so high priority jobs don't have to wait as long as lower
-priority jobs to be chosen next.
+Shards choose what job to place next by looking at each job at the head of a
+queue in the shards multi-queue, and comparing the ratio of priority to amount
+of time spent in the queue. This ensures that high priority jobs don't have to
+wait as long as lower priority jobs to be chosen next, but low priority jobs
+will get placed if they have waited for a while.
 
-When placing a job, the shard finds a machine to run the it, as also shown in
-the pseudocode in Algorithm \ref{alg:place}. 
-
-The shard will first look in its idle list for a machine that has the job's
-maximum memory available. If there are multiple such machines, the shard looks
-at each machines compute pressure metrics; the goal being to minimize cpu
-idleness and job latency in low load settings.\hmng{playing with deatils of this
-in the scheduler right now} 
+When placing the chosen job, the shard finds a machine to run it, shown in
+Procedure~\ref{alg:place}. The shard will first look in its idle list for a
+machine that has the job's maximum memory available. If there are multiple such
+machines, the shard looks at each machines compute pressure metrics; the goal
+being to minimize cpu idleness and job latency in low load
+settings.\hmng{playing with deatils of this in the scheduler right now} 
 
 If a machine from the idle list is chosen, the response from the dispatcher upon
 placing the job will include updated utilization information, which the shard
@@ -136,11 +139,10 @@ If there are no machines in the idle list with the memory available, the shard
 switches over to power-of-k-choices: it polls k machines, sending the price and
 the maximum memory of the job currently being placed, and getting back the time
 to profit. The shard then can choose to place the new job on the machine with
-the minimum value, or if all of them are too high the shard re-queues the job,
-this time with a lower priority.
+the minimum value, or if all of them are too high the shard re-queues the job.
 
-Checking in with clients' budgets to ensure that usage is not significantly
-outpacing a rate compatible with the budget is done asynchronously: each time a
-job for a client is triggered a global counter is asynchronously updated. If the
-counter's rate of change increases absurdly with regards to previous behavior as
-well as the budget as a whole, this triggers a throttling for that job.
+% Checking in with clients' budgets to ensure that usage is not significantly
+% outpacing a rate compatible with the budget is done asynchronously: each time a
+% job for a client is triggered a global counter is asynchronously updated. If the
+% counter's rate of change increases absurdly with regards to previous behavior as
+% well as the budget as a whole, this triggers a throttling for that job.

@@ -5,52 +5,43 @@
 \begin{figure*}[t!]
     \centering
       \includegraphics[width=15cm]{img/combined_res.png}
-      \caption{ a first version of the graph }
+      \caption{ a placeholder graph }
     \label{fig:graph}
 \end{figure*}
 
-To understand the dyanmics of \sys{}, we built a simulator in go\cite{TODO}. Our
-simulator runs three different worlds: an ideal scheduling world, an
-implementation of \sys{}'s design, and an implementation of Hermod\cite{TODO}. 
-
-The idealized scheduler runs in a centralized setting: it is as if the whole
-datacenter is one machine with many many cores. As such there is no memory
-fragmentation, and its utilization represents an optimal solution. It still has
-the same limited memory as the datacenter though, so will kill using the same
-mechanism as \sys{}.\hmng{not sure if this is clear and I should just shut up or
-if it's non-obvious and I should explain it more}
-
-Hermod is a scheduler built specifically for serverless, and is the result of a
-from-first-principles analysis of different scheduling paradigms through a
-simulator. The paper simulates different scheduling approaches along three
-dimensions: late-vs early binding; Processor Sharing (PS) vs First Come First
-Served (FCFS) vs (idealized) Shortest Remaining Processing Time (SRPT); and
-least loaded vs locality based vs random load balancing. The paper concludes
-that early binding is best, in combination with PS (PS is close enough to SRPT
-with perfect knowledge, which is impractical in reality). For the load balancing
-Hermod uses a hybrid mechanism: at low load, Hermod packs machines one by one,
-each up until the number of cores (a water-filling like mechanism, where each
-machine is filled until each core is running a job); and at high load it chooses
-the least loaded machine. Hermod does not use priorities in its design, and as
-such we ignore jobs' priority when placing them in the Hermod world in our
-simulator.
 
 
-In the simulator, jobs arrive in an open loop at a constant rate. The simulator
-attaches three main characteristics to each job it generates: runtime, priority,
-and maximum memory usage.\ \textit{Job runtime} is chosen by sampling from
-randomly generated long tailed (in this case pareto) distribution: the relative
-length of the tail ($\alpha$ value) remains constant, and the minimum value
-($x_m$) is chosen from a normal distribution. This reflects the fact that
-different functions have different expected runtimes (chosen from a normal
-distribution), and that actual job runtimes follow long tailed distributions (so
-each pareto distribution that we sample represents the expected runtime
-distribution of a given function).\ \textit{Job priority} is chosen randomly. The
-simulator has five different priority values, each assigned to the prices of 3c,
-7c, 10c, 15c, 20c.\hmng{does it matter that these prices are unrealistic}
-Because functions are randomly assigned a priority, runtime and priority are not
-correlated.\ \textit{Maximum memory} is chosen uniform random between 1MB and
-10GB.
+In order to evaluate \sys{}, we explore the following questions: 
+\begin{enumerate}
+    \item Are priorities necessary?
+    \item Are priorities sufficient to describe the desired behavior?
+    \item Is \sys{} good at enforcing priorities?
+\end{enumerate}
+
+
+To explore these questions, we built a simulator in go\cite{TODO}, which
+simulates different scheduling approaches.
+
+
+\subsection{Experimental Setup}
+
+In each version of the simulator, jobs arrive in an open loop at a constant
+rate. The simulator attaches three main characteristics to each job it
+generates: runtime, priority, and memory usage.\ \textit{Job runtime} is chosen
+by sampling from randomly generated long tailed (in this case pareto)
+distribution: the relative length of the tail ($\alpha$ value) remains constant,
+and the minimum value ($x_m$) is chosen from a normal distribution. This
+reflects the fact that different functions have different expected runtimes
+(chosen from a normal distribution), and that actual job runtimes follow long
+tailed distributions (so each pareto distribution that we sample represents the
+expected runtime distribution of a given function).\ \textit{Job priority} is
+chosen randomly. The simulator has n different priority values, each assigned to
+a fictitious price. Because functions are randomly assigned a priority, runtime
+and priority are not correlated.\ \textit{Job memory usage} is chosen uniform
+random between 1MB and 10GB.
+
+When comparing two different simulated schedulers, they each are given an
+identical workload and then each simulate running that workload.
 
 The simulator makes some simplifying assumptions:
 \begin{enumerate}
@@ -60,25 +51,107 @@ The simulator makes some simplifying assumptions:
 \end{enumerate}
 
 
-We then run the simulator at different load points, and track latencies as a
-percentage of the required runtime, as well as memory and compute utilization;
-for each of the three different worlds of \sys{}, Hermod, and ideal.
+\subsection{Are priorities necessary?}
 
-A good result for \sys{} would be doing in between Hermod and the ideal world.
-We expect \sys{} will do better than Hermod because it has more knowledge:
-whereas Hermod will spread latency hits across all jobs indiscriminately as load
-goes up, \sys{} can keep high priority jobs running quickly and limit the
-slowdown to only affect lower priority jobs. We cannot expect \sys{} to do as
-well as the ideal world: not only does \sys{} have to deal with memory
-fragmentation, which the ideal world does not, but it also has imperfect
-information --- once the idle list is empty, \sys{} relies on k choices to find
-a fitting machine. 
+To answer the first question, we explore how an existing state of the art
+research scheduler that does not take any form of priority into account performs
+on the web server's workload. We simulate Hermod\cite{TODO}, a state-of-the-art
+serverless scheduler, and compare it to a simulation of \sys{}.\hmng{is \sys{}
+really the right thing to compare to? or should it be something more minimal but
+with priorities} Hermod is a scheduler built specifically for serverless, and is
+the result of a from-first-principles analysis of different scheduling
+paradigms. In accordance with the paper's findings, we simulate least-loaded
+load balancing over machines found using power-of-k-choices, combined with early
+binding and Processor Sharing machine-level scheduling.\hmng{do we talk about
+the nuance with different load balancing techniques in low vs high load?} Hermod
+does not use priorities in its design, and as such the simulator ignores jobs'
+priority when simulating Hermod's design.
 
-We see the results of a run in Figure \ref{fig:graph}. As expected, \sys{} does
-not perform as well as the ideal world: latencies rise more quickly, and both
-compute and memory utilization have a higher variance across machines and time.
-We can also see that, as expected, under higher load \sys{} is able to keep all
-priorities except the lowest running with low latency, whereas Hermod slows down
-all the functions the same.
+We simulate both designs, and compare the latencies that each achieves,
+primarily for the page view jobs. A strong result for \sys{} would show that
+latencies for higher priority jobs start going up at a higher load than for
+Hermod, which would indicate that Hermod's scheduling cannot perform as well in
+high load settings on high priority jobs. Figure~\ref{fig:graph} shows the
+results. We can see that as expected, Hermod's slowdown, even in middle load
+settings, extends to the high priority jobs, while in \sys{} the low priority
+jobs are the only ones that are affected.\hmng{ok but how is this not obvious:
+we made a new metric and look we did better at it than other systems that did
+not use that metric wow what a surprise}
+
+
+
+\subsection{Are priorities sufficient?}
+
+Answering the second question requires defining the desired behavior, which
+comes down to job latency. So, we assign each job invocation a deadline, and to
+make things simpler we allow the simulator perfect knowledge of the job's
+runtime. We can then define desired behavior as meeting all of these deadlines,
+provided such a thing is possible. Simply setting the deadline to be the runtime
+is not realistic: perhaps for high priority jobs that is the case, but for low
+priority jobs that is not true, the reason they are low priority is because they
+are willing to wait. We thus define the deadline as a function of the runtime as
+well as the priority, where deadline = runtime * 1/priority (as if each process
+were weighted by its priority).\hmng{check this math does what we want it to} We
+then simulate an Earliest Deadline First (EDF) scheduler, which is queueing
+theoretically proven to be optimal in exactly the way we wanted: if it is
+possible to create a schedule where all jobs meet their deadline, EDF will find
+it\cite{TODO}. 
+
+We compare the latencies observerd in this EDF simulated scheduler with an
+idealized version of a preemptive priority scheduler, and look at the latencies
+they both get. Because this is purely about core scheduling, both ignore memory
+in this simulation. A good result for \sys{} would show little difference
+between the two: we expect the EDF version to do better, because it is both
+theoretically optimal and has access to perfect information, but if the priority
+scheduler does similarly then we know that it can be a good proxy for deadlines.
+We can see the results in Figure~\ref{fig:graph}.\hmng{TODO do this}
+
+
+\subsection{Is \sys{} good at enforcing priorities?}
+
+To answer the third question, we take an idealized version of the scheduling
+\sys{} does, and compare \sys{}'s performance to it. The idealized scheduler
+runs in a centralized setting: it is as if the whole datacenter is one machine
+with many many cores. As such there is no memory fragmentation, and its
+utilization represents an optimal solution.\hmng{this feels slightly silly as an
+experiment, because data points don't give a context to be able to tell how
+close is good. Maybe do an ablation study vibe, where we look at our techniques
+and see which ones help?}
+
+We compare the latencies as well as the memory and compute utilization we
+observe. A good result for \sys{} would show that the two do not differ too
+much\hmng{super ill defined}; we expect utilization to have a higher variance
+for the \sys{} version of the simulator, but a good result would show that we
+are able to reduce the variance and raise the average and tail utilization by
+using idle lists. We can see the results in Figure~\ref{fig:graph}.\hmng{TODO do
+this}
+
+
+
+
+
+% \subsection{Results}
+
+
+% We then run the simulator at different load points, and track latencies as a
+% percentage of the required runtime, as well as memory and compute utilization;
+% for each of the three different comparisons we make.
+
+% A good result for \sys{} would be doing in between Hermod and the ideal world.
+% We expect \sys{} will do better than Hermod because it has more knowledge:
+% whereas Hermod will spread latency hits across all jobs indiscriminately as load
+% goes up, \sys{} can keep high priority jobs running quickly and limit the
+% slowdown to only affect lower priority jobs. We cannot expect \sys{} to do as
+% well as the ideal world: not only does \sys{} have to deal with memory
+% fragmentation, which the ideal world does not, but it also has imperfect
+% information --- once the idle list is empty, \sys{} relies on k choices to find
+% a fitting machine. 
+
+% We see the results of a run in Figure~\ref{fig:graph}. As expected, \sys{} does
+% not perform as well as the ideal world: latencies rise more quickly, and both
+% compute and memory utilization have a higher variance across machines and time.
+% We can also see that, as expected, under higher load \sys{} is able to keep all
+% priorities except the lowest running with low latency, whereas Hermod slows down
+% all the functions the same.
 
 
