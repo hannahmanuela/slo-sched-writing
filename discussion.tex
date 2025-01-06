@@ -12,12 +12,12 @@ should best manage resources.
 In section~\ref{design}, \sys{} makes decisions based on maximum memory usage
 estimates for each job, provided by the developer. However, in reality, making
 scheduling decisions based off of this sort of estimate of a maximum can lead to
-underutilization. Jobs often have highly variable memory usage; for instance the
+under-utilization. Jobs often have highly variable memory usage; for instance the
 distribution of content among users of social media platforms is notoriously
 skewed\cite{TODO}, so jobs that fetch information for a user and process it will
 be run over very different amounts of data depending on who the user is. So
 making scheduling decisions based off of an estimate of a maximum will lead to
-memory underutilization, and instead we are forced to play a game of
+memory under-utilization, and instead we are forced to play a game of
 overprovisioning.
 
 Having priorities can help. We overprovision in order to achieve high
@@ -82,11 +82,7 @@ annual patterns.\cite{TODO}
 
 This means that providers can mostly choose the rough breakdown of the load they
 will have at any given time (ie they can choose a percentage of how many jobs
-they want in each priority, and change it by adjusting prices or not sllowing
+they want in each priority, and change it by adjusting prices or not allowing
 users to select that level anymore). 
-
-\hmng{We discuss what a good breakdown would look like in the next section? Put eval
-next? Or just don't discuss and leave it at that, although that seems a little
-vague.}
 
 

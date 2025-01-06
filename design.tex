@@ -10,17 +10,24 @@ priorities.
 
 \subsection{Interface}
 
-Developers express priorities to \sys{} by assigning functions a priority value
-in a fixed range. This range is the same for everyone, which enables \sys{} to
-directly compare different jobs' priorities. Priorities are meaningful because
-they are directly mapped to cost per cpu second. This ensures that developers
-don't simply choose the highest priority available for their most important job.
-For instance in the example of the web server, the home page view might be
-assigned a higher priority and cost 2c per cpu second, a the user profile view
-might be a assigned a middle-high priority and cost 1.5c per cpu second, and
-finally the image processing job can be set to a low priority which costs only
-0.5c per cpu second.\hmng{the numbers here are way too high, but writing
-\$0.0000002 is unfortunate}
+Developers express priorities to \sys{} by assigning functions a price value,
+which they are willing to pay per unit time that the job spends running. The
+price implicitly tells \sys{} the job's priority, in a way that enables \sys{}
+to directly compare the priorities of two functions of different tenants. This
+also creates an incentive for developers to not only always choose the highest
+priority, they have to be willing to pay for it. In order to avoid an escalating
+bidding war among developers, \sys{} exposes only a fixed list of possible
+prices that developers choose from. For instance, in the example of the web
+server, the home page view might be assigned a higher priority and cost
+2$\mu\cent$ per cpu second, a the user profile view might be a assigned a
+middle-high priority and cost 1.5$\mu\cent$ per cpu second, and finally the
+image processing job can be set to a low priority which costs only 0.5$\mu\cent$
+per cpu second. 
+
+\Sys{} ensures that the priority of a request is inherited in order to avoid
+priority inversion: if a high priority job calls a usually low priority job
+synchronously, \sys{} will run the low priority job with high priority for that
+invocation.
 
 Developers are also required to express a maximum amount of memory per function.
  
@@ -33,7 +40,7 @@ small amounts.
 
 
 
-\subsection{\sys{} Design}
+\subsection{\Sys{} Design}
 
 \begin{figure}[t]
     \centering
@@ -129,7 +136,7 @@ Procedure~\ref{alg:place}. The shard will first look in its idle list for a
 machine that has the job's maximum memory available. If there are multiple such
 machines, the shard looks at each machines compute pressure metrics; the goal
 being to minimize cpu idleness and job latency in low load
-settings.\hmng{playing with deatils of this in the scheduler right now} 
+settings.\hmng{playing with details of this in the scheduler right now} 
 
 If a machine from the idle list is chosen, the response from the dispatcher upon
 placing the job will include updated utilization information, which the shard
@@ -140,9 +147,3 @@ switches over to power-of-k-choices: it polls k machines, sending the price and
 the maximum memory of the job currently being placed, and getting back the time
 to profit. The shard then can choose to place the new job on the machine with
 the minimum value, or if all of them are too high the shard re-queues the job.
-
-% Checking in with clients' budgets to ensure that usage is not significantly
-% outpacing a rate compatible with the budget is done asynchronously: each time a
-% job for a client is triggered a global counter is asynchronously updated. If the
-% counter's rate of change increases absurdly with regards to previous behavior as
-% well as the budget as a whole, this triggers a throttling for that job.

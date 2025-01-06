@@ -51,12 +51,6 @@ important to the web server than image processing jobs is a relative statement:
 there is no way of mapping that prioritization to other developers' jobs, in
 order to be able to directly compare which job should run when. 
 
-% Developers cannot be trusted to make such a comparison, their own jobs will
-% always seem more important than others': if given an absolute scale, they will
-% always choose the highest priority value for their highest priority job.
-% However, that does not reflect that in fact different clients do have different
-% requirements and expectations, and need to be treated differently.
-
 A third main challenge is that of managing memory. Placing a new high priority
 job on a machine already running many jobs may lead to enough memory pressure to
 require killing an already placed job (rather than the new job just preempting
