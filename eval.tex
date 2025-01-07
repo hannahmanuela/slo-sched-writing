@@ -35,10 +35,11 @@ reflects the fact that different functions have different expected runtimes
 (chosen from a normal distribution), and that actual job runtimes follow long
 tailed distributions (so each pareto distribution that we sample represents the
 expected runtime distribution of a given function).\ \textit{Job priority} is
-chosen randomly. The simulator has n different priority values, each assigned to
-a fictitious price. Because functions are randomly assigned a priority, runtime
-and priority are not correlated.\ \textit{Job memory usage} is chosen uniform
-random between 1MB and 10GB.
+chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
+across priorties. The simulator has n different priority values, each assigned
+to a fictitious price. Because functions are randomly assigned a priority,
+runtime and priority are not correlated.\ \textit{Job memory usage} is chosen
+uniform random between 1MB and 10GB.
 
 When comparing two different simulated schedulers, they each are given an
 identical workload and then each simulate running that workload.
