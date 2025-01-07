@@ -61,21 +61,19 @@ true runtime. Simply setting the deadline to be the runtime is not realistic:
 perhaps for high priority jobs that is the case, but for low priority jobs that
 is not true, the reason they are low priority is because they are willing to
 wait. We thus define the deadline as a function of the runtime as well as the
-priority, where deadline = runtime * 1/priority (as if each process were
-weighted by its priority).\hmng{check this math does what we want it to} We
-simulate an Earliest Deadline First (EDF) scheduler, which is queuing
-theoretically proven to be optimal in exactly the way we wanted: if it is
-possible to create a schedule where all jobs meet their deadline, EDF will find
-it\cite{TODO}.
+priority, where deadline = runtime * maxPrice/price (as if each process were
+weighted by its price). We simulate an Earliest Deadline First (EDF) scheduler,
+which is queuing theoretically proven to be optimal in exactly the way we
+wanted: if it is possible to create a schedule where all jobs meet their
+deadline, EDF will find it\cite{TODO}.
 
 We compare the latencies observed in this EDF simulated scheduler with an
 idealized version of a preemptive priority scheduler, and look at the latencies
-they both get. Because this is purely about core scheduling, both ignore memory
-in this simulation. A good result for \sys{} would show little difference
-between the two: we expect the EDF version to do better, because it is both
-theoretically optimal and has access to perfect information, but if the priority
-scheduler does similarly then we know that it can be a good proxy for deadlines.
-We can see the results in Figure~\ref{fig:graph}.\hmng{TODO do this}
+they both get. A good result for \sys{} would show little difference between the
+two: we expect the EDF version to do better, because it is both theoretically
+optimal and has access to perfect information, but if the priority scheduler
+does similarly then we know that it can be a good proxy for deadlines. We can
+see the results in Figure~\ref{fig:graph}.\hmng{TODO do this}
 
 \subsection{How well do schedulers without priority info do?}
 
