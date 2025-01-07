@@ -2,13 +2,6 @@
 \section{Preliminary Results}
 %-------------------------------------------------------------------------------
 
-\begin{figure}[t!]
-    \centering
-      \includegraphics[width=8cm]{img/ideal_edf_latency.png}
-      \caption{ a comparison of latency between priority scheduling (top) and EDF (bottom) }
-    \label{fig:edf-vs-prio}
-\end{figure}
-
 
 
 In order to understand the case for \sys{}, we ask the following questions: 
@@ -51,7 +44,17 @@ The simulator makes some simplifying assumptions:
     \item communication latencies are not simulated
 \end{enumerate}
 
+We simulate running 100 machines with 8 cores each, with 4 scheduler shards and
+a k-choices value of 3 when applicable.
+
 \subsection{Are priorities good at meeting SLAs?}
+
+\begin{figure}[t!]
+    \centering
+      \includegraphics[width=8cm]{img/ideal_edf_latency.png}
+      \caption{ a comparison of latency between priority scheduling (left) and EDF (right) }
+    \label{fig:edf-vs-prio}
+\end{figure}
 
 In the end developers care about job latency, so it is important to understand
 how well priorities do at reflecting and enforcing SLAs.
