@@ -2,12 +2,12 @@
 \section{Preliminary Results}
 %-------------------------------------------------------------------------------
 
-% \begin{figure*}[t!]
-%     \centering
-%       \includegraphics[width=15cm]{img/combined_res.png}
-%       \caption{ a placeholder graph }
-%     \label{fig:graph}
-% \end{figure*}
+\begin{figure}[t!]
+    \centering
+      \includegraphics[width=8cm]{img/ideal_edf_latency.png}
+      \caption{ a comparison of latency between priority scheduling (top) and EDF (bottom) }
+    \label{fig:edf-vs-prio}
+\end{figure}
 
 
 
@@ -73,7 +73,7 @@ they both get. A good result for \sys{} would show little difference between the
 two: we expect the EDF version to do better, because it is both theoretically
 optimal and has access to perfect information, but if the priority scheduler
 does similarly then we know that it can be a good proxy for deadlines. We can
-see the results in Figure~\ref{fig:graph}.\hmng{TODO do this}
+see the results in Figure~\ref{fig:edf-vs-prio}.
 
 \subsection{How well do schedulers without priority info do?}
 
