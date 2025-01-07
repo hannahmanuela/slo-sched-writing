@@ -73,8 +73,10 @@ they both get. A good result for \sys{} would show little difference between the
 two: we expect the EDF version to do better, because it is both theoretically
 optimal and has access to perfect information, but if the priority scheduler
 does similarly then we know that it can be a good proxy for deadlines. We can
-see the results in Figure~\ref{fig:edf-vs-prio}.\hmng{umm whups the grapg is not
-looking great for us}
+see the results in Figure~\ref{fig:edf-vs-prio}. Although in the EDF version the
+latency spikes much less, the bottom graph tells us why: EDF, because it has
+knowledge of jobs' approximate runtime, stops running the longer low priority
+jobs.
 
 \subsection{How well do schedulers without priority info do?}
 
@@ -85,16 +87,15 @@ which jobs are important, still ensure that jobs perform well?
 To explore this question, we look at how an existing state of the art research
 scheduler that does not take any form of priority into account performs on the
 web server's workload. We simulate Hermod\cite{TODO}, a state-of-the-art
-serverless scheduler, and compare it to the same EDF scheduler as in the
-previous question. Hermod is a scheduler built specifically for serverless, and
-is the result of a from-first-principles analysis of different scheduling
-paradigms. In accordance with the paper's findings, we simulate least-loaded
-load balancing over machines found using power-of-k-choices, combined with early
-binding and Processor Sharing machine-level scheduling. Hermod does not use
-priorities in its design, and as such the simulator ignores jobs' priority when
-simulating Hermod's design.
+serverless scheduler built specifically for serverless. Hermod's design is the
+result of a from-first-principles analysis of different scheduling paradigms. In
+accordance with the paper's findings, we simulate least-loaded load balancing
+over machines found using power-of-k-choices, combined with early binding and
+Processor Sharing machine-level scheduling. Hermod does not use priorities in
+its design, and as such the simulator ignores jobs' priority when simulating
+Hermod's design. 
 
-We simulate both designs, and compare the latencies that each achieves,
+We simulate Hermod and \sys{}, and compare the latencies that each achieves,
 primarily for the page view jobs. A strong result for \sys{} would show that
 latencies for higher priority jobs start going up at a higher load than for
 Hermod, which would indicate that Hermod's scheduling cannot perform as well in
