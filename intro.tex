@@ -115,37 +115,6 @@ Another main challenge is that of managing memory. Placing a new high priority
 job on a machine already running many jobs may lead to enough memory pressure to
 require killing an already placed job (rather than the new job just preempting
 existing jobs). When placing new job it is difficult to know whether the machine
-would have to kill something else, and if so whether it is worth it, or better
+would have to kill and requeue something else, and if so whether it is worth it, or better
 to just requeue the new job.
-
-
-
-
-% However, for many applications it is rare to see them entirely hosted on
-% serverless offerings today\cite{TODO}. Consider a web server: its
-% characteristics of unpredictable and bursty traffic make it well-suited for
-% serverless, and the pay as you go model is particularly attractive to website
-% developers who don't want to have to worry about provisioning.
-
-% Suppose a simple web server consists of two different page view handlers, one
-% for the landing page and another for users' profile pages, and also has image
-% processing jobs for user uploaded content. It is important that the page views
-% finish quickly, with the landing page taking precedence over the profile pages,
-% and the image processing jobs can be run in the background and be delayed.
-
-% If a web developer wanted to host this web server in an existing serverless
-% offering, a popular option is AWS lambda\cite{TODO}. However, AWS offers no way
-% to prioritize different lambdas in order to ensure that the page views run
-% quickly, while having the notion that image processing jobs don't have to. A
-% developer using AWS lambda could implicitly prioritize page views by avoiding
-% cold starts for only them (using reserved and provisioned
-% concurrency\cite{TODO}); or could give them more concurrency (through
-% `vCPUs'\cite{TODO}). However, neither of these give priority to the page views
-% when they run.\hmng{I feel like this is too vague to be a strong and convincing
-% thing to say}
-
-% This paper's goal is to build a usable and efficient scheduling mechanism that
-% supports priorities, in order to help enable a world of universal serverless.
-
-
  

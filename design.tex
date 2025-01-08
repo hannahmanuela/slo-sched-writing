@@ -1,14 +1,12 @@
 \section{Design}\label{design}
 
-We propose \sys{}, a serverless scheduler that takes into account jobs'
-priorities. Developers using \sys{} write function handlers and define triggers
-just like they would for any existing serverless offering. Additionally,
-developers express jobs' priorities to \sys{}, and \sys{} enforces these
-priorities.
-
 
 
 \subsection{Interface}
+
+
+Developers using \sys{} write function handlers and define triggers
+just like they would for any existing serverless offering. In addition, they 
 
 Developers express priorities to \sys{} by assigning functions a price value,
 which they are willing to pay per unit time that the job spends running. The
