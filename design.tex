@@ -79,7 +79,10 @@ resources.
 The machine scheduler is a preemptive priority scheduler: it preempts lower
 priority jobs to run higher priority ones. Being unfair and starving low
 priority jobs is desirable in \sys{}, since image processing jobs should not
-interrupt a page view request processing, but vice versa is expected.
+interrupt a page view request processing, but vice versa is expected. Within
+priority classes the machine scheduler is first come first served. This matches
+Linux' `sched fifo' scheduling.
+% https://man7.org/linux/man-pages/man7/sched.7.html
 
 
 \textbf{Dispatcher.}
@@ -93,26 +96,37 @@ because of new jobs or memory antagonists), the dispatcher will update shard
 $i$'s idle list. These interactions from the dispatcher to free lists are
 represented by the blue arrows in Figure~\ref{fig:overview}.
 
-The dispatcher is most importantly in charge of managing memory. 
+The dispatcher is most importantly in charge of managing memory. When memory
+pressure occurs, the dispatcher uses priority-based paging to move low priority
+processes that won't be running soon anyway off the machine's memory. In this
+scenario, having priority scheduling creates the opportunity that enables this
+to be realistic: because the dispatcher knows that the lowest priority jobs will
+not be run until the high priority jobs have all finished, it can page its
+memory out knowing it will not be needed soon. Doing so, and avoiding a churn of
+jobs with paged memory, requires that the memory of machines is large against
+the amount of jobs that would be able to run at once. This assumption ensures
+that memory pressure high enough to require paging will only occur when there
+are many more jobs than there are cores, and thus that the paged job will not be
+running soon. The dispatcher pages the low priority job back in when the memory
+pressure is gone and the job will be run.
 
-\makeatletter
-\renewcommand{\ALG@name}{Procedure}
-\makeatother
-\begin{algorithm}[t]
-\caption{Choosing a machine for a job j}\label{alg:place}
-\begin{algorithmic}
-    \State$N = \{ $ machines in freeList with memAvail > j.maxMem $\}$
-    \If{$|N| > 0$} \\
-        \Return$ $min(N.maxPriorityRunning, N.qSize)
-    \EndIf
-    \State$M = $ timeToProfit of k polled machines
-    \If{min(M.timeToProfit$) < THRESH$} \\
-        \Return$ $min($M$)
-    \Else
-        \State$ $reQ j, with priority -= 1
-    \EndIf
-\end{algorithmic}
-\end{algorithm}
+% \makeatletter
+% \renewcommand{\ALG@name}{Procedure}
+% \makeatother
+% \begin{algorithm}[t]
+% \caption{Choosing a machine for a job j}\label{alg:place}
+% \begin{algorithmic}
+%     \If{$|idleList| > 0$} \\
+%         \Return$ $min(qLen)
+%     \EndIf
+%     \State$M = $ qlen of k polled machines
+%     \If{min(M.timeToProfit$) < THRESH$} \\
+%         \Return$ $min($M$)
+%     \Else
+%         \State$ $reQ j, with priority -= 1
+%     \EndIf
+% \end{algorithmic}
+% \end{algorithm}
 
 
 \textbf{Global Scheduler Shards.}
@@ -123,19 +137,13 @@ of time spent in the queue. This ensures that high priority jobs don't have to
 wait as long as lower priority jobs to be chosen next, but low priority jobs
 will get placed if they have waited for a while.
 
-When placing the chosen job, the shard finds a machine to run it, shown in
-Procedure~\ref{alg:place}. The shard will first look in its idle list for a
-machine that has the job's maximum memory available. If there are multiple such
-machines, the shard looks at each machines compute pressure metrics; the goal
-being to minimize cpu idleness and job latency in low load
-settings.\hmng{playing with details of this in the scheduler right now} 
+When placing the chosen job, the shard finds a machine to run it. The shard will
+first look in its idle list, and if it is not empty, will choose the machine with
+the smallest queue length.
 
-If a machine from the idle list is chosen, the response from the dispatcher upon
-placing the job will include updated utilization information, which the shard
-will use to update the idle list entry.
-
-If there are no machines in the idle list with the memory available, the shard
-switches over to power-of-k-choices: it polls k machines, sending the price and
-the maximum memory of the job currently being placed, and getting back the time
-to profit. The shard then can choose to place the new job on the machine with
-the minimum value, or if all of them are too high the shard re-queues the job.
+If there are no machines in the idle list, the shard switches over to
+power-of-k-choices: it polls k machines, getting the amount of jobs running from
+each. The shard then places the new job on the machine with the smallest queue.
+It is desirable to have a maximally heterogenous set of priorities on each
+machine, but since jobs come in randomly the global scheduler does not
+explicitly have to enforce this.
