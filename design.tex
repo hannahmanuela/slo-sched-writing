@@ -5,30 +5,22 @@
 \subsection{Interface}
 
 
-Developers using \sys{} write function handlers and define triggers
-just like they would for any existing serverless offering. In addition, they 
+Developers using \sys{} write function handlers and define triggers just like
+they would for any existing serverless offering. In addition, they asign each
+function to a price class, this is done at function creation. For instance, a
+simple web server might consist of a home page view that is assigned a higher
+priority and costs 2$\mu\cent$ per cpu second, a user profile page view which is
+assigned a middle-high priority and cost 1.5$\mu\cent$ per cpu second, and
+finally an image processing job that can be set to a low priority which costs
+only 0.5$\mu\cent$ per cpu second.
 
-Developers express priorities to \sys{} by assigning functions a price value,
-which they are willing to pay per unit time that the job spends running. The
-price implicitly tells \sys{} the job's priority, in a way that enables \sys{}
-to directly compare the priorities of two functions of different tenants. This
-also creates an incentive for developers to not only always choose the highest
-priority, they have to be willing to pay for it. In order to avoid an escalating
-bidding war among developers, \sys{} exposes only a fixed list of possible
-prices that developers choose from. For instance, in the example of the web
-server, the home page view might be assigned a higher priority and cost
-2$\mu\cent$ per cpu second, a the user profile view might be a assigned a
-middle-high priority and cost 1.5$\mu\cent$ per cpu second, and finally the
-image processing job can be set to a low priority which costs only 0.5$\mu\cent$
-per cpu second. 
+Priorities are inherited across call chains: if a high priority job calls a low
+priority job, that invocation with run with high priority. This is important in
+order to avoid priority inversion.
 
-\Sys{} ensures that the priority of a request is inherited in order to avoid
-priority inversion: if a high priority job calls a usually low priority job
-synchronously, \sys{} will run the low priority job with high priority for that
-invocation.
+Developers pay for memory separately, and by use; the price for memory is the
+same across all priorities.
 
-Developers are also required to express a maximum amount of memory per function.
- 
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.\ \sys{}
 uses this budget as a guideline and throttles invocations or decreases quality
@@ -48,23 +40,39 @@ small amounts.
       and if it's low writes itself to an idle list (in blue) }
     \label{fig:overview}
 \end{figure}
+
+
+
+\Sys{} has as its goal to enforce the priorities attached to jobs, which means
+it needs to prefer higher priority jobs over lower ones, and preempt the latter
+when necessary.
   
 
 As shown in Figure~\ref{fig:overview}, \sys{} sits behind a load balancer, and
-consists of: a distributed global scheduler, which places new function
-invocations, a dispatcher, which runs on each machine and communicates with the
-global scheduler shards, and a machine scheduler, which enforces priorities on
-the machines.
-
-Each global scheduler shard maintains an \textit{idle list}, which holds
-machines that have a significant amount of memory available. In the shards idle
-list each machine's entry is associated with the amount of free memory as well
-as some information about compute pressure. This information allows the global
-scheduler to place high priority processes quickly, without incurring the
-latency overheads of finding available resources.
+consists of: a distributed global scheduler, which places new job invocations, a
+dispatcher, which runs on each machine and communicates with the global
+scheduler shards, and a machine scheduler, which enforces priorities on the
+machines.
 
 Global scheduler shards store the jobs waiting to be placed in a multi queue,
 with one queue per priority.
+
+\textbf{Idle list.}
+Each global scheduler shard also maintains an \textit{idle list}, which holds
+machines that have a significant amount of memory available. In the shards idle
+list each machine's entry is associated with the amount of free memory as well
+as the current amount of jobs on the machine. The idle list exists because
+datacenters are large: polling a small number of machines has been shown to be
+very powerful, but cannot find something that is a very rare occurrence.
+% join idle queue
+What this means is that polling is likely to find a machine in the lower
+quantile of the datacenter, but not at the absolute bottom --- it will not find
+one of the handful of machines that are actually idle. Having an idle list
+allows these machines, which are expected to be rare in a high-utilization
+setting, to make themselves visible to the global scheduler. The idle list also
+allows the global scheduler to place high priority processes quickly, without
+incurring the latency overheads of doing the polling to find available
+resources.
 
 
 \textbf{Machine Scheduler.}
@@ -85,21 +93,7 @@ because of new jobs or memory antagonists), the dispatcher will update shard
 $i$'s idle list. These interactions from the dispatcher to free lists are
 represented by the blue arrows in Figure~\ref{fig:overview}.
 
-The dispatcher also responds to probes by shards: given a potential job that a
-shard might want to run on the machine, the dispatcher computes the \textit{time
-to profit}, which is the time it would take for the machine to start making a
-profit off of the decision of placing the job there. If there is enough memory
-free to fit the new job's max memory, that number is 0. If the dispatcher might
-have to kill a process due to memory pressure, it computes which job it would
-kill, which is the job with minimal price where $j.memUsg > newJ.maxMem$. The
-time to profit then is $(jToKill.timeRun \cdot jToKill.price) / (newJ.price
-- jToKill.price)$.
-
-The dispatcher is also in charge of killing jobs under memory pressure, should
-it occur. It chooses the job to kill by looking at both memory used and money
-wasted if killed (lower priority jobs should be the ones to be killed if
-possible, but won't help much if they weren't using any memory to begin with).
-The dispatcher requeues killed jobs at a randomly chosen shard.
+The dispatcher is most importantly in charge of managing memory. 
 
 \makeatletter
 \renewcommand{\ALG@name}{Procedure}

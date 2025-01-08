@@ -98,23 +98,24 @@ latency, as achieved by priority in the system.
 of a motivation? should that come next?}
 
 
-Designing a scheduler that enforces priorities faces multiple challenges. 
+A main challenge in designing \sys{} is that of managing memory. Compute can
+always be divided or preempted, but the buck stops once a machine is out of
+memory. This problem is made more difficult by the fact that \sys{} does not
+require memory usage limits to be given by developers, which would otherwise
+turn memory provisioning into a big packing with overprovisioning
+problem.~\Sys{} is thus faced with the challenging proposition of blindly
+placing jobs not knowing how much memory they will use, but still needing memory
+utilization to be high.
 
-One of the challenges is that of placing jobs quickly enough. For example, a job
-that takes 20ms to run cannot spend 100ms in scheduler queues and waiting for an
-execution environment before even starting to run. We focus on the aspect of
-scheduling latency: in a datacenter, where both the number of new jobs coming in
-and the amount of resources are extremely large, the challenge is knowing where
-the free and idle resources are, or finding out quickly. For this paper, we
-assume that that cold start times are small enough that cold starts on the
-critical path are acceptable.\footnote{Cold start latencies have been reduced
-significantly --- recent state of the art systems have been able to support
-latencies in the single digit ms range\cite{TODO}.}
 
-Another main challenge is that of managing memory. Placing a new high priority
-job on a machine already running many jobs may lead to enough memory pressure to
-require killing an already placed job (rather than the new job just preempting
-existing jobs). When placing new job it is difficult to know whether the machine
-would have to kill and requeue something else, and if so whether it is worth it, or better
-to just requeue the new job.
+% Another challenge is that of placing jobs quickly enough. For example, a job
+% that takes 20ms to run cannot spend 100ms in scheduler queues and waiting for an
+% execution environment before even starting to run. We focus on the aspect of
+% scheduling latency: in a datacenter, where both the number of new jobs coming in
+% and the amount of resources are extremely large, the challenge is knowing where
+% the free and idle resources are, or finding out quickly. For this paper, we
+% assume that that cold start times are small enough that cold starts on the
+% critical path are acceptable.\footnote{Cold start latencies have been reduced
+% significantly --- recent state of the art systems have been able to support
+% latencies in the single digit ms range\cite{TODO}.}
  
