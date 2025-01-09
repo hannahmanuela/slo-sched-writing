@@ -53,6 +53,13 @@ scheduler shards and a k-choices value of 3 when applicable.
 
 \subsection{How do job latencies compare?}
 
+\begin{figure}[t!]
+    \centering
+      \includegraphics[width=8cm]{img/hermod_xx_edf_latency.png}
+      \caption{ add caption }
+    \label{fig:hermod-xx-edf}
+\end{figure}
+
 In the end developers care about job latency, so it is important to understand
 how well priorities do at reflecting and enforcing SLAs. On one hand, is
 relevant to understand if we need priorities at all: is there a scheduler that
@@ -96,12 +103,12 @@ placing load, and revert solely to k-choices.
 A strong result for \sys{} would show that its performance is between the two,
 and closer to the EDF side. Especially as load and utillization get high, we
 expect that the differences betweeen the three approaches will become evident.
-Figure~\ref{TODO} shows the results. As expected, \sys{} outperforms Hermod once
-the utilization is above YYY, because Hermod spreads the slowdown across all the
-jobs, whereas \sys{} can be more targeted.~\sys{} performs comparably to EDF,
-until very high load. This is because EDF, because it has knowledge of jobs'
-approximate runtime, stops running the longer low priority jobs, and thus can
-finish the low priority jobs it does start more quickly.
+Figure~\ref{hermod-xx-edf} shows the results. As expected, \sys{} outperforms
+Hermod once the utilization is above YYY, because Hermod spreads the slowdown
+across all the jobs, whereas \sys{} can be more targeted.~\sys{} performs
+comparably to EDF, until very high load. This is because EDF, because it has
+knowledge of jobs' approximate runtime, stops running the longer low priority
+jobs, and thus can finish the low priority jobs it does start more quickly.
 
 
 \subsection{Does \sys{} plan for memory management work?}
