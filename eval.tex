@@ -7,9 +7,9 @@
 In order to understand the case for \sys{}, we ask the following questions: 
 \begin{enumerate}
     \item How does job latency in \sys{} compare to schedulers without
-    priorities on one hand, and theoreticlaly optimal schedulers with perfect
+    priorities on one hand, and theoretically optimal schedulers with perfect
     information on the other?
-    \item Does \sys{} plan for managing memory work?
+    \item Does \sys{}'s plan for managing memory work?
 \end{enumerate}
 
 
@@ -33,10 +33,9 @@ chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
 across priorties. The simulator has n different priority values, each assigned
 to a fictitious price. Because functions are randomly assigned a priority,
 runtime and priority are not correlated.\ \textit{Job memory usage} is chosen
-randomly between 100MB and 10GB.
-% from a bimodel normal distribution, with peaks at 1GB and at 8GB. Over their
-% lifetime, jobs increase their memory usage from an initial amount (always 100MB)
-% to their total usage.
+randomly between 100MB and 10GB. Over their lifetime, jobs increase their memory
+usage from an initial amount (always 100MB) to their total usage.
+% from a bimodel normal distribution, with peaks at 1GB and at 8GB. 
 
 When comparing two different simulated schedulers, they each are given an
 identical workload and then each simulate running that workload.
@@ -45,7 +44,7 @@ The simulator makes some simplifying assumptions:
 \begin{enumerate}
     \item functions are compute bound, and do not block for i/o
     \item communication latencies are not simulated
-    \item amount of time it takes to page memory is not simulated
+    \item the amount of time it takes to page memory is not simulated
 \end{enumerate}
 
 We simulate running 100 machines, with 8 cores and 32GB RAM each, with 4
@@ -103,12 +102,8 @@ placing load, and revert solely to k-choices.
 A strong result for \sys{} would show that its performance is between the two,
 and closer to the EDF side. Especially as load and utillization get high, we
 expect that the differences betweeen the three approaches will become evident.
-Figure~\ref{hermod-xx-edf} shows the results. As expected, \sys{} outperforms
-Hermod once the utilization is above YYY, because Hermod spreads the slowdown
-across all the jobs, whereas \sys{} can be more targeted.~\sys{} performs
-comparably to EDF, until very high load. This is because EDF, because it has
-knowledge of jobs' approximate runtime, stops running the longer low priority
-jobs, and thus can finish the low priority jobs it does start more quickly.
+Figure~\ref{fig:hermod-xx-edf} shows the results. TODO write something once we
+like the graph
 
 
 \subsection{Does \sys{} plan for memory management work?}

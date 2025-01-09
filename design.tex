@@ -49,30 +49,10 @@ when necessary.
   
 
 As shown in Figure~\ref{fig:overview}, \sys{} sits behind a load balancer, and
-consists of: a distributed global scheduler, which places new job invocations, a
-dispatcher, which runs on each machine and communicates with the global
-scheduler shards, and a machine scheduler, which enforces priorities on the
-machines.
-
-Global scheduler shards store the jobs waiting to be placed in a multi queue,
-with one queue per priority.
-
-\textbf{Idle list.}
-Each global scheduler shard also maintains an \textit{idle list}, which holds
-machines that have a significant amount of memory available. In the shards idle
-list each machine's entry is associated with the amount of free memory as well
-as the current amount of jobs on the machine. The idle list exists because
-datacenters are large: polling a small number of machines has been shown to be
-very powerful, but cannot find something that is a very rare occurrence.
-% join idle queue
-What this means is that polling is likely to find a machine in the lower
-quantile of the datacenter, but not at the absolute bottom --- it will not find
-one of the handful of machines that are actually idle. Having an idle list
-allows these machines, which are expected to be rare in a high-utilization
-setting, to make themselves visible to the global scheduler. The idle list also
-allows the global scheduler to place high priority processes quickly, without
-incurring the latency overheads of doing the polling to find available
-resources.
+consists of: a \textit{distributed global scheduler}, which places new job
+invocations and has attached an \textit{idle list}, a \textit{dispatcher},
+which runs on each machine and communicates with the global scheduler shards,
+and a \textit{machine scheduler}, which enforces priorities on the machines.
 
 
 \textbf{Machine Scheduler.}
@@ -83,6 +63,24 @@ interrupt a page view request processing, but vice versa is expected. Within
 priority classes the machine scheduler is first come first served. This matches
 Linux' `sched fifo' scheduling.
 % https://man7.org/linux/man-pages/man7/sched.7.html
+
+
+\textbf{Idle list.}
+Each global scheduler shard has an idle list, which holds machines that
+have a significant amount of memory available. In the shards idle list each
+machine's entry is associated with the amount of free memory as well as the
+current amount of jobs on the machine. The idle list exists because datacenters
+are large: polling a small number of machines has been shown to be very
+powerful, but cannot find something that is a very rare occurrence.
+% join idle queue
+What this means is that polling is likely to find a machine in the lower
+quantile of the datacenter, but not at the absolute bottom --- it will not find
+one of the handful of machines that are actually idle. Having an idle list
+allows these machines, which are expected to be rare in a high-utilization
+setting, to make themselves visible to the global scheduler. The idle list also
+allows the global scheduler to place high priority processes quickly, without
+incurring the latency overheads of doing the polling to find available
+resources.
 
 
 \textbf{Dispatcher.}
@@ -96,19 +94,20 @@ because of new jobs or memory antagonists), the dispatcher will update shard
 $i$'s idle list. These interactions from the dispatcher to free lists are
 represented by the blue arrows in Figure~\ref{fig:overview}.
 
-The dispatcher is most importantly in charge of managing memory. When memory
-pressure occurs, the dispatcher uses priority-based paging to move low priority
-processes that won't be running soon anyway off the machine's memory. In this
-scenario, having priority scheduling creates the opportunity that enables this
-to be realistic: because the dispatcher knows that the lowest priority jobs will
-not be run until the high priority jobs have all finished, it can page its
-memory out knowing it will not be needed soon. Doing so, and avoiding a churn of
-jobs with paged memory, requires that the memory of machines is large against
-the amount of jobs that would be able to run at once. This assumption ensures
-that memory pressure high enough to require paging will only occur when there
-are many more jobs than there are cores, and thus that the paged job will not be
-running soon. The dispatcher pages the low priority job back in when the memory
-pressure is gone and the job will be run.
+The dispatcher is also in charge of managing the machine's memory. When memory
+pressure occurs, the dispatcher uses \textit{priority-based paging} to move low
+priority processes off the machine's memory. In this scenario, having priority
+scheduling creates the opportunity that enables this to be realistic: because
+the dispatcher knows that the lowest priority jobs will not be run until the
+high priority jobs have all finished, it can page its memory out knowing it will
+not be needed soon. Avoiding a churn of jobs with paged memory that are being
+paged in and out as they are scheduled in and out, requires that the memory of
+the machine is large against the amount of memory that could be used by as many
+jobs as the machine has cores. This assumption ensures that memory pressure high
+enough to require paging will only occur when there are many more jobs than
+there are cores, and thus that the paged job will not be running soon. The
+dispatcher pages the low priority job back in when the memory pressure is gone
+and the job will be run.
 
 % \makeatletter
 % \renewcommand{\ALG@name}{Procedure}
@@ -131,19 +130,19 @@ pressure is gone and the job will be run.
 
 \textbf{Global Scheduler Shards.}
 
-Shards choose what job to place next by looking at each job at the head of a
-queue in the shards multi-queue, and comparing the ratio of priority to amount
-of time spent in the queue. This ensures that high priority jobs don't have to
-wait as long as lower priority jobs to be chosen next, but low priority jobs
-will get placed if they have waited for a while.
+Global scheduler shards store the jobs waiting to be placed in a multi queue,
+with one queue per priority. Shards choose what job to place next by looking at
+each job at the head of each queue, and comparing the ratio of priority to
+amount of time spent in the queue. This ensures that high priority jobs don't
+have to wait as long as lower priority jobs to be chosen next, but low priority
+jobs will get placed if they have waited for a while.
 
-When placing the chosen job, the shard finds a machine to run it. The shard will
-first look in its idle list, and if it is not empty, will choose the machine with
-the smallest queue length.
+When placing the chosen job, the shard will first look in its idle list. If the
+list is not empty, it will choose the machine with the smallest queue length.
 
 If there are no machines in the idle list, the shard switches over to
 power-of-k-choices: it polls k machines, getting the amount of jobs running from
-each. The shard then places the new job on the machine with the smallest queue.
-It is desirable to have a maximally heterogenous set of priorities on each
-machine, but since jobs come in randomly the global scheduler does not
-explicitly have to enforce this.
+each. The shard then places the new job on the machine with the smallest number
+of currently running jobs. It is desirable to have a maximally heterogenous set
+of priorities on each machine, but since jobs come in randomly the global
+scheduler does not explicitly have to enforce this.
