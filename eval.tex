@@ -33,9 +33,10 @@ chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
 across priorties. The simulator has n different priority values, each assigned
 to a fictitious price. Because functions are randomly assigned a priority,
 runtime and priority are not correlated.\ \textit{Job memory usage} is chosen
-from a bimodel normal distribution, with peaks at 500MB and 5GB. Over their
-lifetime, jobs increase their memory usage from an initial amount (always 100MB)
-to their total usage.
+randomly between 100MB and 10GB.
+% from a bimodel normal distribution, with peaks at 1GB and at 8GB. Over their
+% lifetime, jobs increase their memory usage from an initial amount (always 100MB)
+% to their total usage.
 
 When comparing two different simulated schedulers, they each are given an
 identical workload and then each simulate running that workload.
@@ -47,17 +48,10 @@ The simulator makes some simplifying assumptions:
     \item amount of time it takes to page memory is not simulated
 \end{enumerate}
 
-We simulate running 100 machines with 8 cores each, with 4 scheduler shards and
-a k-choices value of 3 when applicable.
+We simulate running 100 machines, with 8 cores and 32GB RAM each, with 4
+scheduler shards and a k-choices value of 3 when applicable.
 
 \subsection{How do job latencies compare?}
-
-\begin{figure}[t!]
-    \centering
-      \includegraphics[width=8cm]{img/ideal_edf_latency.png}
-      \caption{ a comparison of latency between priority scheduling (left) and EDF (right) }
-    \label{fig:edf-vs-prio}
-\end{figure}
 
 In the end developers care about job latency, so it is important to understand
 how well priorities do at reflecting and enforcing SLAs. On one hand, is
@@ -95,7 +89,9 @@ it\cite{TODO}.
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
 pressure, and to avoid an unfair comaprison with \sys{}'s paging, we set the
-memory to be absurdly high for all three settings in this experiment. 
+memory to be absurdly high for all three settings in this experiment. We also
+turn off the use of the idle list in \sys{}, so as to be en par with Hermod in
+placing load, and revert solely to k-choices.
 
 A strong result for \sys{} would show that its performance is between the two,
 and closer to the EDF side. Especially as load and utillization get high, we
@@ -110,12 +106,20 @@ finish the low priority jobs it does start more quickly.
 
 \subsection{Does \sys{} plan for memory management work?}
 
+\begin{figure}[t!]
+    \centering
+      \includegraphics[width=8cm]{img/memory_graphs.png}
+      \caption{ add caption }
+    \label{fig:memory-graphs}
+\end{figure}
+
 To answer this question, we look at how \sys{} distributes load, and whether the
 amount that \sys{} needs to page memory is realistic. We now run \sys{} in a
 setting of limited memory, and track the memory utilization of different
 machines, as well as how much and what they need to page. A good result would
 show a tigh spread of memory utilization, that machines only start paging once
 memory utilization is high, and that the amount of paging being done is also
-equally spread across machines. Figure~\ref{TODO} shows the results. TODO
+equally spread across machines. Figure~\ref{fig:memory-graphs} shows the
+results.
 
 
