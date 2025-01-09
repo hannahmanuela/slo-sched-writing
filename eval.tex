@@ -6,9 +6,10 @@
 
 In order to understand the case for \sys{}, we ask the following questions: 
 \begin{enumerate}
-    \item Are priorities good at meeting SLAs?
-    \item How well do schedulers with no priority information do at meeting SLAs?
-    \item Is \sys{} good at binpacking?
+    \item How does job latency in \sys{} compare to schedulers without
+    priorities on one hand, and theoreticlaly optimal schedulers with perfect
+    information on the other?
+    \item Does \sys{} plan for managing memory work?
 \end{enumerate}
 
 
@@ -32,7 +33,9 @@ chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
 across priorties. The simulator has n different priority values, each assigned
 to a fictitious price. Because functions are randomly assigned a priority,
 runtime and priority are not correlated.\ \textit{Job memory usage} is chosen
-uniform random between 1MB and 10GB.
+from a bimodel normal distribution, with peaks at 500MB and 5GB. Over their
+lifetime, jobs increase their memory usage from an initial amount (always 100MB)
+to their total usage.
 
 When comparing two different simulated schedulers, they each are given an
 identical workload and then each simulate running that workload.
@@ -40,14 +43,14 @@ identical workload and then each simulate running that workload.
 The simulator makes some simplifying assumptions:
 \begin{enumerate}
     \item functions are compute bound, and do not block for i/o
-    \item functions use all of their memory right away
     \item communication latencies are not simulated
+    \item amount of time it takes to page memory is not simulated
 \end{enumerate}
 
 We simulate running 100 machines with 8 cores each, with 4 scheduler shards and
 a k-choices value of 3 when applicable.
 
-\subsection{Are priorities good at meeting SLAs?}
+\subsection{How do job latencies compare?}
 
 \begin{figure}[t!]
     \centering
@@ -57,79 +60,62 @@ a k-choices value of 3 when applicable.
 \end{figure}
 
 In the end developers care about job latency, so it is important to understand
-how well priorities do at reflecting and enforcing SLAs.
+how well priorities do at reflecting and enforcing SLAs. On one hand, is
+relevant to understand if we need priorities at all: is there a scheduler that
+can, without having any access to information about which jobs are important,
+still ensure that jobs perform well? On the other hand, it is helpful to compare
+\sys{} to an ideal scheduler, in order to contextualize \sys{}'s performance.
 
-In order to define the desired SLA, we assign each job invocation a deadline,
-and to make things simple we allow the deadline to be a function of the job's
-true runtime. Simply setting the deadline to be the runtime is not realistic:
-perhaps for high priority jobs that is the case, but for low priority jobs that
-is not true, the reason they are low priority is because they are willing to
-wait. We thus define the deadline as a function of the runtime as well as the
-priority, where deadline = runtime * maxPrice/price (as if each process were
-weighted by its price). We simulate an Earliest Deadline First (EDF) scheduler,
-which is queuing theoretically proven to be optimal in exactly the way we
-wanted: if it is possible to create a schedule where all jobs meet their
-deadline, EDF will find it\cite{TODO}.
-
-We compare the latencies observed in this EDF simulated scheduler with an
-idealized version of a preemptive priority scheduler, and look at the latencies
-they both get. A good result for \sys{} would show little difference between the
-two: we expect the EDF version to do better, because it is both theoretically
-optimal and has access to perfect information, but if the priority scheduler
-does similarly then we know that it can be a good proxy for deadlines. We can
-see the results in Figure~\ref{fig:edf-vs-prio}. Although in the EDF version the
-latency spikes much less, the bottom graph tells us why: EDF, because it has
-knowledge of jobs' approximate runtime, stops running the longer low priority
-jobs.
-
-\subsection{How well do schedulers without priority info do?}
-
-This question is relevant in order to understand if we need priorities at all:
-is there a scheduler that can, without having any access to information about
-which jobs are important, still ensure that jobs perform well?
-
-To explore this question, we look at how an existing state of the art research
-scheduler that does not take any form of priority into account performs on the
-web server's workload. We simulate Hermod\cite{TODO}, a state-of-the-art
-serverless scheduler built specifically for serverless. Hermod's design is the
-result of a from-first-principles analysis of different scheduling paradigms. In
-accordance with the paper's findings, we simulate least-loaded load balancing
-over machines found using power-of-k-choices, combined with early binding and
-Processor Sharing machine-level scheduling. Hermod does not use priorities in
-its design, and as such the simulator ignores jobs' priority when simulating
-Hermod's design. 
-
-We simulate Hermod and \sys{}, and compare the latencies that each achieves,
-primarily for the page view jobs. A strong result for \sys{} would show that
-latencies for higher priority jobs start going up at a higher load than for
-Hermod, which would indicate that Hermod's scheduling cannot perform as well in
-high load settings on high priority jobs. Figure~\ref{fig:graph} shows the
-results.\hmng{ok but how is this not obvious: we made a new metric and look we
-did better at it than other systems that did not use that metric wow what a
-surprise}
+To explore one side of this question, we look at how an existing state of the
+art research scheduler that does not take any form of priority into account
+performs. We simulate Hermod\cite{TODO}, a state-of-the-art serverless scheduler
+built specifically for serverless. Hermod's design is the result of a
+from-first-principles analysis of different scheduling paradigms. In accordance
+with the paper's findings, we simulate least-loaded load balancing over machines
+found using power-of-k-choices, combined with early binding and Processor
+Sharing machine-level scheduling. Hermod does not use priorities in its design,
+and as such the simulator ignores jobs' priority when simulating Hermod's
+design.
 
 
-\subsection{Is \sys{} good at binpacking?}
+On the other side, we want to simulate an ideal scheduler. Ideal here is with
+respect to meeting jobs' SLAs, which requires defining the desired SLA. In order
+to do this, we assign each job invocation a deadline, and allow the deadline to
+be a function of the job's true runtime. We define the deadline as a function of
+the runtime as well as the priority, as follows: deadline = runtime *
+maxPrice/price (as if each process were weighted by its price). This ensures
+that highest priority jobs' deadlines are simply their runtimes, and deadlines
+get more and more slack with lower priorities. We then simulate an Earliest
+Deadline First (EDF) scheduler over these deadlines, which is queuing
+theoretically proven to be optimal in exactly the way we wanted: if it is
+possible to create a schedule where all jobs meet their deadline, EDF will find
+it\cite{TODO}.
+% https://en.wikipedia.org/wiki/Earliest_deadline_first_scheduling
 
-Now that we have established that priorities are a good metric for meeting SLAs,
-the question becomes whether \sys{}'s design allows it to efficiently realize
-that goal, despite being distributed in nature.
+We compare the latencies observed in both of these settings with those that
+running \sys{} produces. Because Hermod does not talk about dealing with memory
+pressure, and to avoid an unfair comaprison with \sys{}'s paging, we set the
+memory to be absurdly high for all three settings in this experiment. 
 
-To answer this question, we take an idealized version of the scheduling \sys{}
-does, and compare \sys{}'s performance to it. The idealized scheduler runs in a
-centralized setting: it is as if the whole datacenter is one machine with many
-many cores. As such there is no memory fragmentation, and its utilization
-represents an optimal solution.\hmng{this feels slightly silly as an experiment,
-because data points don't give a context to be able to tell how close is good.
-Maybe do an ablation study vibe, where we look at our techniques and see which
-ones help?}
+A strong result for \sys{} would show that its performance is between the two,
+and closer to the EDF side. Especially as load and utillization get high, we
+expect that the differences betweeen the three approaches will become evident.
+Figure~\ref{TODO} shows the results. As expected, \sys{} outperforms Hermod once
+the utilization is above YYY, because Hermod spreads the slowdown across all the
+jobs, whereas \sys{} can be more targeted.~\sys{} performs comparably to EDF,
+until very high load. This is because EDF, because it has knowledge of jobs'
+approximate runtime, stops running the longer low priority jobs, and thus can
+finish the low priority jobs it does start more quickly.
 
-We compare the latencies as well as the memory and compute utilization we
-observe. A good result for \sys{} would show that the two do not differ too
-much\hmng{super ill defined}; we expect utilization to have a higher variance
-for the \sys{} version of the simulator, but a good result would show that we
-are able to reduce the variance and raise the average and tail utilization by
-using idle lists. We can see the results in Figure~\ref{fig:graph}.\hmng{TODO do
-this}
+
+\subsection{Does \sys{} plan for memory management work?}
+
+To answer this question, we look at how \sys{} distributes load, and whether the
+amount that \sys{} needs to page memory is realistic. We now run \sys{} in a
+setting of limited memory, and track the memory utilization of different
+machines, as well as how much and what they need to page. A good result would
+show a tigh spread of memory utilization, that machines only start paging once
+memory utilization is high, and that the amount of paging being done is also
+equally spread across machines. Figure~\ref{TODO} shows the results. TODO
 
 
