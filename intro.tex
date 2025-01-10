@@ -5,121 +5,57 @@
 A world where cloud compute is run in the format of serverless jobs is
 attractive to developers and providers: developers pay only for what they use,
 while having access to many resources when needed; and cloud providers have
-control over scheduling and can use that to drive up utilization.
+control over scheduling and can use that to drive up utilization, rather than
+needing to hold idle resources available for clients who reserved them.
+
+
+However, there also remain some things that make serverless today fundamentally
+infeasible for workloads that in theory are a good fit --- for instance web
+servers, which are often bursty and have inconsistent load, but are rarely run
+completely in lambda functions.\cite{TODO} One of the things that makes running
+a web server on lambda infeasible is lambda invocations' variable end to end
+latencies: in a small benchmark (broken down in Section~\ref{motivation}) we
+found that end to end latencies for a simple hello world lambda function ranged
+from AA to BB.
+
+
+What developers care about in the end is that the jobs that are important run
+quickly. We propose \sys{}, a scheduling system that has
+\textit{\priceclass{}es} as the central metric associated with each job.
+Priority and preemption in the system is directly paid for through these price
+\class{}es, and all of the resource allocation decisions in \sys{} are made on
+the basis of \class{}. 
+
+\Sys{} has multiple goals and challenges that it needs to achieve in order to
+move towards an environment where it is plausible to run web server page views
+entirely as serverless jobs. 
+
+One key goal is that \sys{} needs to be able to support a multi tenant
+environment. This is enabled by the \priceclass{}es being a universal metric.
+Rather than dealing in a relative ordering of developers' functions by
+importance, which would be difficult to compare across developers, the
+connection to money allows the \class{} to have meaning in an absolute as well
+as a relative way. It also incentivizes usage of the lower \class{}es for jobs
+that are less important, which can then be executed much more cheaply.
+
+
+Another important goal is that of placing jobs quickly enough. For example, a
+job that takes 20ms to run cannot spend 100ms in scheduler queues and waiting
+for an execution environment before even starting to run. In a modern
+datacenter, where both the number of new jobs coming in and the amount of
+resources are extremely large, the challenge is knowing where the free and idle
+resources are, or finding out quickly.
+
+
+A key challenge in designing \sys{} is that of managing memory. For compute,
+cores can always be timshared or processes preempted, but the buck stops once a
+machine is out of memory. This problem is made more difficult by the fact that
+\sys{} does not require memory usage limits to be given by developers, in an
+effort to move away from the usual bin packing with overprovisioning problem,
+and towards a more serverless on-demand approach also for memory.~\Sys{} is thus
+faced with the challenging proposition of blindly placing jobs not knowing how
+much memory they will use, but still needing memory utilization to be high.
 
 
 
-This characteristic of only paying for what you use is especially attractive to
-developers of applications where the amount of resources that they need varies
-significantly over time, or is generally small, so that buying their own
-machines or renting a fixed amount (eg EC2) is untenable.
-
-Some back of the envelope math shows that for applications with small load,
-lambda functions can be cheaper: for a low-traffic website, with approx 50K
-requests per day, a memory footprint of < 128 MB, and 200ms of execution,
-running that on AWS lambda adds up to \$1.58 per month. On the other hand, the
-cheapest ec2 instance costs just over \$3 per month. Of course, as the number of
-requests goes up, so does the price for lambda. There are pretty extensive
-simulations that others have done that show the tradeoff points for different
-types of workloads.
-% https://www.bbva.com/en/innovation/economics-of-serverless/ - some nice graphs, pretty nuanced
-% https://www.trek10.com/blog/lambda-cost - some good simple examples and a table
-
-Serverless also works well for workloads that are very bursty: starting a new
-lambda execution environment is much faster than starting a new container or ec2
-instance, which can take multiple minutes.
-% https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-default-instance-warmup.html 
-
-
-
-There are many reasons that developers choose not to use serverless, despite in
-theory having workloads that are well-suited for the serverless environment.
-% https://www.reddit.com/r/aws/comments/yxyyk3/without_saying_its_scalable_please_convince_me/
-Popular complaints include cold start times, provider lock in, and lack of
-insight for debugging and telemetry.
-
-The issue that this paper addresses is that developers struggle with how
-services like AWS lambda require them to express the resources their functions
-will need. 
-% TODO add a link here
-In order to run an AWS lambda function, developers are required to choose for
-each function an amount of memory they will need, which is then tied to a cpu
-power (an amount of vCPUs). This means that the break-even point with ec2 and
-general cost vs performance tradeoffs are heavily dependent on the details of
-the workload, including but not limited to how much memory it will need, how
-long it will run, and whether it is cpu or i/o bound. 
-
-These things are often difficult to know in advance, and more importantly are
-not correlated with what developers actually care about, which is job latency.
-In fact, measurements have found that in some ways the two are inversely
-correlated, ie that lambdas that had more memory allocated took longer to start
-up. 
-% https://www.simplybusiness.co.uk/about-us/tech/2019/03/aws-lambda-cold-start/. 
-This may or may not be outweighed by the speedup from increased vCPUs associated
-with more memory, but also knowing in advance how much your function will speed
-up given different amounts of memory can be difficult.
-
-
-This paper proposes a new interface that centers priorities rather than resource
-requirements. At the heart of what serverless should be is a pay-per-use model,
-where resource requirements don't need to be known ahead of time and are
-expected to change. What is however known, and gets at the latency that
-developers care about, is priority: some jobs are more important than others,
-and some clients care more about running their jobs fast than others. This
-priority is connected to money: the way we express importance in this economy is
-money.\hmng{this is factious, but the whole paragraph feels a little awkard rn}
-We design a scheduler, \sys{}, that enforces priorities on serverless jobs.
-
-
-
-Centering priorities benefits the developer as well as the provider. The
-developer is not required to make estimates that may or may not end up being
-correct, and can just pay for the resources they use. They have access to
-cheaper options if they are willing to wait, and can skip the line and get high
-priority access if they pay for it.
-
-Providers, on the other hand, have a concrete metric that can allow them to
-drive up utilization and profit: they can run the most expensive jobs first, and
-fill utilization gaps with cheaper jobs. 
-
-This also means that there are no clear guarantees when a developer puts a price
-on a function they want to run. In order to mitigate that somewhat and not go
-into bidding wars, we propose exposing a fixed set of price classes. This is
-similar to how AWS has different EC2 instance types, that are directly mapped to
-prices. 
-
-Rather than being a guarantee, the price class is instead a metric to express
-priority to \sys{}, which it can then use to enforce a favoring of high priority
-jobs. It is a small change in the API, that still gives the scheduler the
-information it needs to decide what to schedule when, and aligns the interests
-of the developer with those of the provider more directly, by communicating on
-the level of what the provider and developer actually care about: money, and
-latency (as achieved by priority in the system).
-
-A central challenge in designing \sys{} is that of managing memory. Compute can
-always be divided or preempted, but the buck stops once a machine is out of
-memory. This problem is made more difficult by the fact that \sys{} does not
-require memory usage limits to be given by developers, which would otherwise
-turn memory provisioning into the usual bin packing with overprovisioning
-problem.~\Sys{} is thus faced with the challenging proposition of blindly
-placing jobs not knowing how much memory they will use, but still needing memory
-utilization to be high.
-
-\hmng{alternatively could phrase the last part where we talk about us as centered 
-around getting rid of both type of resource requirements/two different challenges
-to which the answers are priorities and paging: compute we get rid of by replacing 
-with priority, which is arguably simpler and more effective; and memory we get rid 
-of by doing priority-based paging/swapping }
-
-
-% Another challenge is that of placing jobs quickly enough. For example, a job
-% that takes 20ms to run cannot spend 100ms in scheduler queues and waiting for an
-% execution environment before even starting to run. We focus on the aspect of
-% scheduling latency: in a datacenter, where both the number of new jobs coming in
-% and the amount of resources are extremely large, the challenge is knowing where
-% the free and idle resources are, or finding out quickly. For this paper, we
-% assume that that cold start times are small enough that cold starts on the
-% critical path are acceptable.\footnote{Cold start latencies have been reduced
-% significantly --- recent state of the art systems have been able to support
-% latencies in the single digit ms range\cite{TODO}.}
  

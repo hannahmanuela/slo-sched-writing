@@ -95,18 +95,18 @@ $i$'s idle list. These interactions from the dispatcher to free lists are
 represented by the blue arrows in Figure~\ref{fig:overview}.
 
 The dispatcher is also in charge of managing the machine's memory. When memory
-pressure occurs, the dispatcher uses \textit{priority-based paging} to move low
+pressure occurs, the dispatcher uses \textit{priority-based swapping} to move low
 priority processes off the machine's memory. In this scenario, having priority
 scheduling creates the opportunity that enables this to be realistic: because
 the dispatcher knows that the lowest priority jobs will not be run until the
-high priority jobs have all finished, it can page its memory out knowing it will
-not be needed soon. Avoiding a churn of jobs with paged memory that are being
-paged in and out as they are scheduled in and out, requires that the memory of
+high priority jobs have all finished, it can swap its memory out knowing it will
+not be needed soon. Avoiding a churn of jobs with swapped memory that are being
+swapped in and out as they are scheduled in and out, requires that the memory of
 the machine is large against the amount of memory that could be used by as many
 jobs as the machine has cores. This assumption ensures that memory pressure high
-enough to require paging will only occur when there are many more jobs than
-there are cores, and thus that the paged job will not be running soon. The
-dispatcher pages the low priority job back in when the memory pressure is gone
+enough to require swapping will only occur when there are many more jobs than
+there are cores, and thus that the swapped job will not be running soon. The
+dispatcher swaps the low priority job back in when the memory pressure is gone
 and the job will be run.
 
 % \makeatletter

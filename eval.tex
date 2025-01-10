@@ -16,6 +16,13 @@ In order to understand the case for \sys{}, we ask the following questions:
 To explore these questions, we built a simulator in go\cite{TODO}, which
 simulates different scheduling approaches.
 
+\begin{figure*}[t!]
+    \centering
+      \includegraphics[width=16cm]{img/hermod_xx_edf_latencies.png}
+      \caption{ add caption }
+    \label{fig:hermod-xx-edf}
+\end{figure*}
+
 
 \subsection{Experimental Setup}
 
@@ -44,20 +51,13 @@ The simulator makes some simplifying assumptions:
 \begin{enumerate}
     \item functions are compute bound, and do not block for i/o
     \item communication latencies are not simulated
-    \item the amount of time it takes to page memory is not simulated
+    \item the amount of time it takes to swap memory is not simulated
 \end{enumerate}
 
 We simulate running 100 machines, with 8 cores and 32GB RAM each, with 4
 scheduler shards and a k-choices value of 3 when applicable.
 
 \subsection{How do job latencies compare?}
-
-\begin{figure}[t!]
-    \centering
-      \includegraphics[width=8cm]{img/hermod_xx_edf_latency.png}
-      \caption{ add caption }
-    \label{fig:hermod-xx-edf}
-\end{figure}
 
 In the end developers care about job latency, so it is important to understand
 how well priorities do at reflecting and enforcing SLAs. On one hand, is
@@ -94,7 +94,7 @@ it\cite{TODO}.
 
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
-pressure, and to avoid an unfair comaprison with \sys{}'s paging, we set the
+pressure, and to avoid an unfair comaprison with \sys{}'s swapping, we set the
 memory to be absurdly high for all three settings in this experiment. We also
 turn off the use of the idle list in \sys{}, so as to be en par with Hermod in
 placing load, and revert solely to k-choices.
@@ -116,11 +116,11 @@ like the graph
 \end{figure}
 
 To answer this question, we look at how \sys{} distributes load, and whether the
-amount that \sys{} needs to page memory is realistic. We now run \sys{} in a
+amount that \sys{} needs to swap memory is realistic. We now run \sys{} in a
 setting of limited memory, and track the memory utilization of different
-machines, as well as how much and what they need to page. A good result would
-show a tigh spread of memory utilization, that machines only start paging once
-memory utilization is high, and that the amount of paging being done is also
+machines, as well as how much and what they need to swap. A good result would
+show a tigh spread of memory utilization, that machines only start swapping once
+memory utilization is high, and that the amount of swapping being done is also
 equally spread across machines. Figure~\ref{fig:memory-graphs} shows the
 results.
 
