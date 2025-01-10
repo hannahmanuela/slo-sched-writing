@@ -28,20 +28,20 @@ simulates different scheduling approaches.
 
 In each version of the simulator, jobs arrive in an open loop at a constant
 rate. The simulator attaches three main characteristics to each job it
-generates: runtime, priority, and memory usage.\ \textit{Job runtime} is chosen
-by sampling from randomly generated long tailed (in this case pareto)
+generates: runtime, \priceclass{}, and memory usage.\ \textit{Job runtime} is
+chosen by sampling from randomly generated long tailed (in this case pareto)
 distribution: the relative length of the tail ($\alpha$ value) remains constant,
 and the minimum value ($x_m$) is chosen from a normal distribution. This
 reflects the fact that different functions have different expected runtimes
 (chosen from a normal distribution), and that actual job runtimes follow long
 tailed distributions (so each pareto distribution that we sample represents the
-expected runtime distribution of a given function).\ \textit{Job priority} is
+expected runtime distribution of a given function).\ \textit{Job \class{}} is
 chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
-across priorties. The simulator has n different priority values, each assigned
-to a fictitious price. Because functions are randomly assigned a priority,
-runtime and priority are not correlated.\ \textit{Job memory usage} is chosen
-randomly between 100MB and 10GB. Over their lifetime, jobs increase their memory
-usage from an initial amount (always 100MB) to their total usage.
+across priorties. The simulator has n different \priceclass{} values, each
+assigned to a fictitious price. Because functions are randomly assigned a
+\class{}, runtime and \class{} are not correlated.\ \textit{Job memory usage} is
+chosen randomly between 100MB and 10GB. Over their lifetime, jobs increase their
+memory usage from an initial amount (always 100MB) to their total usage.
 % from a bimodel normal distribution, with peaks at 1GB and at 8GB. 
 
 When comparing two different simulated schedulers, they each are given an
@@ -60,8 +60,8 @@ scheduler shards and a k-choices value of 3 when applicable.
 \subsection{How do job latencies compare?}
 
 In the end developers care about job latency, so it is important to understand
-how well priorities do at reflecting and enforcing SLAs. On one hand, is
-relevant to understand if we need priorities at all: is there a scheduler that
+how well \priceclass{}es do at reflecting and enforcing SLAs. On one hand, is
+relevant to understand if we need \class{}es at all: is there a scheduler that
 can, without having any access to information about which jobs are important,
 still ensure that jobs perform well? On the other hand, it is helpful to compare
 \sys{} to an ideal scheduler, in order to contextualize \sys{}'s performance.
@@ -74,7 +74,7 @@ from-first-principles analysis of different scheduling paradigms. In accordance
 with the paper's findings, we simulate least-loaded load balancing over machines
 found using power-of-k-choices, combined with early binding and Processor
 Sharing machine-level scheduling. Hermod does not use priorities in its design,
-and as such the simulator ignores jobs' priority when simulating Hermod's
+and as such the simulator ignores jobs' \class{} when simulating Hermod's
 design.
 
 
@@ -82,10 +82,10 @@ On the other side, we want to simulate an ideal scheduler. Ideal here is with
 respect to meeting jobs' SLAs, which requires defining the desired SLA. In order
 to do this, we assign each job invocation a deadline, and allow the deadline to
 be a function of the job's true runtime. We define the deadline as a function of
-the runtime as well as the priority, as follows: deadline = runtime *
+the runtime as well as the \priceclass{}, as follows: deadline = runtime *
 maxPrice/price (as if each process were weighted by its price). This ensures
-that highest priority jobs' deadlines are simply their runtimes, and deadlines
-get more and more slack with lower priorities. We then simulate an Earliest
+that highest \class{} jobs' deadlines are simply their runtimes, and deadlines
+get more and more slack with lower \class{}es. We then simulate an Earliest
 Deadline First (EDF) scheduler over these deadlines, which is queuing
 theoretically proven to be optimal in exactly the way we wanted: if it is
 possible to create a schedule where all jobs meet their deadline, EDF will find

@@ -9,17 +9,17 @@ Developers using \sys{} write function handlers and define triggers just like
 they would for any existing serverless offering. In addition, they asign each
 function to a price class, this is done at function creation. For instance, a
 simple web server might consist of a home page view that is assigned a higher
-priority and costs 2$\mu\cent$ per cpu second, a user profile page view which is
-assigned a middle-high priority and cost 1.5$\mu\cent$ per cpu second, and
-finally an image processing job that can be set to a low priority which costs
-only 0.5$\mu\cent$ per cpu second.
+\priceclass{} and costs 2$\mu\cent$ per cpu second, a user profile page view
+which is assigned a middle-high \class{} and cost 1.5$\mu\cent$ per cpu second,
+and finally an image processing job that can be set to a low \class{} which
+costs only 0.5$\mu\cent$ per cpu second.
 
-Priorities are inherited across call chains: if a high priority job calls a low
-priority job, that invocation with run with high priority. This is important in
+\Class{}es are inherited across call chains: if a high \class{} job calls a low
+\class{} job, that invocation with run with high \class{}. This is important in
 order to avoid priority inversion.
 
 Developers pay for memory separately, and by use; the price for memory is the
-same across all priorities.
+same across all \class{}es.
 
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.\ \sys{}
@@ -43,8 +43,8 @@ small amounts.
 
 
 
-\Sys{} has as its goal to enforce the priorities attached to jobs, which means
-it needs to prefer higher priority jobs over lower ones, and preempt the latter
+\Sys{} has as its goal to enforce the \class{}es attached to jobs, which means
+it needs to prefer higher \class{} jobs over lower ones, and preempt the latter
 when necessary.
   
 
@@ -52,16 +52,16 @@ As shown in Figure~\ref{fig:overview}, \sys{} sits behind a load balancer, and
 consists of: a \textit{distributed global scheduler}, which places new job
 invocations and has attached an \textit{idle list}, a \textit{dispatcher},
 which runs on each machine and communicates with the global scheduler shards,
-and a \textit{machine scheduler}, which enforces priorities on the machines.
+and a \textit{machine scheduler}, which enforces \class{}es on the machines.
 
 
 \textbf{Machine Scheduler.}
 The machine scheduler is a preemptive priority scheduler: it preempts lower
-priority jobs to run higher priority ones. Being unfair and starving low
-priority jobs is desirable in \sys{}, since image processing jobs should not
+\class{} jobs to run higher \class{} ones. Being unfair and starving low
+\class{} jobs is desirable in \sys{}, since image processing jobs should not
 interrupt a page view request processing, but vice versa is expected. Within
-priority classes the machine scheduler is first come first served. This matches
-Linux' `sched fifo' scheduling.
+\class{}es the machine scheduler is first come first served. This matches Linux'
+`sched fifo' scheduling.
 % https://man7.org/linux/man-pages/man7/sched.7.html
 
 
@@ -78,7 +78,7 @@ quantile of the datacenter, but not at the absolute bottom --- it will not find
 one of the handful of machines that are actually idle. Having an idle list
 allows these machines, which are expected to be rare in a high-utilization
 setting, to make themselves visible to the global scheduler. The idle list also
-allows the global scheduler to place high priority processes quickly, without
+allows the global scheduler to place high \class{} processes quickly, without
 incurring the latency overheads of doing the polling to find available
 resources.
 
@@ -95,18 +95,18 @@ $i$'s idle list. These interactions from the dispatcher to free lists are
 represented by the blue arrows in Figure~\ref{fig:overview}.
 
 The dispatcher is also in charge of managing the machine's memory. When memory
-pressure occurs, the dispatcher uses \textit{priority-based swapping} to move low
-priority processes off the machine's memory. In this scenario, having priority
+pressure occurs, the dispatcher uses \textit{\class{}-based swapping} to move low
+\class{} processes off the machine's memory. In this scenario, having priority
 scheduling creates the opportunity that enables this to be realistic: because
-the dispatcher knows that the lowest priority jobs will not be run until the
-high priority jobs have all finished, it can swap its memory out knowing it will
+the dispatcher knows that the lowest \class{} jobs will not be run until the
+high \class{} jobs have all finished, it can swap its memory out knowing it will
 not be needed soon. Avoiding a churn of jobs with swapped memory that are being
 swapped in and out as they are scheduled in and out, requires that the memory of
 the machine is large against the amount of memory that could be used by as many
 jobs as the machine has cores. This assumption ensures that memory pressure high
 enough to require swapping will only occur when there are many more jobs than
 there are cores, and thus that the swapped job will not be running soon. The
-dispatcher swaps the low priority job back in when the memory pressure is gone
+dispatcher swaps the low \class{} job back in when the memory pressure is gone
 and the job will be run.
 
 % \makeatletter
@@ -131,11 +131,11 @@ and the job will be run.
 \textbf{Global Scheduler Shards.}
 
 Global scheduler shards store the jobs waiting to be placed in a multi queue,
-with one queue per priority. Shards choose what job to place next by looking at
-each job at the head of each queue, and comparing the ratio of priority to
-amount of time spent in the queue. This ensures that high priority jobs don't
-have to wait as long as lower priority jobs to be chosen next, but low priority
-jobs will get placed if they have waited for a while.
+with one queue per \priceclass{}. Shards choose what job to place next by
+looking at each job at the head of each queue, and comparing the ratio of
+\class{} to amount of time spent in the queue. This ensures that high \class{}
+jobs don't have to wait as long as lower \class{} jobs to be chosen next, but
+low \class{} jobs will get placed if they have waited for a while.
 
 When placing the chosen job, the shard will first look in its idle list. If the
 list is not empty, it will choose the machine with the smallest queue length.
@@ -144,5 +144,5 @@ If there are no machines in the idle list, the shard switches over to
 power-of-k-choices: it polls k machines, getting the amount of jobs running from
 each. The shard then places the new job on the machine with the smallest number
 of currently running jobs. It is desirable to have a maximally heterogenous set
-of priorities on each machine, but since jobs come in randomly the global
+of \class{}es on each machine, but since jobs come in randomly the global
 scheduler does not explicitly have to enforce this.
