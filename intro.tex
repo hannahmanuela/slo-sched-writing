@@ -9,26 +9,47 @@ control over scheduling and can use that to drive up utilization, rather than
 needing to hold idle resources available for clients who reserved them.
 
 
-However, there also remain some things that make serverless today fundamentally
+However, there remain realities that make serverless today fundamentally
 infeasible for workloads that in theory are a good fit --- for instance web
 servers, which are often bursty and have inconsistent load, but are rarely run
-completely in lambda functions.\cite{TODO} One of the things that makes running
-a web server on lambda infeasible is lambda invocations' variable end to end
-latencies: in a small benchmark (broken down in Section~\ref{motivation}) we
-found that end to end latencies for a simple hello world lambda function ranged
-from AA to BB.
+completely in serverless offerings, such as AWS Lambda~\cite{TODO}. One of the
+things that makes running a web server on lambda infeasible is lambda
+invocations' variable end to end latencies: in a small benchmark (broken down in
+Section~\ref{motivation}) we found that total execution time latencies for a
+simple hello world function that sleeps for 20 ms ranged from 20 to 400ms.
 
+An obvious and well-known problem that causes these high and variable latencies
+is that of cold starts. However, this paper takes the position that we are well
+underway to reaching low single digit ms cold start times, with current
+state-of-the-art research systems pushing into single digit
+territory~\cite{TODO}. Which begs the question: if cold start is fast enought
+that more latency sensitive applications, like web servers, can have a cold
+start on the critical path, are we then done? Will serverless then be, at least
+from an infrastructure perspective, ready to support these sorts of workloads?
+
+No, there still remains a fundamental obstacle to running such a latency
+sensitive workload on serverless: queueing and delay within the system. In the
+world of long running servers this is avoided by latency critical services
+having reservations, but reserving resources in serverless doesn't work. 
+
+% In a serverless setting as they exist today, running at high utilization
+% almost necessarily will mean there is queueing; in fact in
+% Section~\ref{motivation} we show that is already the case in AWS lambda.
 
 What developers care about in the end is that the jobs that are important run
-quickly. We propose \sys{}, a scheduling system that has
+quickly. The problem we address is that in a world where cold starts are fast
+and more latency sensitive work is running alongside map reduce and image
+processing jobs, important jobs might end up behind unimportant ones, waiting to
+be placed on machines and to get access to resources once placed. To address
+this problem, we propose \sys{}, a scheduling system that has
 \textit{\priceclass{}es} as the central metric associated with each job.
-Priority and preemption in the system is directly paid for through these price
-\class{}es, and all of the resource allocation decisions in \sys{} are made on
-the basis of \class{}. 
+Priority in the system is directly paid for through \priceclass{}es, and all of
+the resource allocation decisions in \sys{} are made on the basis of
+\priceclass{}.
 
-\Sys{} has multiple goals and challenges that it needs to achieve in order to
-move towards an environment where it is plausible to run web server page views
-entirely as serverless jobs. 
+\Sys{} has multiple goals it needs to achieve and challenges it needs to solve
+in order to move towards an environment where it is plausible to run web server
+page views entirely as serverless jobs.
 
 One key goal is that \sys{} needs to be able to support a multi tenant
 environment. This is enabled by the \priceclass{}es being a universal metric.
@@ -36,25 +57,27 @@ Rather than dealing in a relative ordering of developers' functions by
 importance, which would be difficult to compare across developers, the
 connection to money allows the \class{} to have meaning in an absolute as well
 as a relative way. It also incentivizes usage of the lower \class{}es for jobs
-that are less important, which can then be executed much more cheaply.
+that are less important, since they can be executed much more cheaply.
 
 
 Another important goal is that of placing jobs quickly enough. For example, a
-job that takes 20ms to run cannot spend 100ms in scheduler queues and waiting
-for an execution environment before even starting to run. In a modern
-datacenter, where both the number of new jobs coming in and the amount of
-resources are extremely large, the challenge is knowing where the free and idle
-resources are, or finding out quickly.
+job that takes 20ms to run cannot spend 50ms in scheduler queues and waiting for
+an execution environment before even starting to run. Even short cold starts
+will take up a significant portion of the time a job can handle waiting to run,
+so the challenge is knowing where the free and idle resources are, or finding
+out quickly, in a setting where both the number of new jobs coming in and the
+amount of resources are extremely large.
 
 
-A key challenge in designing \sys{} is that of managing memory. For compute,
-cores can always be timshared or processes preempted, but the buck stops once a
-machine is out of memory. This problem is made more difficult by the fact that
-\sys{} does not require memory usage limits to be given by developers, in an
-effort to move away from the usual bin packing with overprovisioning problem,
-and towards a more serverless on-demand approach also for memory.~\Sys{} is thus
-faced with the challenging proposition of blindly placing jobs not knowing how
-much memory they will use, but still needing memory utilization to be high.
+Finally, a key challenge in designing \sys{} is that of managing memory. For
+compute, cores can always be timshared or processes preempted, but the buck
+stops once a machine is out of memory. This challenge is made more difficult by
+the fact that \sys{} does not require developers to give memory usage limits for
+their jobs. This serves the purpose of extending the serverless on-demand
+structure to include memory, and moves away from the usual bin packing with
+overprovisioning problem.~\Sys{} is thus faced with the challenging proposition
+of blindly placing jobs not knowing how much memory they will use, but still
+needing memory utilization to be high.
 
 
 

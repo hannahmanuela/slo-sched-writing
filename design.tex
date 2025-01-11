@@ -1,6 +1,28 @@
 \section{Design}\label{design}
 
 
+\subsection{Approach}
+
+Our approach is centered around \priceclass{}es. \Priceclass{}es are a metric
+that has a number of benefits over resource reservations as an interface:
+developers are more likely to have a good sense of it ahead of time, it is less
+likely to be different across different invocations, it still gives the
+scheduler the information it needs to decide what to schedule when, and finally
+it more directly aligns the interests of the developer with those of the
+provider by communicating on the level of what the provider and developer
+actually care about: money, and latency (as achieved by \class{}es in the
+system).
+
+
+However, having \priceclass{}es also means that there are no clear guarantees
+about what they are getting when a developer puts a price on a function they
+want to run. In order to mitigate that somewhat and not go into bidding wars, we
+propose exposing a fixed set of price classes. This is similar to how AWS has
+different EC2 instance types, that are directly mapped to prices. Rather than
+being a guarantee, the price class is instead a metric to express priority to
+\sys{}, which it can then use to enforce a favoring of high class jobs.
+
+
 
 \subsection{Interface}
 
