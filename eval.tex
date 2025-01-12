@@ -67,9 +67,9 @@ In the end developers care about function latency, so it is important to
 understand how well \priceclass{}es do at reflecting and enforcing SLAs. On one
 hand, is relevant to understand if we need \class{}es at all: is there a
 scheduler that can, without having any access to information about which
-functions are important, still ensure that functions perform well? On the other
-hand, it is helpful to compare \sys{} to an ideal scheduler, in order to
-contextualize \sys{}'s performance.
+functions are latency sensitive, still ensure that functions perform well? On
+the other hand, it is helpful to compare \sys{} to an ideal scheduler, in order
+to contextualize \sys{}'s performance.
 
 To explore one side of this question, we look at the performance of an existing
 scheduler that does not take priority into account. We simulate
