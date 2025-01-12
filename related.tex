@@ -1,39 +1,32 @@
 \section{Related Work}
 
-Many other projects have explored how to do better serverless scheduling.
+Many other projects have explored how to do better scheduling for data centers.
  
 Systems like Sparrow\cite{sparrow}, Hermod\cite{hermod}, or Kairos\cite{kairos}
 improve performance of scheduling in the distributed setting by trying out and
-using different scheduling policies. Unlike \sys{}, they treat all jobs equally.
+using different scheduling policies. Unlike \sys{}, they treat all functions
+equally.
 
-% Other projects do just that: generate better scheduling decisions by getting
-% access to more information about the workload. There are two different ways of
-% going about this: learn the behaviors, or ask developers to specify. 
+Some approaches are directly tailored for serverless.
 
-Other approaches generate information about jobs that are coming in to help
-placement decisions; for instance ALPS\cite{alps}, which observes and learns the
-behaviors of existing functions and then makes scheduling decisions based on
-those; or Morpheus\cite{morpheus}, which learns SLOs from historical runs, and
-then translates these to recurring reservations.~\Sys{} instead gets the
-\class{}es directly from the developers as part of its interface.
+Some systems generate information about functions themselves to help placement
+decisions; for instance ALPS\cite{alps}, which observes and learns the behaviors
+of existing functions and then makes scheduling decisions based on those; or
+Morpheus\cite{morpheus}, which learns SLOs from historical runs, and then
+translates these to recurring reservations.~\Sys{} instead gets the \class{}es
+directly from the developers as part of its interface.
 
 
 Other papers have taken the same approach as \sys{} of getting information to
 help scheduling from the developers. Sequoia\cite{sequoia}, for instance,
 creates a metric of QOS for serverless functions. Unlike \sys{} however, Sequoia
-does not implement a new scheduler, but builds a layer in front of AWS lambda. 
+does not implement a new scheduler, but is itself a serverless function that
+manages the invocation sequence of developer's function chains by interposing on
+the triggers and choosing what to invoke when. Therefore it also, unlike
+\sys{}, does not support multi-tenancy.
 
-Another project\cite{app-paper} creates a language of Allocation Priority Policies
-(APP), which is a declarative language to express policies, then builds a
-scheduler around that. Unlike \sys{}, the APP language is built around making
-load balancing decisions and ultimately defines a mapping of jobs to workers,
-rather than associating priorities with the jobs and having the scheduler do the
-scheduling automatically.
-
-AWS lambda itself also goes this route, by offering two different ways for
-developers to influence lambda function scaling: provisioned and reserved
-concurrency\cite{aws-scaling}. Provisioned concurrency specifies a number of
-instances to keep warm, and reserved concurrency does the same but ensures that
-those warm instances are kept for a specific function. However, these knobs are
-more centered around mitigating the effects of cold start rather than actually
-affecting the way the jobs are scheduled.
+Another project\cite{app-paper} creates a language of Allocation Priority
+Policies (APP), which is a declarative language to express policies, then builds
+a scheduler around that. The APP language is built around allowing developers to
+specify custom load balancing decisions, and the scheduler uses the developers'
+specification to define a mapping of function invocations to workers. 

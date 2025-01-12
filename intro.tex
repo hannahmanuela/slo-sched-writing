@@ -2,82 +2,83 @@
 \section{Introduction}
 %-------------------------------------------------------------------------------
 
-A world where cloud compute is run in the format of serverless jobs is
+A world where cloud compute is run in the format of serverless functions is
 attractive to developers and providers: developers pay only for what they use,
 while having access to many resources when needed; and cloud providers have
 control over scheduling and can use that to drive up utilization, rather than
 needing to hold idle resources available for clients who reserved them.
 
 
-However, there remain realities that make serverless today fundamentally
-infeasible for workloads that in theory are a good fit --- for instance web
-servers, which are often bursty and have inconsistent load, but are rarely run
-completely in serverless offerings~\cite{reddit-serverless1}, such as AWS lambda.
-One of the things that makes running a web server on lambda infeasible is lambda
-invocations' variable end to end latencies: in a small benchmark (broken down in
+However, there remain roadblocks that make serverless today infeasible for
+workloads that are a good fit. For instance web servers, which often have
+inconsistent and bursty load, but are rarely run completely in serverless
+offerings~\cite{reddit-serverless1}, such as AWS lambda. One of the challenges
+that makes running a web server on lambda infeasible is lambda invocations'
+variable end to end latencies: in a small benchmark (described in
 Section~\ref{motivation}) we found that total execution time latencies for a
-simple hello world function that sleeps for 20 ms ranged from 20 to 400ms.
+simple hello world function that sleeps for 20 ms ranged from 20 to 400ms;
+whereas an acceptable latency may be anything below 100ms~\cite{page-load-time}.
+This is a problem because it has been shown that small response time differences
+can matter a lot in interactive
+applications~\cite{amz-page-load,google-page-load}.
 
-An obvious and well-known problem that causes these high and variable latencies
-is that of cold starts. However, this paper takes the position that we are well
-underway to reaching low single digit ms cold start times, with current
-state-of-the-art research systems pushing into single digit
-territory~\cite{sigmaos,mitosis}. Which begs the question: if cold start is fast enought
-that more latency sensitive applications, like web servers, can have a cold
-start on the critical path, are we then done? Will serverless then be, at least
-from an infrastructure perspective, ready to support these sorts of workloads?
 
-This paper argues that no, there still remains a fundamental obstacle to running
+A well-known cause of these variable latencies is cold starts. However, this
+paper takes the position that systems research is well underway to reaching low
+single digit ms cold start times, with current state-of-the-art research systems
+pushing into single digit territory~\cite{sigmaos,mitosis}. Which begs the
+question: if cold start is fast enought that more latency sensitive
+applications, like web servers, can have a cold start on the critical path, are
+we then done? Will serverless then be, at least from an infrastructure
+perspective, ready to support these sorts of workloads?
+
+This paper argues that no, there still remains a serious challenge to running
 such a latency sensitive workload on serverless: queueing and delay within the
-system. We cannot expect that the load will always fit in the resources
-providers have, and so some work has to be queued or otherwise degraded. In the
-world of long running servers, developers avoid degradation of access to
-resources by giving latency critical services reservations; but reserving
-resources in serverless doesn't work. 
+system. Load will not always fit in the resources providers have, and so some
+work has to be queued or otherwise degraded. In the world of long running
+servers, developers avoid degradation of access to resources by giving latency
+critical services reservations; but reserving servers is incompatible with the
+serverless approach. 
 
-% In a serverless setting as they exist today, running at high utilization
-% almost necessarily will mean there is queueing; in fact in
-% Section~\ref{motivation} we show that is already the case in AWS lambda.
 
-What developers care about in the end is that the jobs that are important run
-quickly. The problem we address is that, in a world where cold starts are fast
-and latency sensitive work is able running alongside map reduce and image
-processing jobs, important jobs might end up behind unimportant ones, waiting to
-be placed on machines and to get access to resources once placed. To address
-this problem, we propose \sys{}, a scheduling system that has
-\textit{\priceclass{}es} as the central metric associated with each job.
+What developers care about in the end is that the functions that are latency
+sensitive run quickly. The challenge this paper addresses is that, in a world
+where cold starts are fast and latency sensitive work is able running alongside
+map reduce and image processing functions, latency sensitive functions might end
+up behind background ones, waiting to be placed on machines and to get access to
+resources once placed. To address this problem, this paper proposes \sys{}, a
+scheduling system that associates a \textit{\priceclass{}es} with each function.
 Priority in the system is directly paid for through \priceclass{}es, and all of
 the resource allocation decisions in \sys{} are made on the basis of
 \priceclass{}.
 
 \Sys{} has multiple goals it needs to achieve and challenges it needs to
-address.
-
-One key goal is that \sys{} needs to be able to support a multi tenant
-environment. This is enabled by the \priceclass{}es being a universal metric.
-Rather than dealing in a relative ordering of developers' functions by
-importance, which would be difficult to compare across developers, the
-connection to money allows the \class{} to have meaning in an absolute as well
-as a relative way. It also incentivizes usage of the lower \class{}es for jobs
-that are less important, since they can be executed much more cheaply.
+address. One goal is that \sys{} needs to be able to support a multi tenant
+environment. \Priceclass{}es achieve this: rather than dealing in a relative
+ordering of developers' functions by importance, which would be difficult to
+compare across developers, the connection to money allows the \class{} to have
+meaning in an absolute as well as a relative way. It also incentivizes usage of
+the lower \class{}es for functions that are less important, since they can be
+executed more cheaply.
 
 
-Another important goal is that of placing jobs quickly enough. For example, a
-job that takes 20ms to run cannot spend 50ms in scheduler queues and waiting for
-an execution environment before even starting to run. Even when they're short,
-cold starts will take up a significant portion of the time a job can handle
-waiting to run. So the challenge is knowing where the free and idle resources
-are, or finding out quickly, in a setting where both the number of new jobs
-coming in and the amount of resources are extremely large.
+Another important goal is that of placing functions quickly enough. For example,
+a function that takes 20ms to run cannot spend 50ms in scheduler queues and
+waiting for an execution environment before even starting to run. The challenge
+is knowing where the free and idle resources are, or finding out quickly, in a
+setting where both the number of new functions coming in and the amount of
+resources are extremely large.
 
 
 Finally, a key challenge in designing \sys{} is that of managing memory. For
 compute, cores can always be timshared or processes preempted, but the buck
-stops once a machine is out of memory. This challenge is made more difficult by
-the fact that \sys{} does not require developers to give memory usage limits for
-their jobs. This serves the purpose of extending the serverless on-demand
-structure to include memory, and moves away from the usual bin packing with
-overprovisioning problem.~\Sys{} is thus faced with the challenging proposition
-of blindly placing jobs not knowing how much memory they will use, but still
-needing memory utilization to be high.
+stops once a machine is out of memory. Current systems address this challenge by
+requiring developers to express a maximal amount of memory they will use, and
+charging based on that. However, memory usage is at best difficult to know in
+advance and at worst has a large variance so is impossible to say in advance,
+and more importantly is not correlated with what developers actually care about,
+which is function latency. Instead, \sys{} charges developers based on the
+amount of memory actually used.~\Sys{} is thus faced with the challenging
+proposition of blindly placing functions not knowing how much memory they will
+use, but still needing memory utilization to be high.
  

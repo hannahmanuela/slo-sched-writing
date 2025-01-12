@@ -1,0 +1,28 @@
+%-------------------------------------------------------------------------------
+\section{Conclusion}
+%-------------------------------------------------------------------------------
+
+
+Serverless was and is a great option for developers whose load varies and
+providers who don't want to keep resources idle for processes that reserved
+them and might need them soon. However, the reality of serverless today does
+not match up in many different ways; most notably it has a variance in
+latencies that jobs experience that is not tolerable for latency sensitive
+workloads. The common approach to this is to work on cold starts. 
+
+This paper asks what comes next; once cold starts in the single digit ms
+range, which we are starting to see in research schedulers, are commercially
+available, have we figured out a system that can run serverless in its ideal
+form?
+
+We show that this is not the case, and that once more latency senstive jobs
+are able to run alongside the usual map reduce and image resize jobs, we
+will need some way of prioritising which jobs are important in order to keep
+their overall latencies acceptable.
+
+We propose a new scheduler, \sys{}, that introduces \emph{\priceclass{}es}.
+Developers assign each job they want to run to a \priceclass{}, which is a
+priority that \sys{} then enforces at invocation, both in placing the job
+and on the machine level by running priority scheduling. We show that \sys{}
+is able to enforce priorities and keep high \class{} jobs latencies stable
+even under high load.

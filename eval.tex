@@ -4,9 +4,10 @@
 
 
 
-In order to understand the case for \sys{}, we ask the following questions: 
+In order to explore the evidence for the case for \sys{}, we ask the following
+questions: 
 \begin{enumerate}
-    \item How does job latency in \sys{} compare to schedulers without
+    \item How does function latency in \sys{} compare to schedulers without
     priorities on one hand, and theoretically optimal schedulers with perfect
     information on the other?
     \item Does \sys{}'s plan for managing memory work?
@@ -14,7 +15,9 @@ In order to understand the case for \sys{}, we ask the following questions:
 
 
 To explore these questions, we built a simulator in go\cite{golang}, which
-simulates different scheduling approaches.
+simulates different scheduling approaches. This allows us to extend the
+epxeriments to include many more machines than would otherwise be available to
+us.
 
 \begin{figure*}[t!]
     \centering
@@ -27,23 +30,23 @@ simulates different scheduling approaches.
 
 \subsection{Experimental Setup}
 
-In each version of the simulator, jobs arrive in an open loop at a constant
-rate. The simulator attaches three main characteristics to each job it
-generates: runtime, \priceclass{}, and memory usage.\ \textit{Job runtime} is
-chosen by sampling from randomly generated long tailed (in this case pareto)
+In each version of the simulator, functions arrive in an open loop at a constant
+rate. The simulator attaches three main characteristics to each function it
+generates: runtime, \priceclass{}, and memory usage.\ \textit{Function runtime}
+is chosen by sampling from randomly generated long tailed (in this case pareto)
 distribution: the relative length of the tail ($\alpha$ value) remains constant,
 and the minimum value ($x_m$) is chosen from a normal distribution. This
 reflects the fact that different functions have different expected runtimes
-(chosen from a normal distribution), and that actual job runtimes follow long
-tailed distributions (so each pareto distribution that we sample represents the
-expected runtime distribution of a given function).\ \textit{Job \class{}} is
-chosen randomly, but weighted: the simulator uses a vaguely bimodal weighting
-across priorties. The simulator has n different \priceclass{} values, each
-assigned to a fictitious price. Because functions are randomly assigned a
-\class{}, runtime and \class{} are not correlated.\ \textit{Job memory usage} is
-chosen randomly between 100MB and 10GB. Over their lifetime, jobs increase their
-memory usage from an initial amount (always 100MB) to their total usage.
-% from a bimodel normal distribution, with peaks at 1GB and at 8GB. 
+(chosen from a normal distribution), and that actual function runtimes follow
+long tailed distributions (so each pareto distribution that we sample represents
+the expected runtime distribution of a given function).\ \textit{Function
+\class{}} is chosen randomly, but weighted: the simulator uses a vaguely bimodal
+weighting across priorties. The simulator has $n$ different \priceclass{} values,
+each assigned to a fictitious price. Because functions are randomly assigned a
+\class{}, runtime and \class{} are not correlated.\ \textit{Function memory
+usage} is chosen randomly between 100MB and 10GB. Over their lifetime, functions
+increase their memory usage from an initial amount (always 100MB) to their total
+usage.
 
 When comparing two different simulated schedulers, they each are given an
 identical workload and then each simulate running that workload.
@@ -58,54 +61,55 @@ The simulator makes some simplifying assumptions:
 We simulate running 100 machines with 8 cores each, 4 scheduler shards, and a
 k-choices value of 3 when applicable.
 
-\subsection{How do job latencies compare?}
+\subsection{How do function latencies compare?}
 
-In the end developers care about job latency, so it is important to understand
-how well \priceclass{}es do at reflecting and enforcing SLAs. On one hand, is
-relevant to understand if we need \class{}es at all: is there a scheduler that
-can, without having any access to information about which jobs are important,
-still ensure that jobs perform well? On the other hand, it is helpful to compare
-\sys{} to an ideal scheduler, in order to contextualize \sys{}'s performance.
+In the end developers care about function latency, so it is important to
+understand how well \priceclass{}es do at reflecting and enforcing SLAs. On one
+hand, is relevant to understand if we need \class{}es at all: is there a
+scheduler that can, without having any access to information about which
+functions are important, still ensure that functions perform well? On the other
+hand, it is helpful to compare \sys{} to an ideal scheduler, in order to
+contextualize \sys{}'s performance.
 
 To explore one side of this question, we look at the performance of an existing
-scheduler that does not take any form of priority into account. We simulate
+scheduler that does not take priority into account. We simulate
 Hermod\cite{hermod}, a state-of-the-art research scheduler built specifically
 for serverless. Hermod's design is the result of a from-first-principles
 analysis of different scheduling paradigms. In accordance with the paper's
 findings, we simulate least-loaded load balancing over machines found using
 power-of-k-choices, combined with early binding and Processor Sharing
 machine-level scheduling. Hermod does not use priorities in its design, and as
-such the simulator ignores jobs' \class{} when simulating Hermod's design.
+such the simulator ignores functions' \class{} when simulating Hermod's design.
 
 
 On the other side, we want to simulate an ideal scheduler. Ideal here is with
-respect to meeting jobs' SLAs, which requires defining the desired SLA. In order
-to do this, we assign each job invocation a deadline, and allow the deadline to
-be a function of the job's true runtime. We define the deadline as a function of
-the runtime as well as the \priceclass{}, as follows: deadline = runtime *
-maxPrice/price. This ensures that the highest \class{}es jobs' deadlines are
-simply their runtimes, and deadlines get more and more slack with lower
-\class{}es. We then simulate an Earliest Deadline First (EDF) scheduler over
-these deadlines, which is queuing theoretically proven to be optimal in exactly
-the way we wanted: if it is possible to create a schedule where all jobs meet
-their deadline, EDF will find it\cite{wiki-edf}. We run EDF in a centralized
-setting (it schedules one machine with 800 cores, not 100 machines with 8 each),
-in order to avoid complicated placement decisions based on deadline schedules.
+respect to meeting functions' SLAs, which requires defining the desired SLA. In
+order to do this, we assign each function invocation a deadline, and allow the
+deadline to be a function of the function's true runtime. We define the deadline
+as a function of the runtime as well as the \priceclass{}, as follows: deadline
+= runtime * maxPrice/price. This ensures that the highest \class{}es functions'
+deadlines are simply their runtimes, and deadlines get more and more slack with
+lower \class{}es. We then simulate an Earliest Deadline First (EDF) scheduler
+over these deadlines, which is queuing theoretically proven to be optimal in
+exactly the way we wanted: if it is possible to create a schedule where all
+functions meet their deadline, EDF will find it\cite{wiki-edf}. We run EDF in a
+centralized setting: it schedules one machine with 800 cores, not 100 machines
+with 8 each.
 
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
 pressure, and to avoid an unfair comaprison with \sys{}'s swapping, we set the
 memory to be absurdly high for all three settings in this experiment. We also
-turn off the use of the idle list in \sys{}, so as to be en par with Hermod in
+turn off the use of the idle list in \sys{}, so as to be on par with Hermod in
 placing load, and revert solely to k-choices.
 
 A strong result for \sys{} would show that its performance is between the two,
 and closer to the EDF side. Especially as load and utillization get high, we
 expect that the differences betweeen the three approaches will become evident.
 Figure~\ref{fig:hermod-xx-edf} shows the results. We can see that \sys{} and EDF
-are able to retain performance for the high \class{} jobs even under higher
+are able to retain performance for the high \class{} functions even under higher
 load. EDF's superior performance on the far right side of the graph for the low
-\class{} jobs is becuase EDF only runs those jobs with short runtimes; the
+\class{} functions is because EDF runs only functions with short runtimes; the
 others never finish and so don't show up on this graph. EDF's utilization is
 also much tighter, because of the centralised setting it runs in (so the spread
 of the utilization comes from being different at different points in time, not
@@ -128,8 +132,10 @@ utilization of different machines, as well as how much and what they need to
 swap. A good result would show a tigh spread of memory utilization, that
 machines only start swapping once memory utilization is high, and that the
 amount of swapping being done is also equally spread across machines.
-Figure~\ref{fig:memory-graphs} shows the results. We can see we only swap lower
-\class{} jobs' memory, and that the amount of memory swapped is faily evenly
-distributed between all the machines.
+Figure~\ref{fig:memory-graphs} shows the results. We can see \sys{} swaps only
+lower \class{} functions' memory, and that the amount of memory swapped is faily
+evenly distributed between all the machines. We can also conclude that with a
+500GB ssd, providers would comfortably be able to avoid killing, which would
+cost $\sim\$$30 per machine.
 
 
