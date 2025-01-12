@@ -3,35 +3,50 @@
 %-------------------------------------------------------------------------------
 
 
-We have seen that having \priceclass{}es helps \sys{} deal with overprovisioning
-for compute. Traditionally, managing the response time for important jobs
-requires the overall load on the system to be low, because slowdown is averaged
-across all the jobs that can share resources. However, having \class{}es allows
-\sys{} to be targeted about how compute resources are shared: rather than
-averaging out the slowdown caused by overprovisioning across all the jobs by
-having them time share the cores, \sys{} can use \class{} to decide which job
-has to wait. This means that in priority scheduling the amount of time a job
-spends waiting for resources is only defined by the load of jobs with equal or
-higher \class{}.
-
-The flipside of this is that it is possible that the entire load of the
-datacenter will be such that low \class{} jobs are starved. This is acceptable
-and in fact desirable for small amounts of time, but keeping this effect in
-check requires managing the overall load. 
-
-We propose to solve this problem by ensuring that it can never be the case the
-there is so much load on high \class{} jobs that the data center will be full
-with them to such a degree that other jobs can't run. There is evidence for and
-we expect that load on a high level will mostly be stable, with diurnal and
-annual patterns~\cite{econ-of-serverless}.
-
-This means that providers can mostly choose the rough breakdown of the load they
-will have at any given time (ie they can choose a percentage of how many jobs
-they want in each \class{}, and change it by adjusting prices or not allowing
-users to select that level anymore). 
+There remain many interesting open questions in fully fleshing out this problem
+and design. We discuss some of the questions that we expect will guide our
+future research on this project; the first two are somewhat concrete technical
+questions and the last one is more of a philosophical musing about the chosen
+interface.
 
 
+\textbf{Is swapping the right thing to be doing?}
+In our design we use swapping, which works because of the assumption we make
+about memory being large enough to for sure hold the memory of all the processes
+that could fit on the cores. This assumption is likely true for the active
+working sets of most jobs, but potentially not for their whole memory. If we
+lift the assumption, then we are left with a potentially very undesirable
+situation where less jobs than there are cores fit in the memory, and so they
+are constantly being swapped in and out as the idle core wants to run the job
+that was swapped out, and swaps out a job actually running somewhere else.
 
-% other things we could talk about:
-% i/o?
-% 
+In order to avoid this situation, paging, or a combination of swapping and
+paging, might be better. Some of the challenges in answering this question are
+choosing what memory to page, and deciding how billing works for jobs who were
+forced to page some of their memory. 
+
+\textbf{Can we bound the amount of memory we need to swap/page?}
+Given some swapping and/or paging scheme, there is a fundamental question of
+whether we can bound the amount of memory that would need to be swapped/paged on
+any machine. This is especially tricky in combination with the fact that we do
+not have any sense of how much memory each job will use. One potential
+assumption that would help here is to bound the maximum amount of memory that
+any job can use; the bound could be very high, but doing so would allow us to
+use queue length to also bound the amount of memory that the machine will need
+to have (in both RAM and swapspace).
+
+
+\textbf{How do developers know they not are getting cheated?}
+
+In our scheme based on \priceclass{}es, there are no outwardly visible
+guarantees in the same way that there are for resources (where running a short
+benchmark will show exactly the amount of resources you have access to). There
+are however many other ways that we already trust cloud providers without much
+proof that we can verify ourselves, including that fundamentally providers could
+always simply deny service and stop running anything. Of course providers have
+market-based incentive to not provide lesser quality services for the same
+price, and certainly a coordinated effort would quickly be able to reveal if
+priority inversions were in fact going on.
+
+
+
