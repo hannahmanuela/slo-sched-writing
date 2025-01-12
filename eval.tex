@@ -19,7 +19,8 @@ simulates different scheduling approaches.
 \begin{figure*}[t!]
     \centering
       \includegraphics[width=16cm]{img/hermod_xx_edf_latencies.png}
-      \caption{ add caption }
+      \caption{ tail latency distribution and compute utilization across
+      different loads, for Hermod, \sys{}, and EDF respectively }
     \label{fig:hermod-xx-edf}
 \end{figure*}
 
@@ -87,7 +88,9 @@ simply their runtimes, and deadlines get more and more slack with lower
 \class{}es. We then simulate an Earliest Deadline First (EDF) scheduler over
 these deadlines, which is queuing theoretically proven to be optimal in exactly
 the way we wanted: if it is possible to create a schedule where all jobs meet
-their deadline, EDF will find it\cite{wiki-edf}.
+their deadline, EDF will find it\cite{wiki-edf}. We run EDF in a centralized
+setting (it schedules one machine with 800 cores, not 100 machines with 8 each),
+in order to avoid complicated placement decisions based on deadline schedules.
 
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
@@ -103,7 +106,10 @@ Figure~\ref{fig:hermod-xx-edf} shows the results. We can see that \sys{} and EDF
 are able to retain performance for the high \class{} jobs even under higher
 load. EDF's superior performance on the far right side of the graph for the low
 \class{} jobs is becuase EDF only runs those jobs with short runtimes; the
-others never finish and so don't show up on this graph.
+others never finish and so don't show up on this graph. EDF's utilization is
+also much tighter, because of the centralised setting it runs in (so the spread
+of the utilization comes from being different at different points in time, not
+on different machines).
 
 
 \subsection{Does \sys{} plan for memory management work?}
@@ -111,7 +117,7 @@ others never finish and so don't show up on this graph.
 \begin{figure}[t!]
     \centering
       \includegraphics[width=8cm]{img/memory_graphs.png}
-      \caption{ add caption }
+      \caption{ \sys{}'s swapping behavior. The amount of memory is in MB  }
     \label{fig:memory-graphs}
 \end{figure}
 
