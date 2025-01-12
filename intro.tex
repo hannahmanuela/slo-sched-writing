@@ -12,8 +12,8 @@ needing to hold idle resources available for clients who reserved them.
 However, there remain realities that make serverless today fundamentally
 infeasible for workloads that in theory are a good fit --- for instance web
 servers, which are often bursty and have inconsistent load, but are rarely run
-completely in serverless offerings, such as AWS Lambda~\cite{TODO}. One of the
-things that makes running a web server on lambda infeasible is lambda
+completely in serverless offerings~\cite{reddit-serverless1}, such as AWS lambda.
+One of the things that makes running a web server on lambda infeasible is lambda
 invocations' variable end to end latencies: in a small benchmark (broken down in
 Section~\ref{motivation}) we found that total execution time latencies for a
 simple hello world function that sleeps for 20 ms ranged from 20 to 400ms.
@@ -22,7 +22,7 @@ An obvious and well-known problem that causes these high and variable latencies
 is that of cold starts. However, this paper takes the position that we are well
 underway to reaching low single digit ms cold start times, with current
 state-of-the-art research systems pushing into single digit
-territory~\cite{TODO}. Which begs the question: if cold start is fast enought
+territory~\cite{sigmaos,mitosis}. Which begs the question: if cold start is fast enought
 that more latency sensitive applications, like web servers, can have a cold
 start on the critical path, are we then done? Will serverless then be, at least
 from an infrastructure perspective, ready to support these sorts of workloads?

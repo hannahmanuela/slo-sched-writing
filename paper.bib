@@ -1,7 +1,208 @@
 @inproceedings{TODO,
-author = {TODO},
-title = {TODO},
-year = {2020},
+    author = {TODO},
+    title = {TODO},
+    year = {2020},
 }
 
-% https://aws.amazon.com/serverless/build-a-web-app/
+@online{ econ-of-serverless,
+    author = { Álvaro Alda Rodríguez et al },
+    title = {Economics of 'Serverless'},
+    url = {https://www.bbva.com/en/innovation/economics-of-serverless/},
+    published = {25 Jun 2018}
+}
+
+@inproceedings{sigmaos,
+    author = {Szekely, Ariel and Belay, Adam and Morris, Robert and Kaashoek, M. Frans},
+    title = {Unifying serverless and microservice workloads with SigmaOS},
+    year = {2024},
+    isbn = {9798400712517},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3694715.3695947},
+    doi = {10.1145/3694715.3695947},
+    booktitle = {Proceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles},
+    pages = {385–402},
+    numpages = {18},
+    location = {Austin, TX, USA},
+    series = {SOSP '24}
+}
+
+@inproceedings {mitosis,
+    author = {Xingda Wei and Fangming Lu and Tianxia Wang and Jinyu Gu and Yuhan Yang and Rong Chen and Haibo Chen},
+    title = {No Provisioned Concurrency: Fast {RDMA-codesigned} Remote Fork for Serverless Computing},
+    booktitle = {17th USENIX Symposium on Operating Systems Design and Implementation (OSDI 23)},
+    year = {2023},
+    isbn = {978-1-939133-34-2},
+    address = {Boston, MA},
+    pages = {497--517},
+    url = {https://www.usenix.org/conference/osdi23/presentation/wei-rdma},
+    publisher = {USENIX Association},
+    month = jul
+}
+
+
+@online{reddit-serverless1,
+    title = {Without saying "it's scalable", please convince me that a serverless architecture is worth it},
+    url = {https://www.reddit.com/r/aws/comments/yxyyk3/without_saying_its_scalable_please_convince_me/},
+    published = {2022-11-17},
+}
+
+@online{reddit-serverless2,
+    title = {Why or why not use AWS Lambda instead of a web framework for your REST APIs?},
+    url = {https://www.reddit.com/r/Python/comments/1092py3/why_or_why_not_use_aws_lambda_instead_of_a_web/},
+    published = {2023-01-11}
+}
+
+@online{ trek10-blog,
+    author = {Andy Warzon},
+    title = {AWS Lambda Pricing in Context - A Comparison to EC2},
+    published = {Aug 17 2016},
+    url = {https://www.trek10.com/blog/lambda-cost}
+}
+
+@online{ec2-autoscaling,
+    url = {https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-default-instance-warmup.html }
+}
+
+@online{aws-xray,
+    url = {https://aws.amazon.com/xray/}
+}
+
+@online{not-lambda-blog,
+    url = {https://jesseduffield.com/Notes-On-Lambda/},
+    title = {My notes from deciding against AWS Lambda},
+    author = {Jesse Duffield},
+    published = {December 1, 2024}
+}
+
+@online {cold-start-graphing,
+    url = {https://www.simplybusiness.co.uk/about-us/tech/2019/03/aws-lambda-cold-start/},
+    title = {Investigating the impact of cold-start on AWS Lambda},
+    author = {Alessandro Morandi}
+}
+
+@inproceedings{sparrow,
+    author = {Ousterhout, Kay and Wendell, Patrick and Zaharia, Matei and Stoica, Ion},
+    title = {Sparrow: distributed, low latency scheduling},
+    year = {2013},
+    isbn = {9781450323888},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/2517349.2522716},
+    doi = {10.1145/2517349.2522716},
+    booktitle = {Proceedings of the Twenty-Fourth ACM Symposium on Operating Systems Principles},
+    pages = {69–84},
+    numpages = {16},
+    location = {Farminton, Pennsylvania},
+    series = {SOSP '13}
+}
+
+@inproceedings{hermod,
+    author = {Kaffes, Kostis and Yadwadkar, Neeraja J. and Kozyrakis, Christos},
+    title = {Hermod: principled and practical scheduling for serverless functions},
+    year = {2022},
+    isbn = {9781450394147},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3542929.3563468},
+    doi = {10.1145/3542929.3563468},
+    booktitle = {Proceedings of the 13th Symposium on Cloud Computing},
+    pages = {289–305},
+    numpages = {17},
+    keywords = {cloud computing, scheduling, serverless},
+    location = {San Francisco, California},
+    series = {SoCC '22}
+}
+
+@online {wiki-edf,
+    url = {https://en.wikipedia.org/wiki/Earliest_deadline_first_scheduling}
+}
+
+@online{golang,
+    url = {https://go.dev/}
+}
+
+@inproceedings{kairos,
+    author = {Delgado, Pamela and Didona, Diego and Dinu, Florin and Zwaenepoel, Willy},
+    title = {Kairos: Preemptive Data Center Scheduling Without Runtime Estimates},
+    year = {2018},
+    isbn = {9781450360111},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3267809.3267838},
+    doi = {10.1145/3267809.3267838},
+    abstract = {The vast majority of data center schedulers use task runtime estimates to improve the quality of their scheduling decisions. Knowledge about runtimes allows the schedulers, among other things, to achieve better load balance and to avoid head-of-line blocking. Obtaining accurate runtime estimates is, however, far from trivial, and erroneous estimates lead to sub-optimal scheduling decisions. Techniques to mitigate the effect of inaccurate estimates have shown some success, but the fundamental problem remains.This paper presents Kairos, a novel data center scheduler that assumes no prior information on task runtimes. Kairos introduces a distributed approximation of the Least Attained Service (LAS) scheduling policy. Kairos consists of a centralized scheduler and per-node schedulers. The per-node schedulers implement LAS for tasks on their node, using preemption as necessary to avoid head-of-line blocking. The centralized scheduler distributes tasks among nodes in a manner that balances the load and imposes on each node a workload in which LAS provides favorable performance.We have implemented Kairos in YARN. We compare its performance against the YARN FIFO scheduler and Big-C, an open-source state-of-the-art YARN-based scheduler that also uses preemption. Compared to YARN FIFO, Kairos reduces the median job completion time by 73\% and the 99th percentile by 30\%. Compared to Big-C, the improvements are 37\% for the median and 57\% for the 99th percentile. We evaluate Kairos at scale by implementing it in the Eagle simulator and comparing its performance against Eagle. Kairos improves the 99th percentile of short job completion times by up to 55\% for the Google trace and 85\% for the Yahoo trace.},
+    booktitle = {Proceedings of the ACM Symposium on Cloud Computing},
+    pages = {135–148},
+    numpages = {14},
+    keywords = {Cloud computing, Data center, Scheduling},
+    location = {Carlsbad, CA, USA},
+    series = {SoCC '18}
+}
+
+
+@inproceedings {alps,
+    author = {Yuqi Fu and Ruizhe Shi and Haoliang Wang and Songqing Chen and Yue Cheng},
+    title = {{ALPS}: An Adaptive Learning, Priority {OS} Scheduler for Serverless Functions},
+    booktitle = {2024 USENIX Annual Technical Conference (USENIX ATC 24)},
+    year = {2024},
+    isbn = {978-1-939133-41-0},
+    address = {Santa Clara, CA},
+    pages = {19--36},
+    url = {https://www.usenix.org/conference/atc24/presentation/fu},
+    publisher = {USENIX Association},
+    month = jul
+}
+
+@inproceedings {morpheus,
+    author = {Sangeetha Abdu Jyothi and Carlo Curino and Ishai Menache and Shravan Matthur Narayanamurthy and Alexey Tumanov and Jonathan Yaniv and Ruslan Mavlyutov and Inigo Goiri and Subru Krishnan and Janardhan Kulkarni and Sriram Rao},
+    title = {Morpheus: Towards Automated {SLOs} for Enterprise Clusters},
+    booktitle = {12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)},
+    year = {2016},
+    isbn = {978-1-931971-33-1},
+    address = {Savannah, GA},
+    pages = {117--134},
+    url = {https://www.usenix.org/conference/osdi16/technical-sessions/presentation/jyothi},
+    publisher = {USENIX Association},
+    month = nov
+}
+
+@inproceedings{sequoia,
+    author = {Tariq, Ali and Pahl, Austin and Nimmagadda, Sharat and Rozner, Eric and Lanka, Siddharth},
+    title = {Sequoia: enabling quality-of-service in serverless computing},
+    year = {2020},
+    isbn = {9781450381376},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3419111.3421306},
+    doi = {10.1145/3419111.3421306},
+    abstract = {Serverless computing is a rapidly growing paradigm that easily harnesses the power of the cloud. With serverless computing, developers simply provide an event-driven function to cloud providers, and the provider seamlessly scales function invocations to meet demands as event-triggers occur. As current and future serverless offerings support a wide variety of serverless applications, effective techniques to manage serverless workloads becomes an important issue. This work examines current management and scheduling practices in cloud providers, uncovering many issues including inflated application run times, function drops, inefficient allocations, and other undocumented and unexpected behavior. To fix these issues, a new quality-of-service function scheduling and allocation framework, called Sequoia, is designed. Sequoia allows developers or administrators to easily def ne how serverless functions and applications should be deployed, capped, prioritized, or altered based on easily configured, flexible policies. Results with controlled and realistic workloads show Sequoia seamlessly adapts to policies, eliminates mid-chain drops, reduces queuing times by up to 6.4X, enforces tight chain-level fairness, and improves run-time performance up to 25X.},
+    booktitle = {Proceedings of the 11th ACM Symposium on Cloud Computing},
+    pages = {311–327},
+    numpages = {17},
+    keywords = {measurement, quality-of-service, serverless computing},
+    location = {Virtual Event, USA},
+    series = {SoCC '20}
+}
+
+
+@inproceedings{app-paper,
+    author = {De Palma, Giuseppe and Giallorenzo, Saverio and Mauro, Jacopo and Zavattaro, Gianluigi},
+    title = {Allocation Priority Policies for Serverless Function-Execution Scheduling Optimisation},
+    year = {2020},
+    isbn = {978-3-030-65309-5},
+    publisher = {Springer-Verlag},
+    address = {Berlin, Heidelberg},
+    url = {https://doi.org/10.1007/978-3-030-65310-1_29},
+    doi = {10.1007/978-3-030-65310-1_29},
+    abstract = {Serverless computing is a Cloud development paradigm where developers write and compose stateless functions, abstracting from their deployment and scaling. In this paper, we address the problem of function-execution scheduling, i.e., how to schedule the execution of Serverless functions to optimise their performance against some user-defined goals. We introduce a declarative language of Allocation Priority Policies (APP) to specify policies that inform the scheduling of function execution. We present a prototypical implementation of APP as an extension of Apache OpenWhisk and we validate it by i) implementing a use case combining IoT, Edge, and Cloud Computing and ii) by comparing its performance to an alternative implementation that uses vanilla OpenWhisk.},
+    booktitle = {Service-Oriented Computing: 18th International Conference, ICSOC 2020, Dubai, United Arab Emirates, December 14–17, 2020, Proceedings},
+    pages = {416–430},
+    numpages = {15},
+    keywords = {Serverless, Function-execution scheduling, Optimisation},
+    location = {Dubai, United Arab Emirates}
+}
+
+@online{ aws-scaling,
+    url = {https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html}
+}

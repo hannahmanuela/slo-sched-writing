@@ -13,7 +13,7 @@ In order to understand the case for \sys{}, we ask the following questions:
 \end{enumerate}
 
 
-To explore these questions, we built a simulator in go\cite{TODO}, which
+To explore these questions, we built a simulator in go\cite{golang}, which
 simulates different scheduling approaches.
 
 \begin{figure*}[t!]
@@ -68,7 +68,7 @@ still ensure that jobs perform well? On the other hand, it is helpful to compare
 
 To explore one side of this question, we look at how an existing state of the
 art research scheduler that does not take any form of priority into account
-performs. We simulate Hermod\cite{TODO}, a state-of-the-art serverless scheduler
+performs. We simulate Hermod\cite{hermod}, a state-of-the-art serverless scheduler
 built specifically for serverless. Hermod's design is the result of a
 from-first-principles analysis of different scheduling paradigms. In accordance
 with the paper's findings, we simulate least-loaded load balancing over machines
@@ -89,8 +89,7 @@ get more and more slack with lower \class{}es. We then simulate an Earliest
 Deadline First (EDF) scheduler over these deadlines, which is queuing
 theoretically proven to be optimal in exactly the way we wanted: if it is
 possible to create a schedule where all jobs meet their deadline, EDF will find
-it\cite{TODO}.
-% https://en.wikipedia.org/wiki/Earliest_deadline_first_scheduling
+it\cite{wiki-edf}.
 
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
