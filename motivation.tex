@@ -96,18 +96,5 @@ exactly the latency here comes from is impossible to know without futher insight
 into the system, but clear is that there is already a small variation in warm
 start setting, where AWS doesn't even need to place a new container. And clear
 is also that sometimes AWS is able to get the cold start container up and
-running in just over 100ms, and sometimes it takes as much as $\sim$250ms. 
-
-
-\hmng{TODO we need a transition here ... or we do we even still want the part that
-comes next? I do think talking about the interface is good though}
-
-The information that AWS gets about the functions it needs to run is an amount
-of memory, which is then tied to a cpu power (an amount of vCPUs). However,
-memory usage is at best difficult to know in advance and at worst has a large
-variance so is impossible to say in advance, and more importantly is not
-correlated with what developers actually care about, which is job latency. In
-fact, measurements have shown that in some ways the two are inversely
-correlated, ie that lambdas that had more memory allocated took longer to start
-up~\cite{cold-start-graphing}.  
+running in just over 100ms, and sometimes it takes as much as $\sim$250ms.
 
