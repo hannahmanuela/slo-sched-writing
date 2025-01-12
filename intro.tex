@@ -27,18 +27,21 @@ that more latency sensitive applications, like web servers, can have a cold
 start on the critical path, are we then done? Will serverless then be, at least
 from an infrastructure perspective, ready to support these sorts of workloads?
 
-No, there still remains a fundamental obstacle to running such a latency
-sensitive workload on serverless: queueing and delay within the system. In the
-world of long running servers this is avoided by latency critical services
-having reservations, but reserving resources in serverless doesn't work. 
+This paper argues that no, there still remains a fundamental obstacle to running
+such a latency sensitive workload on serverless: queueing and delay within the
+system. We cannot expect that the load will always fit in the resources
+providers have, and so some work has to be queued or otherwise degraded. In the
+world of long running servers, developers avoid degradation of access to
+resources by giving latency critical services reservations; but reserving
+resources in serverless doesn't work. 
 
 % In a serverless setting as they exist today, running at high utilization
 % almost necessarily will mean there is queueing; in fact in
 % Section~\ref{motivation} we show that is already the case in AWS lambda.
 
 What developers care about in the end is that the jobs that are important run
-quickly. The problem we address is that in a world where cold starts are fast
-and more latency sensitive work is running alongside map reduce and image
+quickly. The problem we address is that, in a world where cold starts are fast
+and latency sensitive work is able running alongside map reduce and image
 processing jobs, important jobs might end up behind unimportant ones, waiting to
 be placed on machines and to get access to resources once placed. To address
 this problem, we propose \sys{}, a scheduling system that has
@@ -47,9 +50,8 @@ Priority in the system is directly paid for through \priceclass{}es, and all of
 the resource allocation decisions in \sys{} are made on the basis of
 \priceclass{}.
 
-\Sys{} has multiple goals it needs to achieve and challenges it needs to solve
-in order to move towards an environment where it is plausible to run web server
-page views entirely as serverless jobs.
+\Sys{} has multiple goals it needs to achieve and challenges it needs to
+address.
 
 One key goal is that \sys{} needs to be able to support a multi tenant
 environment. This is enabled by the \priceclass{}es being a universal metric.
@@ -62,11 +64,11 @@ that are less important, since they can be executed much more cheaply.
 
 Another important goal is that of placing jobs quickly enough. For example, a
 job that takes 20ms to run cannot spend 50ms in scheduler queues and waiting for
-an execution environment before even starting to run. Even short cold starts
-will take up a significant portion of the time a job can handle waiting to run,
-so the challenge is knowing where the free and idle resources are, or finding
-out quickly, in a setting where both the number of new jobs coming in and the
-amount of resources are extremely large.
+an execution environment before even starting to run. Even when they're short,
+cold starts will take up a significant portion of the time a job can handle
+waiting to run. So the challenge is knowing where the free and idle resources
+are, or finding out quickly, in a setting where both the number of new jobs
+coming in and the amount of resources are extremely large.
 
 
 Finally, a key challenge in designing \sys{} is that of managing memory. For

@@ -7,12 +7,12 @@ current state of the world, and how our approach fits in with both of these.
 
 \subsection{Benefits of serverless}
 
-The main attraction is, in an idealized world, the characteristic of only paying
-for what you use while having a whole datacenter available to you. This is
-especially attractive to developers of applications where the amount of
-resources that they need varies significantly over time, or is generally small
-and very spread out, so that buying their own machines or renting a fixed amount
-doesn't suit their actual needs well.
+The main attraction of serverless for developers is, in an idealized world, the
+characteristic of only paying for what you use while having a whole datacenter
+available to you. This is especially attractive to developers of applications
+where the amount of resources that they need varies significantly over time, or
+is generally small and very spread out, so that buying their own machines or
+renting a fixed amount doesn't suit their actual needs well.
 
 A central example to this paper is that of a web server. Its traffic patterns
 make it a great candidate for running entirely as serverless jobs: it is
@@ -21,7 +21,7 @@ requirements can vary greatly depending on which user invoked it.
 
 
 Some back of the envelope math shows that for web servers with small load,
-Lambda functions as they stand today are cheaper: for a low-traffic website,
+lambda functions as they stand today are cheaper: for a low-traffic website,
 with approx 50K requests per day, a memory footprint of < 128 MB, and 200ms of
 execution, running that on AWS lambda adds up to \$1.58 per month. On the other
 hand, the cheapest EC2 instance costs just over \$3 per month. Of course, as the
@@ -60,10 +60,10 @@ function that simply sleeps for 20ms and then returns. We use AWS
 Xray~\cite{aws-xray} to measure its latency, with incovations spaced randomly
 between 0 and 10 minutes. The results are in
 Figure~\ref{fig:lambda-total-durations}. The times on the left side of the graph
-are clearly the execution times from warm start, which remain somewhat stable
-with small variance of $\sim$10ms. The reason for this is likely that AWS is
-able to simply route the new request to the machine with the existing container
-on it. The right grouping in the graph is then the cold start times, which vary
+are clearly the execution times from warm start, which remain somewhat stable.
+The reason for this is likely that AWS is able to simply route the new request
+to the machine with the existing container on it. The right grouping in the
+graph is then the invocations that hit cold starts, whose overall latencies vary
 between 200 and 400ms, meaning that when a request encounters cold start, the
 variance in observed latency goes up a lot. 
 
@@ -97,4 +97,32 @@ into the system, but clear is that there is already a small variation in warm
 start setting, where AWS doesn't even need to place a new container. And clear
 is also that sometimes AWS is able to get the cold start container up and
 running in just over 100ms, and sometimes it takes as much as $\sim$250ms.
+
+\subsection{Approach}
+
+Our approach addresses the variability of runtimes, which is undesirable for
+latency sensitive jobs, by using \priceclass{}es as a metric to tell the
+scheduler what to prioritize and what not. We will show that this allows us to
+stabilize the runtimes for the high \class{} jobs. 
+
+In fact, we use \class{}es to supplant completely the current interface, which
+requires developers choose an amount of memory per function, which is then tied
+to a cpu power (a potentially fractional amount of vCPUs). \Priceclass{}es are a
+metric that has a number of benefits over resource reservations as an interface:
+developers are more likely to have a good sense of it ahead of time, it is less
+likely to be different across different invocations, it still gives the
+scheduler the information it needs to decide what to schedule when, and finally
+it more directly aligns the interests of the developer with those of the
+provider by communicating on the level of what the provider and developer
+actually care about: money, and latency (as achieved by \class{}es in the
+system).
+
+
+However, having \priceclass{}es also means that there are no clear guarantees
+about what developers are getting when they put a price on a function they want
+to run. In order to mitigate that somewhat and not go into bidding wars, we
+propose exposing a fixed set of price classes. This is similar to how AWS has
+different EC2 instance types, that are directly mapped to prices. Rather than
+being a guarantee, the price class is instead a metric to express priority to
+\sys{}, which it can then use to enforce a favoring of high class jobs.
 

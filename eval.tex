@@ -54,8 +54,8 @@ The simulator makes some simplifying assumptions:
     \item the amount of time it takes to swap memory is not simulated
 \end{enumerate}
 
-We simulate running 100 machines, with 8 cores and 32GB RAM each, with 4
-scheduler shards and a k-choices value of 3 when applicable.
+We simulate running 100 machines with 8 cores each, 4 scheduler shards, and a
+k-choices value of 3 when applicable.
 
 \subsection{How do job latencies compare?}
 
@@ -66,16 +66,15 @@ can, without having any access to information about which jobs are important,
 still ensure that jobs perform well? On the other hand, it is helpful to compare
 \sys{} to an ideal scheduler, in order to contextualize \sys{}'s performance.
 
-To explore one side of this question, we look at how an existing state of the
-art research scheduler that does not take any form of priority into account
-performs. We simulate Hermod\cite{hermod}, a state-of-the-art serverless scheduler
-built specifically for serverless. Hermod's design is the result of a
-from-first-principles analysis of different scheduling paradigms. In accordance
-with the paper's findings, we simulate least-loaded load balancing over machines
-found using power-of-k-choices, combined with early binding and Processor
-Sharing machine-level scheduling. Hermod does not use priorities in its design,
-and as such the simulator ignores jobs' \class{} when simulating Hermod's
-design.
+To explore one side of this question, we look at the performance of an existing
+scheduler that does not take any form of priority into account. We simulate
+Hermod\cite{hermod}, a state-of-the-art research scheduler built specifically
+for serverless. Hermod's design is the result of a from-first-principles
+analysis of different scheduling paradigms. In accordance with the paper's
+findings, we simulate least-loaded load balancing over machines found using
+power-of-k-choices, combined with early binding and Processor Sharing
+machine-level scheduling. Hermod does not use priorities in its design, and as
+such the simulator ignores jobs' \class{} when simulating Hermod's design.
 
 
 On the other side, we want to simulate an ideal scheduler. Ideal here is with
@@ -83,13 +82,12 @@ respect to meeting jobs' SLAs, which requires defining the desired SLA. In order
 to do this, we assign each job invocation a deadline, and allow the deadline to
 be a function of the job's true runtime. We define the deadline as a function of
 the runtime as well as the \priceclass{}, as follows: deadline = runtime *
-maxPrice/price (as if each process were weighted by its price). This ensures
-that highest \class{} jobs' deadlines are simply their runtimes, and deadlines
-get more and more slack with lower \class{}es. We then simulate an Earliest
-Deadline First (EDF) scheduler over these deadlines, which is queuing
-theoretically proven to be optimal in exactly the way we wanted: if it is
-possible to create a schedule where all jobs meet their deadline, EDF will find
-it\cite{wiki-edf}.
+maxPrice/price. This ensures that the highest \class{}es jobs' deadlines are
+simply their runtimes, and deadlines get more and more slack with lower
+\class{}es. We then simulate an Earliest Deadline First (EDF) scheduler over
+these deadlines, which is queuing theoretically proven to be optimal in exactly
+the way we wanted: if it is possible to create a schedule where all jobs meet
+their deadline, EDF will find it\cite{wiki-edf}.
 
 We compare the latencies observed in both of these settings with those that
 running \sys{} produces. Because Hermod does not talk about dealing with memory
@@ -103,7 +101,9 @@ and closer to the EDF side. Especially as load and utillization get high, we
 expect that the differences betweeen the three approaches will become evident.
 Figure~\ref{fig:hermod-xx-edf} shows the results. We can see that \sys{} and EDF
 are able to retain performance for the high \class{} jobs even under higher
-load.
+load. EDF's superior performance on the far right side of the graph for the low
+\class{} jobs is becuase EDF only runs those jobs with short runtimes; the
+others never finish and so don't show up on this graph.
 
 
 \subsection{Does \sys{} plan for memory management work?}
@@ -117,11 +117,13 @@ load.
 
 To answer this question, we look at how \sys{} distributes load, and whether the
 amount that \sys{} needs to swap memory is realistic. We now run \sys{} in a
-setting of limited memory, and track the memory utilization of different
-machines, as well as how much and what they need to swap. A good result would
-show a tigh spread of memory utilization, that machines only start swapping once
-memory utilization is high, and that the amount of swapping being done is also
-equally spread across machines. Figure~\ref{fig:memory-graphs} shows the
-results.
+setting of limited memory (32GB of RAM per machine), and track the memory
+utilization of different machines, as well as how much and what they need to
+swap. A good result would show a tigh spread of memory utilization, that
+machines only start swapping once memory utilization is high, and that the
+amount of swapping being done is also equally spread across machines.
+Figure~\ref{fig:memory-graphs} shows the results. We can see we only swap lower
+\class{} jobs' memory, and that the amount of memory swapped is faily evenly
+distributed between all the machines.
 
 

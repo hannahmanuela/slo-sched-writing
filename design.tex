@@ -1,29 +1,6 @@
 \section{Design}\label{design}
 
 
-\subsection{Approach}
-
-Our approach is centered around \priceclass{}es. \Priceclass{}es are a metric
-that has a number of benefits over resource reservations as an interface:
-developers are more likely to have a good sense of it ahead of time, it is less
-likely to be different across different invocations, it still gives the
-scheduler the information it needs to decide what to schedule when, and finally
-it more directly aligns the interests of the developer with those of the
-provider by communicating on the level of what the provider and developer
-actually care about: money, and latency (as achieved by \class{}es in the
-system).
-
-
-However, having \priceclass{}es also means that there are no clear guarantees
-about what they are getting when a developer puts a price on a function they
-want to run. In order to mitigate that somewhat and not go into bidding wars, we
-propose exposing a fixed set of price classes. This is similar to how AWS has
-different EC2 instance types, that are directly mapped to prices. Rather than
-being a guarantee, the price class is instead a metric to express priority to
-\sys{}, which it can then use to enforce a favoring of high class jobs.
-
-
-
 \subsection{Interface}
 
 
@@ -83,26 +60,23 @@ The machine scheduler is a preemptive priority scheduler: it preempts lower
 \class{} jobs is desirable in \sys{}, since image processing jobs should not
 interrupt a page view request processing, but vice versa is expected. Within
 \class{}es the machine scheduler is first come first served. This matches Linux'
-`sched fifo' scheduling.
-% https://man7.org/linux/man-pages/man7/sched.7.html
+`sched fifo' scheduling~\cite{linux-sched}.
 
 
 \textbf{Idle list.}
-Each global scheduler shard has an idle list, which holds machines that
-have a significant amount of memory available. In the shards idle list each
-machine's entry is associated with the amount of free memory as well as the
-current amount of jobs on the machine. The idle list exists because datacenters
-are large: polling a small number of machines has been shown to be very
-powerful, but cannot find something that is a very rare occurrence.
-% join idle queue
-What this means is that polling is likely to find a machine in the lower
-quantile of the datacenter, but not at the absolute bottom --- it will not find
-one of the handful of machines that are actually idle. Having an idle list
-allows these machines, which are expected to be rare in a high-utilization
-setting, to make themselves visible to the global scheduler. The idle list also
-allows the global scheduler to place high \class{} processes quickly, without
-incurring the latency overheads of doing the polling to find available
-resources.
+Each global scheduler shard has an idle list, which holds machines that have a
+significant amount of memory available. In the shards idle list each machine's
+entry is associated with the amount of free memory as well as the current amount
+of jobs on the machine. The idle list exists because datacenters are large:
+polling a small number of machines has been shown to be very powerful, but
+cannot find something that is a very rare occurrence~\cite{join-idle-queue}.
+Having an idle list allows the machines that have actually idle resources, which
+are expected to be rare in a high-utilization setting, to make themselves
+visible to the global scheduler. The idle list also allows the global scheduler
+to place high \class{} processes quickly, without incurring the latency
+overheads of doing the polling to find available resources. This is inspired by
+join idle queue~\cite{join-idle-queue}, but centers memory rather than queue
+length.
 
 
 \textbf{Dispatcher.}
@@ -151,13 +125,13 @@ and the job will be run.
 
 
 \textbf{Global Scheduler Shards.}
-
 Global scheduler shards store the jobs waiting to be placed in a multi queue,
 with one queue per \priceclass{}. Shards choose what job to place next by
 looking at each job at the head of each queue, and comparing the ratio of
 \class{} to amount of time spent in the queue. This ensures that high \class{}
 jobs don't have to wait as long as lower \class{} jobs to be chosen next, but
-low \class{} jobs will get placed if they have waited for a while.
+low \class{} jobs will get placed if they have waited for a while.\hmng{why are
+we being fair-ish here when we're so unfair everywhere else? maybe just remove?}
 
 When placing the chosen job, the shard will first look in its idle list. If the
 list is not empty, it will choose the machine with the smallest queue length.
@@ -165,6 +139,7 @@ list is not empty, it will choose the machine with the smallest queue length.
 If there are no machines in the idle list, the shard switches over to
 power-of-k-choices: it polls k machines, getting the amount of jobs running from
 each. The shard then places the new job on the machine with the smallest number
-of currently running jobs. It is desirable to have a maximally heterogenous set
-of \class{}es on each machine, but since jobs come in randomly the global
-scheduler does not explicitly have to enforce this.
+of currently running jobs. 
+% It is desirable to have a maximally heterogenous set of \class{}es on each
+% machine, but since jobs come in randomly the global scheduler does not
+% explicitly have to enforce this.
