@@ -7,15 +7,13 @@ improve performance of scheduling in the distributed setting by trying out and
 using different scheduling policies. Unlike \sys{}, they treat all functions
 equally.
 
-Some approaches are directly tailored for serverless.
-
-Some systems generate information about functions themselves to help placement
-decisions; for instance ALPS\cite{alps}, which observes and learns the behaviors
-of existing functions and then makes scheduling decisions based on those; or
+Like \sys{}, many projects tailor their approach to serverless. Some systems
+generate information about functions themselves to help placement decisions; for
+instance ALPS\cite{alps}, which observes and learns the behaviors of existing
+functions and then makes scheduling decisions based on those; or
 Morpheus\cite{morpheus}, which learns SLOs from historical runs, and then
 translates these to recurring reservations.~\Sys{} instead gets the \class{}es
 directly from the developers as part of its interface.
-
 
 Other papers have taken the same approach as \sys{} of getting information to
 help scheduling from the developers. Sequoia\cite{sequoia}, for instance,
@@ -30,3 +28,10 @@ Policies (APP), which is a declarative language to express policies, then builds
 a scheduler around that. The APP language is built around allowing developers to
 specify custom load balancing decisions, and the scheduler uses the developers'
 specification to define a mapping of function invocations to workers. 
+
+On the serverful side of scheduling, priorities are generally expressed via a
+latency critical/best effort binary, where latency critical processes have an
+attached amount of resource reservations, and best effort processes
+don't~\cite{kubernetes-lc-be}. Scheduling frameworks like Knative sit on top of
+container management systems like Kubernetes, and use the container management
+system to ----.
