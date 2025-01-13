@@ -32,12 +32,12 @@ specification to define a mapping of function invocations to workers.
 On the serverful side of scheduling, priorities are generally expressed via a
 latency critical/best effort binary, where latency critical processes have an
 attached amount of resource reservations, and best effort processes
-don't~\cite{kubernetes-lc-be}. This works well for long running servers with
-steady amounts of load, since predictable load will allow developers to make
-good approximations of the resources they will need. The serverless setting
-\sys{} works within is different because both the number of invocations and the
-resource usage of each invocation is expected to vary. 
-
-Serverless schedulers that sit on top of Kubernetes, such as
-OpenFaaS~\cite{openfaas} or Knative~\cite{knative}, use autoscaling to keep up
-with load, and use simple load balancing techniques like round-robin.
+don't~\cite{kubernetes-lc-be}. Serverless schedulers that sit on top of
+Kubernetes, such as OpenFaaS~\cite{openfaas} or Knative~\cite{knative}, use
+autoscaling to keep up with load, and use the same interface as kubernetes for
+developers to express resource requirements~\cite{knative-res, openfaas-res}.
+This works well for long running servers with steady amounts of load, since
+predictable load will allow developers to make good approximations of the
+resources they will need. The serverless setting \sys{} works within is
+different because both the number of invocations and the resource usage of each
+invocation is expected to vary. 
