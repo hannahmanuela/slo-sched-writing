@@ -18,8 +18,8 @@ variable end to end latencies: in a small benchmark (described in
 Section~\ref{motivation}) we found that total execution time latencies for a
 simple hello world function that sleeps for 20 ms ranged from 20 to 400ms;
 whereas an acceptable latency may be anything below 100ms~\cite{page-load-time}.
-This is a problem because it has been shown that small response time differences
-can matter a lot in interactive
+This variability is a problem because it has been shown that small response time
+differences can matter a lot in interactive
 applications~\cite{amz-page-load,google-page-load}.
 
 
@@ -42,43 +42,43 @@ serverless approach.
 
 
 What developers care about in the end is that the functions that are latency
-sensitive run quickly. The challenge this paper addresses is that, in a world
-where cold starts are fast and latency sensitive work is able running alongside
-map reduce and image processing functions, latency sensitive functions might end
-up behind background ones, waiting to be placed on machines and to get access to
-resources once placed. To address this problem, this paper proposes \sys{}, a
-scheduling system that associates a \textit{\priceclass{}es} with each function.
-Priority in the system is directly paid for through \priceclass{}es, and all of
-the resource allocation decisions in \sys{} are made on the basis of
-\priceclass{}.
+sensitive run quickly. The challenge this paper addresses is the following: in a
+world where cold starts are fast and latency sensitive work runs alongside map
+reduce and image processing functions, latency sensitive functions might end up
+behind background ones, waiting to be placed on machines or to get access to
+resources. To address this challenge, this paper proposes \sys{}, a scheduling
+system that associates a \textit{\priceclass{}} with each function. Priority
+in the system is directly paid for through \priceclass{}es, and all of the
+resource allocation decisions in \sys{} are made on the basis of \priceclass{}.
 
 \Sys{} has multiple goals it needs to achieve and challenges it needs to
 address. One goal is that \sys{} needs to be able to support a multi tenant
 environment. \Priceclass{}es achieve this: rather than dealing in a relative
 ordering of developers' functions by latency sensitivity, which would be
 difficult to compare across developers, the connection to money allows the
-\class{} to have meaning in an absolute as well as a relative way. It also
-incentivizes usage of the lower \class{}es for functions that are less
-latency sensitive, since they can be executed more cheaply.
+\class{} to have meaning on an absolute scale. It also incentivizes usage of the
+lower \class{}es for functions that are less latency sensitive, since they can
+be run cheaply.
 
 
 Another important goal is that of placing functions quickly enough. For example,
 a function that takes 20ms to run cannot spend 50ms in scheduler queues and
-waiting for an execution environment before even starting to run. The challenge
-is knowing where the free and idle resources are, or finding out quickly, in a
-setting where both the number of new functions coming in and the amount of
+waiting for an execution environment before even starting to run. Knowing where
+the free and idle resources are, or finding out quickly, is challenging in a
+setting where both the number of new functions invocations and the amount of
 resources are large.
 
 
 Finally, a key challenge in designing \sys{} is that of managing memory. For
-compute, cores can always be timshared or processes preempted, but the buck
+compute resources, cores can be timshared or processes preempted, but the buck
 stops once a machine is out of memory. Current systems address this challenge by
 requiring developers to express a maximal amount of memory they will use, and
 charging based on that. However, memory usage is at best difficult to know in
-advance and at worst has a large variance so is impossible to say in advance,
-and more importantly is not correlated with what developers actually care about,
-which is function latency. Instead, \sys{} charges developers based on the
-amount of memory actually used.~\Sys{} is thus faced with the challenging
-proposition of blindly placing functions not knowing how much memory they will
-use, but still needing memory utilization to be high.
+advance and at worst has a large variance so is impossible to say in advance.
+And more importantly, is not correlated with what developers actually care
+about, which is function latency. Instead, \sys{} charges developers based on
+the amount of memory actually used, and requires no bound to be set.~\Sys{} is
+thus faced with the challenging proposition of blindly placing functions not
+knowing how much memory they will use, but still needing memory utilization to
+be high.
  

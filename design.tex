@@ -1,49 +1,49 @@
 \section{Approach \& Design}\label{design}
 
-Our approach addresses the variability of runtimes, which is undesirable for
-latency sensitive functions, by using \priceclass{}es as a metric to tell \sys{} what
-to prioritize and what not. We will show that this allows us to stabilize the
-runtimes for the high \class{} functions. 
+This paper's approach addresses the variability of runtimes, which is
+undesirable for latency sensitive functions, by using \priceclass{}es as a
+metric to tell \sys{} what to prioritize and what not. We will show that having
+\priceclass{}es allows \sys{} to stabilize the runtimes for high \class{}
+functions. 
 
-In fact, \sys{} uses \class{}es to supplant the current interface, which
-requires developers choose an amount of memory per function, which is then tied
-to a cpu power (a potentially fractional amount of vCPUs). \Priceclass{}es are
-the only thing that developers need to give \sys{}, they pay for memory
-separately, and only for what they use. The price for memory is the same across
-all \class{}es. This serves the purpose of extending the serverless on-demand
-structure to include memory, and moves away from the usual bin packing with
-overprovisioning problem.
+\Sys{} uses \class{}es to supplant the current interface, which requires
+developers choose an amount of memory per function, which is tied to a cpu power
+(a potentially fractional amount of vCPUs). In \sys{}, \priceclass{}es are the
+only thing that developers need to give; \sys{} bills memory separately and by
+use. The price for memory is the same across all \class{}es. Removing memory
+from the interface serves the purpose of extending the serverless on-demand
+structure to include memory.
 
-\Priceclass{}es are a metric that has a number of benefits over resource
-reservations. One is that developers are more likely to have a good sense of
+\Priceclass{}es are a metric that has a number of benefits over resource usage
+estimations. One is that developers are more likely to have a good sense of
 what \priceclass{} a function should have ahead of time, because they know in
 what context the function will be used and how important it is that the function
 run quickly. \Priceclass{}es also remain the same across different invocations,
 whereas the resources needed can be heavily skewed in a web server environment,
 where popularity distributions are often very
 uneven~\cite{hermod,serverless-in-the-wild}. And finally, \class{}es more
-directly align the interests of the developer with those of the provider by
+directly align the interests of the developer with those of the provider, by
 communicating on the level of what the provider and developer actually care
 about: money, and latency (as achieved by \class{}es in the system).
 
 However, having \priceclass{}es also means that there are no absolute guarantees
-about what developers are receiving when they put a price on a function they
-want to run. In order to mitigate that somewhat and avoid the developer-side
-uncertainty of bidding wars, \sys{} exposes a fixed set of \priceclass{}es. This
-is similar to how AWS has different EC2 instance types, that are directly mapped
-to prices. Rather than being a guarantee, the \priceclass{} is instead a metric
-to express priority to \sys{}, which it can then use to enforce a favoring of
-high class functions.
+about what developers are receiving when they put a price on a function. In
+order to mitigate that and avoid the developer-side uncertainty of bidding wars,
+\sys{} exposes a fixed set of \priceclass{}es. This fixed price list is similar
+to how AWS has different EC2 instance types, that are directly mapped to prices.
+Rather than being a guarantee, the \priceclass{} is instead a metric to express
+priority to \sys{}, which \sys{} uses to enforce a favoring of high \class{}
+functions.
 
-This also allows the provider to provision their datacenters on the level of the
-amount of hardware they buy: by looking at the historical overall amount of high
-\priceclass{} workload, they know how much hardware they at least need to buy in
-order to be able to comfortably fit all of that load.
+Having \priceclass{}es also allows the provider to provision their datacenters
+in terms of the amount of hardware they buy: by looking at the historical
+overall amount of high \priceclass{} load, they know a minimum of how much
+hardware they need to buy to be able to comfortably fit that load.
 
 
 At the same time, \class{}es give \sys{} the information it needs to decide what
-to schedule when. How exactly it does this is what we explore in \sys{}'s design
-and evaluation.
+to schedule when. How exactly it does this is what we explore in \sys{}'s
+design.
 
 
 
@@ -60,8 +60,8 @@ second, and finally an image processing function that can be set to a low
 \class{} which costs only 0.5$\mu\cent$ per cpu second.
 
 \Class{}es are inherited across call chains: if a high \class{} function calls a
-low \class{} function, that invocation with run with high \class{}. This is
-important in order to avoid priority inversion.
+low \class{} function, that invocation with run with high \class{}. This
+inheritance is important in order to avoid priority inversion.
 
 To avoid unexpected costs in the case of for example a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.\ \sys{}
@@ -102,17 +102,17 @@ The machine scheduler is a preemptive priority scheduler: it preempts lower
 \class{} functions to run higher \class{} ones. Being unfair and starving low
 \class{} functions is desirable in \sys{}, since image processing functions
 should not interrupt a page view request processing, but vice versa is expected.
-Within \class{}es the machine scheduler is first come first served. This matches
-Linux' `SCHED FIFO' scheduling~\cite{linux-sched}.
+Within \class{}es the machine scheduler is first come first served. This design
+matches Linux' `SCHED FIFO' scheduling~\cite{linux-sched}.
 
 
 \textbf{Idle list.}
 Each global scheduler shard has an idle list, which holds machines that have a
-significant amount of memory available. In the shards idle list each machine's
-entry is associated with the amount of free memory as well as the current amount
-of functions on the machine. The idle list exists because datacenters are large:
-polling a small number of machines has been shown to be very powerful, but
-cannot find something that is a very rare occurrence~\cite{join-idle-queue}.
+significant amount of memory available. In the shards idle list, each machine's
+entry is associated with the amount of memory available as well as the current
+amount of functions on the machine. The idle list exists because datacenters are
+large: polling a small number of machines has been shown to be very powerful,
+but cannot find something that is a very rare occurrence~\cite{join-idle-queue}.
 Having an idle list allows the machines that have actually idle resources, which
 are expected to be rare in a high-utilization setting, to make themselves
 visible to the global scheduler. The idle list also allows the global scheduler
@@ -135,15 +135,14 @@ lists are represented by the blue arrows in Figure~\ref{fig:overview}.
 
 The dispatcher is also in charge of managing the machine's memory. When memory
 pressure occurs, the dispatcher uses \textit{\class{}-based swapping} to move
-low \class{} functions off the machine's memory. In this scenario, having
-priority scheduling creates the opportunity that enables this to be realistic:
-because the dispatcher knows that the lowest \class{} functions will not be run
-until the high \class{} functions have all finished, it can swap its memory out
-knowing it will not be needed soon. The dispatcher swaps the low \class{}
-function back in when the memory pressure is gone and the function will be
-run.\footnote{Whether Linux will simply do the right thing, or require heavy
-hinting and guidance from the dispatcher, is an open question in \sys{}'s
-design.}
+low \class{} functions off the machine's memory. Having priority scheduling
+creates an opportunity: because the dispatcher knows that the lowest \class{}
+functions will not be run until the high \class{} functions have all finished,
+it can swap its memory out knowing it will not be needed soon. The dispatcher
+swaps the low \class{} function back in when the memory pressure is gone and the
+function will be run.\footnote{Whether Linux will know to swap the low
+\priceclass{} functions, or require hints and guidance from the dispatcher, is
+an open question in \sys{}'s design.}
 
 Bounding the amount of swap space required without bounding the amount of memory
 that functions can use is not possible. The goal of the dispatcher is to swap
@@ -156,10 +155,10 @@ that killing is very rare.
 Global scheduler shards store the functions waiting to be placed in a multi
 queue, with one queue per \priceclass{}. Shards choose what function to place
 next by looking at each function at the head of each queue, and comparing the
-ratio of \class{} to amount of time spent in the queue. This ensures that high
-\class{} functions don't have to wait as long as low \class{} functions to be
-chosen next, but low \class{} functions will get placed if they have waited for
-a while.
+ratio of \class{} to amount of time spent in the queue. This procedure ensures
+that high \class{} functions don't have to wait as long as low \class{}
+functions to be chosen next, but low \class{} functions will get placed if they
+have waited for a while.
 
 When placing the chosen function, the shard will first look in its idle list. If
 the list is not empty, it will choose the machine with the smallest queue
