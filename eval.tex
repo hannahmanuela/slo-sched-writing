@@ -19,13 +19,13 @@ simulates different scheduling approaches. Using a simulator allows us to extend
 the experiments to include many more machines than would otherwise be available
 to us.
 
-\begin{figure*}[t!]
+\begin{figure}[t!]
     \centering
-      \includegraphics[width=16cm]{img/hermod_xx_edf_latencies.png}
+      \includegraphics[width=8.5cm]{img/hermod_xx_latencies.png}
       \caption{ tail latency distribution and compute utilization across
-      different loads, for Hermod, \sys{}, and EDF respectively }
+      different loads, for Hermod and \sys{} }
     \label{fig:hermod-xx-edf}
-\end{figure*}
+\end{figure}
 
 
 \subsection{Experimental Setup}
@@ -112,8 +112,7 @@ load. EDF's superior performance on the far right side of the graph for the low
 others never finish and so don't show up on this graph. EDF's utilization is
 also much tighter because of the centralised setting it runs in (so the spread
 of the utilization comes from being different at different points in time, not
-on different machines).\hmng{do I talk about the fact that, if not used with
-admission control, EDF will start to collapse?}
+on different machines).
 
 
 \subsection{Does \sys{} plan for memory management work?}
@@ -136,7 +135,7 @@ Figure~\ref{fig:memory-graphs} shows the results. We can see \sys{} swaps only
 lower \class{} functions' memory, and that the amount of memory swapped is faily
 evenly distributed between all the machines. We can also conclude that with a
 500GB SSD, a provider would comfortably be able to avoid killing while running
-the datacenter at an average memory utilization of $\sim$90$\%$, which would
-cost $\sim\$$30 per machine~\cite{ssd-price}.
+the datacenter at an average memory utilization of $\sim$90$\%$, at the cost of
+$\sim\$$30 per machine for swap space~\cite{ssd-price}.
 
 

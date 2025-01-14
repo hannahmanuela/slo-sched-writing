@@ -8,16 +8,6 @@ providers who don't want to keep resources idle for processes that reserved
 them. However, the reality of serverless today is that functions experience a
 variance in latencies that is not tolerable for latency sensitive workloads. 
 
-The common approach to this is to work on cold starts. This paper asks what
-comes next; once cold starts in the single digit ms range (which we are starting
-to see in research schedulers) are commercially available, have we figured out a
-system that can run serverless in its ideal form?
-
-We show that this is not the case, and that once more latency senstive functions
-are able to run alongside the usual map reduce and image resize functions, we
-will need some way of prioritising which functions are latency sensitive in
-order to keep their latencies acceptable.
-
 We propose a new scheduler, \sys{}, that introduces \emph{\priceclass{}es}.
 Developers assign each function they want to run to a \priceclass{}, which
 encodes a priority that \sys{} then enforces at invocation, both in placing the

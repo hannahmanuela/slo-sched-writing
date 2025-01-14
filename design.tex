@@ -7,20 +7,20 @@ metric to tell \sys{} what to prioritize and what not. We will show that having
 functions. 
 
 \Sys{} uses \class{}es to supplant the current interface, which requires
-developers choose an amount of memory per function, which is tied to a cpu power
-(a potentially fractional amount of vCPUs). In \sys{}, \priceclass{}es are the
-only thing that developers need to give; \sys{} bills memory separately and by
-use. The price for memory is the same across all \class{}es. Removing memory
-from the interface serves the purpose of extending the serverless on-demand
-structure to include memory.
+developers to choose an amount of memory per function, which is tied to a cpu
+fraction (\eg 0.2 vCPUs). In \sys{}, \priceclass{}es are the only thing
+that developers need to give; \sys{} bills memory separately and by use. The
+price for memory is the same across all \class{}es. Removing memory from the
+interface serves the purpose of extending the serverless on-demand structure to
+include memory.
 
 \Priceclass{}es are a metric that has a number of benefits over resource usage
-estimations. One is that developers are more likely to have a good sense of
-what \priceclass{} a function should have ahead of time, because they know in
-what context the function will be used and how important it is that the function
-run quickly. \Priceclass{}es also remain the same across different invocations,
-whereas the resources needed can be heavily skewed in a web server environment,
-where popularity distributions are often very
+estimations. One is that developers are more likely to have a good sense of what
+\priceclass{} a function should have ahead of time, because they know in what
+context the function will be used and how important it is that the function run
+quickly. \Priceclass{}es also remain the same across different invocations,
+whereas the resources needed can be heavily skewed in a web application
+environment, where popularity distributions are often very
 uneven~\cite{hermod,serverless-in-the-wild}. And finally, \class{}es more
 directly align the interests of the developer with those of the provider, by
 communicating on the level of what the provider and developer actually care
@@ -53,11 +53,11 @@ design.
 Developers using \sys{} write function handlers and define triggers just like
 they would for any existing serverless offering. In addition, each place where
 they trigger the function, they assign that invocation to a \priceclass{}. For
-instance, a simple web server might consist of a home page view that is assigned
-a higher \priceclass{} and costs 2$\mu\cent$ per cpu second, a user profile page
-view which is assigned a middle-high \class{} and cost 1.5$\mu\cent$ per cpu
-second, and finally an image processing function that can be set to a low
-\class{} which costs only 0.5$\mu\cent$ per cpu second.
+instance, a simple web application might consist of a home page view that is
+assigned a higher \priceclass{} and costs 2$\mu\cent$ per cpu second, a user
+profile page view which is assigned a middle-high \class{} and cost
+1.5$\mu\cent$ per cpu second, and finally an image processing function that can
+be set to a low \class{} which costs only 0.5$\mu\cent$ per cpu second.
 
 \Class{}es are inherited across call chains: if a high \class{} function calls a
 low \class{} function, that invocation with run with high \class{}. This
@@ -140,9 +140,7 @@ creates an opportunity: because the dispatcher knows that the lowest \class{}
 functions will not be run until the high \class{} functions have all finished,
 it can swap its memory out knowing it will not be needed soon. The dispatcher
 swaps the low \class{} function back in when the memory pressure is gone and the
-function will be run.\footnote{Whether Linux will know to swap the low
-\priceclass{} functions, or require hints and guidance from the dispatcher, is
-an open question in \sys{}'s design.}
+function will be run.
 
 Bounding the amount of swap space required without bounding the amount of memory
 that functions can use is not possible. The goal of the dispatcher is to swap

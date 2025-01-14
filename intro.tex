@@ -9,47 +9,47 @@ control over scheduling and can use that to drive up utilization, rather than
 needing to hold idle resources available for clients who reserved them.
 
 
-However, there remain roadblocks that make serverless today infeasible for
-workloads that are a good fit. For instance web servers, which often have
-inconsistent and bursty load, but are rarely run completely in serverless
+There remain roadblocks, however, that make serverless today infeasible for
+workloads that are a good fit. For instance web server applications, which often
+have inconsistent and bursty load, but are rarely run completely in serverless
 offerings~\cite{reddit-serverless1}, such as AWS lambda. One of the challenges
-that makes running a web server on lambda infeasible is lambda invocations'
-variable end to end latencies: in a small benchmark (described in
-Section~\ref{motivation}) we found that total execution time latencies for a
-simple hello world function that sleeps for 20 ms ranged from 20 to 400ms;
-whereas an acceptable latency may be anything below 100ms~\cite{page-load-time}.
-This variability is a problem because it has been shown that small response time
-differences can matter a lot in interactive
+is lambda invocations' variable end to end latencies: in a small benchmark
+(described in Section~\ref{motivation}) we found that total execution time
+latencies for a simple hello world function that sleeps for 20 ms ranged from 20
+to 400ms; whereas an acceptable latency for user-facing pages is be anything
+below 100ms~\cite{page-load-time}. This variability is a problem because it has
+been shown that small response time differences can matter a lot in interactive
 applications~\cite{amz-page-load,google-page-load}.
 
 
-A well-known cause of these variable latencies is cold starts. However, this
-paper takes the position that systems research is well underway to reaching low
-single digit ms cold start times, with current state-of-the-art research systems
-pushing into single digit territory~\cite{sigmaos,mitosis}. Which begs the
-question: if cold start is fast enought that more latency sensitive
-applications, like web servers, can have a cold start on the critical path, are
-we then done? Will serverless then be, at least from an infrastructure
-perspective, ready to support these sorts of workloads?
+A well-known cause of these variable latencies is cold starts. This paper takes
+the position that systems research is well underway to reaching low single digit
+ms cold start times, with current state-of-the-art research systems pushing into
+single digit territory~\cite{sigmaos,mitosis}. Which begs the question: if cold
+start is fast enought that more latency sensitive applications, like web
+applications, can have a cold start on the critical path, are we then done? Will
+serverless then be, at least from an infrastructure perspective, ready to
+support these sorts of workloads?
 
-This paper argues that no, there still remains a serious challenge to running
-such a latency sensitive workload on serverless: queueing and delay within the
-system. Load will not always fit in the resources providers have, and so some
-work has to be queued or otherwise degraded. In the world of long running
-servers, developers avoid degradation of access to resources by giving latency
-critical services reservations; but reserving servers is incompatible with the
-serverless approach. 
+This paper argues that no, there still remains a challenge to running such a
+latency sensitive workload on serverless: queueing and delay within the system.
+Load will not always fit in the resources providers have, and so some work msut
+be queued or otherwise degraded. In the world of long running servers,
+developers avoid degradation of access to resources by giving latency critical
+services reservations; but reserving servers is incompatible with the serverless
+approach. 
 
 
 What developers care about in the end is that the functions that are latency
-sensitive run quickly. The challenge this paper addresses is the following: in a
-world where cold starts are fast and latency sensitive work runs alongside map
-reduce and image processing functions, latency sensitive functions might end up
-behind background ones, waiting to be placed on machines or to get access to
+sensitive run quickly. This paper assumes a world where cold starts are fast and
+latency sensitive work runs alongside map reduce and image processing functions.
+The challenge this paper addresses is that latency sensitive functions might end
+up behind background ones, waiting to be placed on machines or to get access to
 resources. To address this challenge, this paper proposes \sys{}, a scheduling
-system that associates a \textit{\priceclass{}} with each function. Priority
-in the system is directly paid for through \priceclass{}es, and all of the
-resource allocation decisions in \sys{} are made on the basis of \priceclass{}.
+system that associates with each function a \textit{\priceclass{}}, which is an
+amount that it costs to run that function per unit time. Priority in the system
+is directly paid for through \priceclass{}es, and all of the resource allocation
+decisions in \sys{} are made on the basis of \priceclass{}.
 
 \Sys{} has multiple goals it needs to achieve and challenges it needs to
 address. One goal is that \sys{} needs to be able to support a multi tenant

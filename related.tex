@@ -23,11 +23,22 @@ manages the invocation sequence of developer's function chains by interposing on
 the triggers and choosing what to invoke when. Therefore it also, unlike
 \sys{}, does not support multi-tenancy.
 
-Another project\cite{app-paper} creates a language of Allocation Priority
-Policies (APP), which is a declarative language to express policies, then builds
-a scheduler around that. The APP language is built around allowing developers to
-specify custom load balancing decisions, and the scheduler uses the developers'
-specification to define a mapping of function invocations to workers. 
+Allocation Priority Policies (APP)\cite{app-paper} provides a declarative
+language to express policies, then builds a scheduler around that. The APP
+language is built around allowing developers to specify custom load balancing
+decisions, and the scheduler uses the developers' specification to define a
+mapping of function invocations to workers. \Sys{}, on the other hand, does not
+ask developers to set the load balancing policy, but rather has developers give
+\sys{} the information it needs to do the load balancing itself.
+
+AWS offers two different ways for developers to influence their functions'
+scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
+concurrency specifies a number of instances to keep warm for a given function,
+and reserved concurrency ensures that a fixed amount of the possible concurrency
+reserved for it. This interface is bad for serverless workloads for the same
+reasons that reservation-based systems are: it requires developers to estimate
+their future needs and pay up front, and providers to keep those potentially
+idle resources available.
 
 On the serverful side of scheduling, priorities are generally expressed via a
 latency critical/best effort binary, where latency critical processes have an
