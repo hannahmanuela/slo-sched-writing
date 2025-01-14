@@ -40,6 +40,10 @@ reasons that reservation-based systems are: it requires developers to estimate
 their future needs and pay up front, and providers to keep those potentially
 idle resources available.
 
+Serverless orchestration systems like Dirigent~\cite{dirigent} are orthogonal to
+\sys{}: thier approaches can be combined to further reduce the latency overheads
+that functions face.
+
 On the serverful side of scheduling, priorities are generally expressed via a
 latency critical/best effort binary, where latency critical processes have an
 attached amount of resource reservations, and best effort processes

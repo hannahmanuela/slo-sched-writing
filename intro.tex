@@ -10,8 +10,8 @@ needing to hold idle resources available for clients who reserved them.
 
 
 There remain roadblocks, however, that make serverless today infeasible for
-workloads that are a good fit. For instance web server applications, which often
-have inconsistent and bursty load, but are rarely run completely in serverless
+workloads that are a good fit. For instance web applications, which often have
+inconsistent and bursty load, but are rarely run completely in serverless
 offerings~\cite{reddit-serverless1}, such as AWS lambda. One of the challenges
 is lambda invocations' variable end to end latencies: in a small benchmark
 (described in Section~\ref{motivation}) we found that total execution time
@@ -33,35 +33,36 @@ support these sorts of workloads?
 
 This paper argues that no, there still remains a challenge to running such a
 latency sensitive workload on serverless: queueing and delay within the system.
-Load will not always fit in the resources providers have, and so some work msut
+Load will not always fit in the resources providers have, and so some work must
 be queued or otherwise degraded. In the world of long running servers,
 developers avoid degradation of access to resources by giving latency critical
 services reservations; but reserving servers is incompatible with the serverless
 approach. 
 
 
-What developers care about in the end is that the functions that are latency
-sensitive run quickly. This paper assumes a world where cold starts are fast and
-latency sensitive work runs alongside map reduce and image processing functions.
-The challenge this paper addresses is that latency sensitive functions might end
-up behind background ones, waiting to be placed on machines or to get access to
-resources. To address this challenge, this paper proposes \sys{}, a scheduling
-system that associates with each function a \textit{\priceclass{}}, which is an
-amount that it costs to run that function per unit time. Priority in the system
-is directly paid for through \priceclass{}es, and all of the resource allocation
-decisions in \sys{} are made on the basis of \priceclass{}.
+This paper proposes \sys{}, a serverless scheduler with the goal of ensuring
+that latency sensitive functions don't end up behind background ones, waiting to
+be placed on machines or to get access to resources. Designing \sys{} faces
+multiple challenges. 
 
-\Sys{} has multiple goals it needs to achieve and challenges it needs to
-address. One goal is that \sys{} needs to be able to support a multi tenant
-environment. \Priceclass{}es achieve this: rather than dealing in a relative
-ordering of developers' functions by latency sensitivity, which would be
-difficult to compare across developers, the connection to money allows the
-\class{} to have meaning on an absolute scale. It also incentivizes usage of the
-lower \class{}es for functions that are less latency sensitive, since they can
-be run cheaply.
+One challenge is that \sys{} needs to be able to support a multi tenant
+environment. The fact that user facing page view functions are more important to
+a web application than image processing jobs is a relative statement: there is
+no way of mapping that prioritization to other developers' jobs, in order to be
+able to directly compare which job should run when. 
 
 
-Another important goal is that of placing functions quickly enough. For example,
+In order to achieve this global comparability, \sys{} includes in its interface
+\emph{\priceclass{}es}: an amount that it costs to run that function per unit
+time. Rather than dealing in a relative ordering of developers' functions by
+latency sensitivity, which would be difficult to compare across developers, the
+connection to money allows the \class{} to have meaning on an absolute scale. It
+also incentivizes usage of the lower \class{}es for functions that are less
+latency sensitive, since they can be run cheaply.\hmng{is it weird that I give
+the solution to this challenge but not the others?}
+
+
+Another challenge is that of placing functions quickly enough. For example,
 a function that takes 20ms to run cannot spend 50ms in scheduler queues and
 waiting for an execution environment before even starting to run. Knowing where
 the free and idle resources are, or finding out quickly, is challenging in a
@@ -69,7 +70,7 @@ setting where both the number of new functions invocations and the amount of
 resources are large.
 
 
-Finally, a key challenge in designing \sys{} is that of managing memory. For
+A third key challenge in designing \sys{} is that of managing memory. For
 compute resources, cores can be timshared or processes preempted, but the buck
 stops once a machine is out of memory. Current systems address this challenge by
 requiring developers to express a maximal amount of memory they will use, and
