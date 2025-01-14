@@ -68,15 +68,14 @@ functions. This experiment shows that \sys{} is able to do this even under
 varying load, and compares \sys{}'s performance to a scheduler that does not
 take into account any information about which functions are latency sensitive.
 
-We compare \sys{} performance to that of an existing scheduler that does not
-take priority into account. We simulate Hermod\cite{hermod}, a state-of-the-art
-research scheduler built specifically for serverless. Hermod's design is the
-result of a from-first-principles analysis of different scheduling paradigms. In
-accordance with the paper's findings, we simulate least-loaded load balancing
-over machines found using power-of-k-choices, combined with early binding and
-Processor Sharing machine-level scheduling. Hermod does not use priorities in
-its design, and as such the simulator ignores functions' \class{} when
-simulating Hermod's design.
+We simulate Hermod\cite{hermod}, a state-of-the-art research scheduler built
+specifically for serverless. Hermod's design is the result of a
+from-first-principles analysis of different scheduling paradigms. In accordance
+with the paper's findings, we simulate least-loaded load balancing over machines
+found using power-of-k-choices, combined with early binding and Processor
+Sharing machine-level scheduling. Hermod does not use priorities in its design,
+and as such the simulator ignores functions' \class{} when simulating Hermod's
+design.
 
 Because Hermod does not deal with memory pressure, and to avoid an unfair
 comaprison with \sys{}'s swapping, we set the memory to be absurdly high for all

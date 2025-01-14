@@ -57,46 +57,13 @@ include provider lock in, lack of insight for debugging and telemetry, and
 variable runtimes.
 
 
-\Sys{} focuses on the challenge of variable runtimes. In order to better
-understand the where the variation comes from, we run an experiment with a
-simple lambda function that sleeps for 20ms and then returns. We use AWS
-Xray~\cite{aws-xray} to measure its latency, with incovations spaced randomly
-between 0 and 10 minutes. The results are in
-Figure~\ref{fig:lambda-total-durations}. The spike on the left side of the graph
-is the execution times from invocations that used warm start. We can see the
-durations remain stable. The reason for this is that AWS is able to simply route
-the new request to the machine with the existing container on it. We verify that
-this is indeed what is happening by changing the function to include reading and
-then writing to an environment variable, and find that for invocations with warm
-start when we read the variable it was already set by a previous invocation.
-
-
-The right grouping in the graph is those invocations that hit cold starts, whose
-overall latencies vary between $\sim$200 and $\sim$400ms.
-
-
-In order to understand where the extra latency in the longer times comes from,
-we begin by ruling out some options such as container downloading, and then look
-to open source alternatives to come to the conclusion that it comes from
-queueing or delay (waiting for resources) in the system.
-
-???
-
-\hmng{What we are trying to show here is that the stable latencies from warm
-start wouldn't spill over into the cold start world even if cold start is fast? Or
-maybe a flipside of that which is that part of the cold start latency comes from
-queuing already now? Those feel like two different things --- one is more the
-breakdown thing, the other is more the openwhisk experiment with everything warm
-start}
-
-
-Indeed, it must be the case that any system that runs with high average
-utilization experiences moments where there is more load than the resources can
-handle. As we know from recent traces~\cite{prequal}, although load may look
-stable at a time increment of hours or even minutes, going down to the second
-and millisecond level shows the load to have high variance. If providers want to
-have good average utilization, then in the moments of load spike the load will
-be more than the resources can handle.
+\Sys{} focuses on the challenge of variable runtimes. It must be the case that
+any system that runs with high average utilization experiences moments where
+there is more load than the resources can handle. As we know from recent
+traces~\cite{prequal}, although load may look stable at a time increment of
+hours or even minutes, going down to the second level shows the load to have
+high variance. If providers want to have good average utilization, then in the
+moments of load spike the load will be more than the resources can handle.
 
 The scheduler then has two different options: queue the excess load, or place it
 on machines and let them deal with being temporarily overloaded. Different
@@ -108,30 +75,49 @@ ready~\cite{openwhisk-sched}. Knative~\cite{knative} similarly queues the excess
 invocations, although it does so via the load balancer, which is also in charge
 of autoscaling~\cite{knative-sched}: if the existing pods are fully loaded (with
 a small, bounded-size queue in front of them), requests are queued separately
-while the autoscaler starts up more invocations. It is impossible to know what
-proprietary systems like AWS do, but since AWS guarantees an amount of memory as
-well as a fraction of vCPUs to each function, it is likely AWS also queues the
-invocations to ensure they aren't put in a position of having to break those
+while the autoscaler starts up more invocations.\hmng{talk about how Hermod
+finds that early binding is best?} It is impossible to know what proprietary
+systems like AWS do, but since AWS guarantees an amount of memory as well as a
+fraction of vCPUs to each function, it is likely AWS also queues the invocations
+to ensure they aren't put in a position of having to break those
 guarantees.\hmng{that might be a test we could run: do a tight while loop and
-look at cpu time and wall clock time to see how we are being scheduled}
+look at cpu time and wall clock time to see how we are being scheduled} 
+
+We can see evidence for this sort of queueing/delay happening in lambda
+invocations now, if we look at the distribution of invocation times. We run an
+experiment with a simple lambda function that sleeps for 20ms and then returns.
+We use AWS Xray~\cite{aws-xray} to measure its latency, with incovations spaced
+randomly between 0 and 10 minutes. The results are in
+Figure~\ref{fig:lambda-total-durations}. The spike on the left side of the graph
+is the execution times from invocations that used warm start. We can see the
+durations remain stable. The reason for this is that AWS is able to simply route
+the new request to the machine with the existing container on it. We verify that
+this is indeed what is happening by changing the function to include reading and
+then writing to an environment variable, and find that for invocations with warm
+start when we read the variable it was already set by a previous
+invocation.\hmng{We don't know what happens if the machine with the warm
+container on it is currently already fully loaded though}
+
+The right grouping in the graph is those invocations that hit cold starts, whose
+overall latencies vary between $\sim$200 and $\sim$400ms.\hmng{conclude
+something? What we are trying to show here is that the stable latencies from
+warm start wouldn't spill over into the cold start world even if cold start is
+fast? Or maybe a flipside of that which is that part of the cold start latency
+comes from queuing already now? Those feel like two different things --- one is
+more the breakdown thing, the other is more the openwhisk experiment with
+everything warm start}
 
 Because none of these schedulers have information about the functions they are
 queueing, it is impossible for them to know which to prioritize. Without further
-tooling, it is possible and in fact likely that latency sensitive jobs might end
-up in the queue behind background functions. The way all of the above schedulers
-deal with this is by doing some sort of accounting of concurrency: concurrency
-can be reserved or provisioned for specific functions, and limited for others.
-This is necessary to ensure that a burst in background tasks doesn't starve the
-latency sensitive functions. However, what happens when the datacenter is out of
-resources and so the concurrency limit has not yet been reached but the
-resources are unavailable is not clear. Reserving and provisioning and limiting
-are also conceptually in tension with the goal of serverless, which is to be
-on-demand and flexible.
-
-
-
-
-
+tooling, latency sensitive jobs might end up in the queue behind background
+functions. The way all of the above schedulers avoid this problem is by doing
+some sort of accounting of concurrency: concurrency can be reserved or
+provisioned for specific functions, and limited for others. This is necessary to
+ensure that a burst in background tasks doesn't starve the latency sensitive
+functions. However, what happens when the datacenter is out of resources and so
+the concurrency limit has not yet been reached but the resources are unavailable
+is not clear. Reserving and provisioning and limiting are also conceptually in
+tension with the goal of serverless, which is to be on-demand and flexible.
 
 
 
