@@ -8,8 +8,7 @@ In order to explore evidence for the case for \sys{}, we ask the following
 questions: 
 \begin{enumerate}
     \item How does function latency in \sys{} compare to schedulers without
-    priorities on one hand, and theoretically optimal schedulers with perfect
-    information on the other?
+    priorities?
     \item Does \sys{}'s plan for managing memory work?
 \end{enumerate}
 
@@ -22,15 +21,16 @@ to us.
 \begin{figure}[t!]
     \centering
       \includegraphics[width=8.5cm]{img/hermod_xx_latencies.png}
-      \caption{ tail latency distribution and compute utilization across
-      different loads, for Hermod and \sys{} }
+      \caption{ tail latency distribution and compute utilization for Hermod and
+      \sys{}. At tick 50 (left right line) the load was increased, and at tick
+      80 (right red line) it was decreased again }
     \label{fig:hermod-xx-edf}
 \end{figure}
 
 
 \subsection{Experimental Setup}
 
-In each version of the simulator, functions arrive in an open loop at a constant
+In each version of the simulator, functions arrive in an open loop at a given
 rate. The simulator attaches three main characteristics to each function it
 generates: runtime, \priceclass{}, and memory usage.\ \textit{Function runtime}
 is chosen by sampling from randomly generated long tailed (in this case pareto)
@@ -63,56 +63,34 @@ k-choices value of 3 when applicable.
 
 \subsection{How do function latencies compare?}
 
-Developers care about function latency, so it is important to understand how
-well \priceclass{}es do at reflecting and enforcing SLAs. On one hand, is
-relevant to understand if we need \class{}es at all: is there a scheduler that
-can, without having any access to information about which functions are latency
-sensitive, still ensure that functions perform well? On the other hand, it is
-helpful to compare \sys{} to an ideal scheduler, in order to contextualize
-\sys{}'s performance.
+The goal of \sys{} is to reduce the variance of latencies for high \priceclass{}
+functions. This experiment shows that \sys{} is able to do this even under
+varying load, and compares \sys{}'s performance to a scheduler that does not
+take into account any information about which functions are latency sensitive.
 
-To explore the first side of this question, we look at the performance of an
-existing scheduler that does not take priority into account. We simulate
-Hermod\cite{hermod}, a state-of-the-art research scheduler built specifically
-for serverless. Hermod's design is the result of a from-first-principles
-analysis of different scheduling paradigms. In accordance with the paper's
-findings, we simulate least-loaded load balancing over machines found using
-power-of-k-choices, combined with early binding and Processor Sharing
-machine-level scheduling. Hermod does not use priorities in its design, and as
-such the simulator ignores functions' \class{} when simulating Hermod's design.
+We compare \sys{} performance to that of an existing scheduler that does not
+take priority into account. We simulate Hermod\cite{hermod}, a state-of-the-art
+research scheduler built specifically for serverless. Hermod's design is the
+result of a from-first-principles analysis of different scheduling paradigms. In
+accordance with the paper's findings, we simulate least-loaded load balancing
+over machines found using power-of-k-choices, combined with early binding and
+Processor Sharing machine-level scheduling. Hermod does not use priorities in
+its design, and as such the simulator ignores functions' \class{} when
+simulating Hermod's design.
 
+Because Hermod does not deal with memory pressure, and to avoid an unfair
+comaprison with \sys{}'s swapping, we set the memory to be absurdly high for all
+\sys{} as well as Hermod in this experiment. We also turn off the use of the
+idle list in \sys{}, so as to be on par with Hermod in placing load, and revert
+solely to k-choices.
 
-On the other side, we want to simulate an ideal scheduler. Ideal is with respect
-to meeting functions' SLAs, which requires defining the desired SLA. In order to
-do this, we assign each function invocation a deadline, which we define as a
-function of the true runtime as well as the \priceclass{}: deadline = runtime *
-maxPrice/price. This definition ensures that the highest \class{}es functions'
-deadlines are simply their runtimes, and deadlines get more and more slack with
-lower \class{}es. We then simulate an Earliest Deadline First (EDF) scheduler
-over these deadlines, which is queuing theoretically proven to be optimal in
-exactly the way we wanted: if it is possible to create a schedule where all
-functions meet their deadline, EDF will find it\cite{wiki-edf}. We run EDF in a
-centralized setting: it schedules one machine with 800 cores, not 100 machines
-with 8 each.
-
-We compare the latencies observed in both of these settings with those that
-running \sys{} produces. Because Hermod does not deal with memory pressure, and
-to avoid an unfair comaprison with \sys{}'s swapping, we set the memory to be
-absurdly high for all three settings in this experiment. We also turn off the
-use of the idle list in \sys{}, so as to be on par with Hermod in placing load,
-and revert solely to k-choices.
-
-A strong result for \sys{} would show that it is able to maintain low latency
-for high \priceclass{} functions. Especially under high load, we expect that the
-differences betweeen the three approaches will become evident.
-Figure~\ref{fig:hermod-xx-edf} shows the results. We can see that \sys{} and EDF
-are able to retain performance for the high \class{} functions even under higher
-load. EDF's superior performance on the far right side of the graph for the low
-\class{} functions is because EDF runs only functions with short runtimes; the
-others never finish and so don't show up on this graph. EDF's utilization is
-also much tighter because of the centralised setting it runs in (so the spread
-of the utilization comes from being different at different points in time, not
-on different machines).
+We begin with a medium load setting, and then increase the load to more than a
+steady setting cand handle for a window of time. A strong result for \sys{}
+would show that it is able to maintain low latency for high \priceclass{}
+functions, even under the high load. Figure~\ref{fig:hermod-xx-edf} shows the
+results. We can see that \sys{} is indeed able to maintain low latencies for the
+high \class{} functions. Hermod spreads the performance degradation across all
+the different functions, and as a result all of their latencies go up equally.
 
 
 \subsection{Does \sys{} plan for memory management work?}
