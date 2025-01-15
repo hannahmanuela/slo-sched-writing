@@ -2,74 +2,68 @@
 \section{Introduction}
 %-------------------------------------------------------------------------------
 
-A world where cloud compute is run in the format of serverless functions is
-attractive to developers and providers: developers pay only for what they use,
-while having access to many resources when needed; and cloud providers have
-control over scheduling and can use that to drive up utilization, rather than
-needing to hold idle resources available for clients who reserved them.
+A world where cloud compute runs as serverless functions is attractive
+to developers and providers: developers pay only for what they use,
+while having access to many resources when needed; and cloud providers
+can maximize utilization by intelligent scheduling of functions, in
+contrast to systems in which clients reserve resources which then
+often lie idle.
 
-
-There remain roadblocks that make serverless today infeasible for workloads that
-are a good fit. A central example to this paper is that of web applications.
-Their inconsistent and bursty load patterns make them a great fit for
-serverless, but they are rarely run in serverless
-offerings~\cite{reddit-serverless1, reddit-serverless2, not-lambda-blog}. One
-reason is serverless function invocations' variable latencies: in a small
+Web applications are an example of a workload that could potentially
+benefit from serverless, due to their bursty load patterns. However,
+they rarely use use serverless~\cite{reddit-serverless1,
+  reddit-serverless2, not-lambda-blog}. One reason is that even short
+functions sometimes suffer long delays under serverless: in a small
 benchmark on AWS (described in Section~\ref{motivation}), we found that total
 execution times for a simple hello world function that sleeps for 20 ms ranged
-from 20 to 400ms. This variability is a problem because it has been shown that
-small response time differences have a large impact in interactive
-applications~\cite{amz-page-load,google-page-load}, so a maximum acceptable
+from 20 to 400ms.
+Small response time differences can have a large negative impact in interactive
+applications~\cite{amz-page-load,google-page-load}; the maximum acceptable
 latency for a user-facing function is closer to 100ms~\cite{page-load-time}.
 
+While a well-known cause of variable latency is cold start, research
+is putting cold start times of a few milliseconds within
+reach~\cite{sigmaos,mitosis}. If cold start is no longer an obstacle,
+will serverless be ready to support web applications?
 
-A well-known cause of these variable latencies is cold starts. This paper takes
-the position that systems research is well underway to reaching low single digit
-ms cold start times, with current state-of-the-art research systems in single
-digit ms territory~\cite{sigmaos,mitosis}. If cold start is fast enought that
-latency sensitive functions can have a cold start on the critical path, will
-serverless be ready to support web applications?
-
-This paper argues that there remain challenges to running latency sensitive
-workloads on serverless. We call the problem this paper addresses the
-\emph{\problem{}}: when load is higher than what resources can handle, the
-scheduler has to queue or delay some functions --- and the runtime of those
-functions will be determined by how much load other functions have, and how many
-resources they use.
+A major remaining problem for latency-sensitive tasks on serverless
+is the \emph{\problem{}}: under high total load, different tenants'
+functions compete for resources, and thus can drive up each other's
+delays. Whether the outcome is acceptable depends on how the provider
+schedules different tenants' functions.
 
 This paper proposes \sys{}, a serverless scheduler that addresses the \problem{}
 by ensuring that latency sensitive functions aren't blocked behind background
-ones.
+work.
 
-Designing \sys{} faces multiple challenges. One challenge is that \sys{} needs
-to support multi-tenancy. A core facet of the \problem{} is that it arises in a
-multi-tenant setting: part of the reason it is a problem is it violates
-performance isolation, a key property in cloud computing. The \problem{} is also
-more challenging in the multi-tenant setting: it is clear that user-facing
-functions are more important to a web application than image processing, but
-there is no way to directly compare that prioritization with other developers'
-functions.
-
-In order to achieve this global comparability, \sys{} uses
-\emph{\priceclass{}es}: each \priceclass{} is an amount that it costs to run
-functions per unit time. 
+Designing \sys{} faces multiple challenges. One of them is that the
+scheduler needs a basis on which to compare the importances of
+different tenants' functions. Each individual tenant can be expected
+to understand which of its own functions are most in need of low
+latency, but how to compare these decisions across tenants? To achieve
+this global comparability, tenants declare a \emph{\priceclass{}} for
+each function invocation. The \priceclass{} is the amount of money the
+tenant proposes to pay per unit of CPU time. The scheduler can then
+make scheduling decisions among different tenants' functions by
+comparing their price classes.
 % It also incentivizes usage of the lower \class{}es for functions that are less
 % latency sensitive, since they can be run cheaply.
 
-Another challenge is that of placing functions quickly enough. Knowing where the
-free and idle resources are, or finding out quickly, is challenging in a setting
-where both the number of new functions invocations and the amount of resources
-are large.
+Another challenge is rapid placement of functions in a large cluster
+of servers. Tracking idle or pre-emptible resources is difficult when
+both the number of new function invocations and the amount of
+resources are large.
 
-
-A third key challenge in designing \sys{} is that of managing memory. For
-compute resources, cores can be timshared or processes preempted, but the buck
-stops once a machine is out of memory. Current systems address this challenge by
-requiring developers to express a maximal amount of memory they will use, and
-charging based on that. However, memory usage is at best difficult to know in
-advance and at worst varies across invocations so is impossible to say in
-advance. Instead, \sys{} charges developers based on the amount of memory
+A third key challenge in designing \sys{} is memory management.
+The provider faces a tension: high CPU utilization requires packing many
+functions onto each machine, but not so many that the machine
+runs out of memory.
+Current systems avoid memory exhaustion by
+requiring developers to declare the maximum amount of memory each
+function will use.
+However, memory use is difficult to predict
+and varies across invocations.
+Instead, \sys{} charges developers based on the amount of memory
 actually used, and requires no bound to be set.~\Sys{} thus faces the
 challenging proposition of blindly placing functions not knowing how much memory
-they will use, but still needing memory utilization to be high.
- 
+they will use, but still needing CPU utilization to be high.
