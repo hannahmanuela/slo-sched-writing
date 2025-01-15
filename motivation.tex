@@ -52,18 +52,17 @@ latencies will depend on other people's load. This is not ideal, expecially if
 one developer's user facing function is queued while another developers
 background task is running. This situation is the essence of the \problem{}.
 
-We can see evidence of variable invocation times happening in lambda invocations
-today, within the cold start invocations. We run an experiment with a simple
-lambda function that sleeps for 20ms and then returns. We use AWS
-Xray~\cite{aws-xray} to measure its latency, with incovations spaced randomly
-between 0 and 10 minutes. The results are in
-Figure~\ref{fig:lambda-total-durations}. The spike on the left side of the graph
-is the execution times from invocations that used warm start. The durations
-remain stable, because AWS is able to simply route the new request to the
-machine with the existing container. We verify this what is happening by
-changing the function to include reading and then writing to an environment
-variable, and find that for invocations with warm start when we read the
-variable it was already set by a previous invocation.
+We can see evidence of the \problem{} occurring in lambda invocations today,
+within the cold start invocations. We run an experiment with a simple lambda
+function that sleeps for 20ms and then returns. We use AWS Xray~\cite{aws-xray}
+to measure its latency, with incovations spaced randomly between 0 and 10
+minutes. The results are in Figure~\ref{fig:lambda-total-durations}. The spike
+on the left side of the graph is the execution times from invocations that used
+warm start. The durations remain stable, because AWS is able to simply route the
+new request to the machine with the existing container. We verify this what is
+happening by changing the function to include reading and then writing to an
+environment variable, and find that for invocations with warm start when we read
+the variable it was already set by a previous invocation.
 
 The right grouping in the graph is those invocations that hit cold starts, whose
 overall latencies vary between $\sim$200 and $\sim$400ms. This variance
