@@ -90,7 +90,7 @@ The machine scheduler is a preemptive priority scheduler: it preempts lower
 \class{} functions is desirable in \sys{}, since image processing functions
 should not interrupt a page view request processing, but vice versa is expected.
 Within \class{}es the machine scheduler is first come first served. This design
-matches Linux' `SCHED FIFO' scheduling~\cite{linux-sched}.
+matches Linux' ``SCHED FIFO'' policy~\cite{linux-sched}.
 
 
 \textbf{Idle list.}  Each global scheduler shard has an idle list,
