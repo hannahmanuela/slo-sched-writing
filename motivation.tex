@@ -66,10 +66,14 @@ The right-hand grouping in Figure~\ref{fig:lambda-total-durations}
 reflects invocations that required cold start (creation of a new
 container). The delays have a wide spread, between $\sim$200 and
 $\sim$400ms, suggesting that there is more going on than just creation
-of a new container. We are not able to look in more detail at the
-reasons for these varying delays in AWS Lambda, but we can examine the
-designs of other serverless systems to see whether the {\problem}
-would cause the kind of delay variation in the graph.
+of a new container. One potential cause we can rule out is fetching
+the container image from S3; such fetches have been measured to take
+on the order of a second~\cite{sigmaos}; and this experiment uses a
+generic Python container that is also used by many others on AWS
+Lambda and thus likely cached. Though AWS Lambda is difficult to
+investigate in detail, we can examine the designs of other serverless
+systems to see whether the {\problem} would cause the kind of delay
+variation in the graph.
 
 The OpenWhisk~\cite{openwhisk} load balancer chooses a machine to run
 each new function on and adds a message to a Kafka queue addressed to
