@@ -1,32 +1,23 @@
 \section{Related Work}
 
-There is a large literature on scheduling for data centers but none
-address the \problem.  Systems like Sparrow\cite{sparrow},
-Hermod\cite{hermod}, or Kairos\cite{kairos} improve performance of
-scheduling in the distributed setting by trying out and using
-different scheduling policies. Unlike \sys{}, they treat all functions
-equally.
 
-Like \sys{}, many projects tailor their approach to serverless. Some systems
-generate information about functions themselves to help placement decisions; for
-instance ALPS\cite{alps}, which observes and learns the behaviors of existing
-functions and then makes scheduling decisions based on those; or
-Morpheus\cite{morpheus}, which learns SLOs from historical runs, and then
-translates these to recurring reservations.~\Sys{} instead obtains the \class{}es
-directly from the developers and bases its decisions solely on \class{}es.
+There is a large literature on scheduling for cloud computing, some of
+which targets maintaining job latency for heterogeneous workloads
+(e.g., Sparrow~\cite{sparrow}, and Kairos~\cite{kairos}). These
+schedulers don't address the \problem.
 
-Other papers have taken the same approach of obtaining information
-from the developers. Sequoia~\cite{sequoia}, for instance, creates a
-metric of QOS for serverless functions. Unlike \sys{} however, Sequoia
-does not implement a new scheduler, but is itself a serverless
-function that manages the invocation sequence of developer's function
-chains by interposing on the triggers and choosing what to invoke
-when. This design does not support multi-tenancy.
-
-Allocation Priority Policies (APP)~\cite{app-paper} provides a
-declarative language to express policies that allow a tenant to assign
-a function to one of their pods. APP doesn't, however, support
-scheduling competing functions from different tenants.
+\Sys{}, like other systems, tailors its scheduling approach to
+serverless.  ALPS~\cite{alps} observes and learns the behaviors of
+existing functions to approximate shortest-remaining processing time.
+Morpheus~\cite{morpheus} learns SLOs from historical runs, and then
+translates these to recurring reservations.  Sequoia~\cite{sequoia}
+introduces a metric of QOS for serverless functions and manages the
+invocation sequences of function chains by interposing on
+triggers. Allocation Priority Policies (APP)~\cite{app-paper} provides
+a declarative language to express policies that allow a tenant to
+assign a function to one of their pods.  Like Hermod~\cite{hermod},
+evaluated in \autoref{s:eval}, all these systems lack the notion of
+cross-tenant priority.
 
 %% The APP
 %% language allows developers to specify custom load balancing
@@ -36,7 +27,7 @@ scheduling competing functions from different tenants.
 %% \sys{} the information it needs to do the load balancing itself.
 
 AWS offers two different ways for developers to influence their functions'
-scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
+scaling: provisioned and reserved concurrency~\cite{aws-scaling}. Provisioned
 concurrency specifies a number of instances to keep warm for a given function,
 and reserved concurrency ensures that a fixed amount of the possible concurrency
 reserved for it. This interface is bad for serverless workloads for the same
@@ -63,8 +54,8 @@ resource usage of each invocation is expected to vary.
 approaches typically run an auction and give resources to the highest
 bidder~\cite{bellagio-market-based,online-auctioning}. \Sys{} avoids
 bidding because of the developer-side uncertainty it creates. AWS spot
-instance~\cite{spot-instance-pricing} support bidding, but AWS charges
-only the market rate, which is adjusted
+instance~\cite{spot-instance-pricing} support bidding for machine
+reservations, but AWS charges only the market rate, which is adjusted
 slowly~\cite{spot-instance-history}; bidding amounts to a cap of how
 much tenants are willing to spend. \Sys{} similarly sets a market
 rate, but always charges that amount, and targets a different time
