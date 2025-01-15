@@ -111,19 +111,19 @@ time-sharing and queuing: the \problem{}.
 %% a latency sensitive function might sit in the Kafka queue while
 %% another tenant's background function completes: the \problem{}.
 
-Hermod~\cite{hermod} is a recent research serverless scheduler, and shows in a
-simulation that late binding (as Openwhisk and Knative do) performs worse than
-early binding. Under high load, Hermod places the excess functions on machines
-anyway (used a least loaded policy) and does Processor Sharing scheduling among
-them. This means that all are equally slowed down, and no one function has a
-high delay. This still leads to the \problem{}: now rather than experiencing
-queuing, latency sensitive functions experience time-sharing delay. Hermod does not
-address what happens when the machines are out of memory. 
+%% Hermod~\cite{hermod} is a recent research serverless scheduler, and shows in a
+%% simulation that late binding (as Knative does) performs worse than
+%% early binding. Under high load, Hermod places the excess functions on machines
+%% anyway (used a least loaded policy) and does Processor Sharing scheduling among
+%% them. This means that all are equally slowed down, and no one function has a
+%% high delay. This still leads to the \problem{}: now rather than experiencing
+%% queuing, latency sensitive functions experience time-sharing delay. Hermod does not
+%% address what happens when the machines are out of memory. 
 
 % I (rtm) don't understand this next paragraph, after the first sentence.
 
-None of these schedulers 
-know which functions to prioritize under high load.
+% None of these schedulers 
+% know which functions to prioritize under high load.
 
 % The way all of the above schedulers avoid the \problem{} is by doing different
 % forms of accounting concurrency: concurrency can be reserved or provisioned
