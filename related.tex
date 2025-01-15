@@ -45,26 +45,25 @@ Serverless orchestration systems like Dirigent~\cite{dirigent} are orthogonal to
 \sys{}: their approaches can be combined to further reduce the latency overheads
 that functions face.
 
-Market-base scheduling approaches similarly take an approach of centering profit
-as the metric to maximize, but do auctioning in order to give resources to the
-highest bidder~\cite{bellagio-market-based,online-auctioning}.~\Sys{} avoids
-bidding because of the developer-side uncertainty it creates. AWS spot
-instance~\cite{spot-instance-pricing} allow for bidding, but only charge the
-market rate, effectively using the bidding amount as a cap for how much tenants
-are willing to spend. Spot instance market rates are steady and adjusted slowly
-over weeks and months~~\cite{spot-instance-history}.~\Sys{} similarly defines a
-market rate, but always charges that amount, and targets a different time scale
-as well as level of guarantee than spot instances.
+On the serverful side of scheduling, developers can express priorities
+by marking tasks latency critical or best effort, where latency
+critical tasks have an attached amount of resource reservations, and
+best effort processes don't~\cite{kubernetes-lc-be}.  This approach
+works well for long running servers with steady amounts of load, since
+predictable load will allow developerss to make good approximations of
+the resources they will need. The serverless setting \sys{} works
+within is different because both the number of invocations and the
+resource usage of each invocation is expected to vary.
 
-% On the serverful side of scheduling, priorities are generally expressed via a
-% latency critical/best effort binary, where latency critical processes have an
-% attached amount of resource reservations, and best effort processes
-% don't~\cite{kubernetes-lc-be}. Serverless schedulers that sit on top of
-% Kubernetes, such as OpenFaaS~\cite{openfaas} or Knative~\cite{knative}, use
-% autoscaling to keep up with load, and use the same interface as kubernetes for
-% developers to express resource requirements~\cite{knative-res, openfaas-res}.
-% This works well for long running servers with steady amounts of load, since
-% predictable load will allow developers to make good approximations of the
-% resources they will need. The serverless setting \sys{} works within is
-% different because both the number of invocations and the resource usage of each
-% invocation is expected to vary. 
+\Sys{} takes a market-like approach to scheduling, but market-based
+approaches typically run an auction and give resources to the highest
+bidder~\cite{bellagio-market-based,online-auctioning}. \Sys{} avoids
+bidding because of the developer-side uncertainty it creates. AWS spot
+instance~\cite{spot-instance-pricing} support bidding, but AWS charges
+only the market rate, which is adjusted
+slowly~\cite{spot-instance-history}; bidding amounts to a cap of how
+much tenants are willing to spend. \Sys{} similarly sets a market
+rate, but always charges that amount, and targets a different time
+scale as well as level of guarantee than spot instances.
+
+
