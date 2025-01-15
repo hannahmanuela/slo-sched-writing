@@ -28,7 +28,7 @@ A major remaining problem for latency-sensitive tasks on serverless is the
 \emph{\problem{}}: under high total load, different tenants' functions compete
 for resources, and thus can drive up each other's delays. Whether the outcome is
 acceptable depends on how the provider schedules different tenants' functions,
-as well as the functions' latency senstivity.
+as well as the functions' latency sensitivity.
 
 This paper proposes \sys{}, a serverless scheduler that addresses the \problem{}
 by ensuring that latency sensitive functions aren't blocked behind background
