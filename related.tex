@@ -1,10 +1,10 @@
 \section{Related Work}
 
-Many other projects have explored how to do better scheduling for data centers.
- 
-Systems like Sparrow\cite{sparrow}, Hermod\cite{hermod}, or Kairos\cite{kairos}
-improve performance of scheduling in the distributed setting by trying out and
-using different scheduling policies. Unlike \sys{}, they treat all functions
+There is a large literature on scheduling for data centers but none
+address the \problem.  Systems like Sparrow\cite{sparrow},
+Hermod\cite{hermod}, or Kairos\cite{kairos} improve performance of
+scheduling in the distributed setting by trying out and using
+different scheduling policies. Unlike \sys{}, they treat all functions
 equally.
 
 Like \sys{}, many projects tailor their approach to serverless. Some systems
@@ -12,33 +12,33 @@ generate information about functions themselves to help placement decisions; for
 instance ALPS\cite{alps}, which observes and learns the behaviors of existing
 functions and then makes scheduling decisions based on those; or
 Morpheus\cite{morpheus}, which learns SLOs from historical runs, and then
-translates these to recurring reservations.~\Sys{} instead gets the \class{}es
-directly from the developers as part of its interface.
+translates these to recurring reservations.~\Sys{} instead obtains the \class{}es
+directly from the developers and bases its decisions solely on \class{}es.
 
-Other papers have taken the same approach as \sys{} of getting information to
-help scheduling from the developers. Sequoia\cite{sequoia}, for instance,
-creates a metric of QOS for serverless functions. Unlike \sys{} however, Sequoia
-does not implement a new scheduler, but is itself a serverless function that
-manages the invocation sequence of developer's function chains by interposing on
-the triggers and choosing what to invoke when. Therefore it also, unlike
-\sys{}, does not support multi-tenancy.
+Other papers have taken the same approach of obtaining information
+from the developers. Sequoia\cite{sequoia}, for instance, creates a
+metric of QOS for serverless functions. Unlike \sys{} however, Sequoia
+does not implement a new scheduler, but is itself a serverless
+function that manages the invocation sequence of developer's function
+chains by interposing on the triggers and choosing what to invoke
+when. This design does not support multi-tenancy.
 
 Allocation Priority Policies (APP)\cite{app-paper} provides a declarative
-language to express policies, then builds a scheduler around that. The APP
-language is built around allowing developers to specify custom load balancing
+language to express policies. The APP
+language allows developers to specify custom load balancing
 decisions, and the scheduler uses the developers' specification to define a
 mapping of function invocations to workers. \Sys{}, on the other hand, does not
 ask developers to set the load balancing policy, but rather has developers give
 \sys{} the information it needs to do the load balancing itself.
 
-AWS offers two different ways for developers to influence their functions'
-scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
-concurrency specifies a number of instances to keep warm for a given function,
-and reserved concurrency ensures that a fixed amount of the possible concurrency
-reserved for it. This interface is bad for serverless workloads for the same
-reasons that reservation-based systems are: it requires developers to estimate
-their future needs and pay up front, and providers to keep those potentially
-idle resources available.
+%% AWS offers two different ways for developers to influence their functions'
+%% scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
+%% concurrency specifies a number of instances to keep warm for a given function,
+%% and reserved concurrency ensures that a fixed amount of the possible concurrency
+%% reserved for it. This interface is bad for serverless workloads for the same
+%% reasons that reservation-based systems are: it requires developers to estimate
+%% their future needs and pay up front, and providers to keep those potentially
+%% idle resources available.
 
 Serverless orchestration systems like Dirigent~\cite{dirigent} are orthogonal to
 \sys{}: their approaches can be combined to further reduce the latency overheads
