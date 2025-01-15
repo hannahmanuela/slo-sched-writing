@@ -6,8 +6,8 @@ metric to tell \sys{} what to prioritize and what not. We will show that having
 functions. 
 
 \Sys{} uses \class{}es to supplant the current interface, which requires
-developers to choose an amount of memory per function, which is tied to a cpu
-fraction (\eg{} 0.2 vCPUs). In \sys{}, \priceclass{}es are the only thing
+developers to choose an amount of memory per function (which is then tied to a cpu
+fraction, \eg{} 0.2 vCPUs). In \sys{}, \priceclass{}es are the only thing
 that developers need to give; \sys{} bills memory separately and by use. The
 price for memory is the same across all \class{}es. Removing memory from the
 interface serves the purpose of extending the serverless on-demand structure to
