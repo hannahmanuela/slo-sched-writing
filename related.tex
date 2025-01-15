@@ -31,20 +31,20 @@ mapping of function invocations to workers. \Sys{}, on the other hand, does not
 ask developers to set the load balancing policy, but rather has developers give
 \sys{} the information it needs to do the load balancing itself.
 
-%% AWS offers two different ways for developers to influence their functions'
-%% scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
-%% concurrency specifies a number of instances to keep warm for a given function,
-%% and reserved concurrency ensures that a fixed amount of the possible concurrency
-%% reserved for it. This interface is bad for serverless workloads for the same
-%% reasons that reservation-based systems are: it requires developers to estimate
-%% their future needs and pay up front, and providers to keep those potentially
-%% idle resources available.
-
 Serverless orchestration systems like Dirigent~\cite{dirigent} are orthogonal to
 \sys{}: their approaches can be combined to further reduce the latency overheads
 that functions face.
 
-\fk{scheduling based on money, spot instances}
+Market-base scheduling approaches similarly take an approach of centering profit
+as the metric to maximize, but do auctioning in order to give resources to the
+highest bidder~\cite{bellagio-market-based,online-auctioning}.~\Sys{} avoids
+bidding because of the developer-side uncertainty it creates. AWS spot
+instance~\cite{spot-instance-pricing} allow for bidding, but only charge the
+market rate, effectively using the bidding amount as a cap for how much tenants
+are willing to spend. Spot instance market rates are steady and adjusted slowly
+over weeks and months~~\cite{spot-instance-history}.~\Sys{} similarly defines a
+market rate, but always charges that amount, and targets a different time scale
+as well as level of guarantee than spot instances.
 
 % On the serverful side of scheduling, priorities are generally expressed via a
 % latency critical/best effort binary, where latency critical processes have an

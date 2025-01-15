@@ -1,53 +1,46 @@
 \section{Using \priceclass{}es in \Sys}\label{design}
 
-This section describes \sys{} a scheduler that addresses the
-\problem{} using \priceclass{}es and meets the \autoref{s:intro}
-challenges.
+This section describes \sys{}, a scheduler that addresses the \problem{} using
+\priceclass{}es, and meets the \autoref{s:intro} challenges.
 
 \subsection{\Priceclass{}es}
 
-\Sys{} uses \class{}es to supplant the current interface, which
-requires developers to choose an amount of memory per function (which
-is then tied to a CPU fraction, \eg{} 0.2 vCPUs).  \Sys{} bills memory
-separately and by use, and the price for memory is the same across all
-\class{}es.
+\Sys{} uses \class{}es to supplant the current interface, which requires
+developers to choose an amount of memory per function (which is then tied to a
+CPU fraction, \eg{} 0.2 vCPUs).  \Sys{} bills memory separately and by use, and
+the price for memory is the same across all \class{}es.
 
-\Priceclass{}es don't imply absolute guarantees about what resources a
-function receives.  The \priceclass{} is instead a metric to express
-priority to \sys{}, which \sys{} uses to enforce a favoring of high
-\class{} functions.  To avoid the developer-side uncertainty of
-bidding wars, \sys{} exposes a fixed set of \priceclass{}es (similar
-to how AWS has different EC2 instance types).
+\Priceclass{}es don't imply absolute guarantees about what resources a function
+receives.  The \priceclass{} is instead a metric to express priority to \sys{},
+which \sys{} uses to enforce a favoring of high \class{} functions.  To avoid
+the developer-side uncertainty of bidding wars, \sys{} exposes a fixed set of
+\priceclass{}es (similar to how AWS has different EC2 instance types).
 
-\Priceclass{}es are
-a metric that has a number of benefits over resource usage
-estimations. One is that developers are more likely to have a good
-sense of what \priceclass{} a function should have ahead of time,
-because they know in what context the function will be
-used. \Priceclass{}es also remain the same across different
-invocations, whereas resource needs can be heavily skewed in web
-applications~\cite{hermod,serverless-in-the-wild}. And finally,
-\class{}es more directly align the interests of the developer with
-those of the provider, by communicating on the level of what the
-provider and developer actually care about: money, and latency (as
-achieved by \class{}es in the system).
+\Priceclass{}es are a metric that has a number of benefits over resource usage
+estimations. One is that developers are more likely to have a good sense of what
+\priceclass{} a function should have ahead of time, because they know in what
+context the function will be used. \Priceclass{}es also remain the same across
+different invocations, whereas resource needs can be heavily skewed in web
+applications~\cite{hermod,serverless-in-the-wild}. And finally, \class{}es more
+directly align the interests of the developer with those of the provider, by
+communicating on the level of what the provider and developer actually care
+about: money, and latency (as achieved by \class{}es in the system).
 
-\Priceclass{}es also allows the provider to provision their datacenters
-hardware: by looking at the historical overall amount of high \priceclass{}
-load, they know a minimum of how much hardware they need to buy to be able to
-comfortably fit that load.
+\Priceclass{}es also allow the provider to provision their datacenters hardware:
+by looking at the historical overall amount of high \priceclass{} load, they
+know a minimum of how much hardware they need to buy to be able to comfortably
+fit that load.
 
 \subsection{Interface}
 
-Developers using \sys{} write function handlers and define triggers
-just like they would for existing serverless offerings.  Triggers
-assign a \priceclass{} to a function invocation based on the URL
-and its arguments. For instance, a simple web application might
-consist of a home page view that is assigned a higher \priceclass{}
-and costs 2$\mu\cent$ per cpu second, a user profile page view which
-is assigned a middle-high \class{} and cost 1.5$\mu\cent$ per cpu
-second, and finally an image processing function that can be set to a
-low \class{} which costs only 0.5$\mu\cent$ per cpu second.
+Developers using \sys{} write function handlers and define triggers just like
+they would for existing serverless offerings.  Triggers assign a \priceclass{}
+to a function invocation based on the URL and its arguments.\hmng{why the url?}
+For instance, a simple web application might consist of a home page view that is
+assigned a higher \priceclass{} and costs 2$\mu\cent$ per cpu second, a user
+profile page view which is assigned a middle-high \class{} and cost
+1.5$\mu\cent$ per cpu second, and finally an image processing function that can
+be set to a low \class{} which costs only 0.5$\mu\cent$ per cpu second.
 
 \Class{}es are inherited across call chains: if a high \class{} function calls a
 low \class{} function, that invocation with run with high \class{}. This
@@ -127,12 +120,12 @@ it can swap its memory out knowing it will not be needed soon. The dispatcher
 swaps the low \class{} function back in when the memory pressure is gone and the
 function will be run.
 
-\Sys cannot bound the amount of swap space required since it doesn't
-ask functions for a memory bound.  In the rare case that \sys runs it
-resorts to killing low-class functions.  Providers can estimate the
-amount of swap space required by looking at memory utilization and
-since the SSDs necessary for swap space are
-inexpensive~\cite{ssd-price} we expect that killing is rare.
+\Sys{} cannot bound the amount of swap space required since it doesn't ask
+functions for a memory bound.  In the rare case that memory still runs out
+\sys{} resorts to killing low-class functions.  Providers can estimate the
+amount of swap space required by looking at memory utilization, and since the
+SSDs necessary for swap space are inexpensive~\cite{ssd-price} we expect that
+killing is rare.
 
 \textbf{Global Scheduler Shards.}
 Global scheduler shards store the functions waiting to be placed in a multi
