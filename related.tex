@@ -16,20 +16,24 @@ translates these to recurring reservations.~\Sys{} instead obtains the \class{}e
 directly from the developers and bases its decisions solely on \class{}es.
 
 Other papers have taken the same approach of obtaining information
-from the developers. Sequoia\cite{sequoia}, for instance, creates a
+from the developers. Sequoia~\cite{sequoia}, for instance, creates a
 metric of QOS for serverless functions. Unlike \sys{} however, Sequoia
 does not implement a new scheduler, but is itself a serverless
 function that manages the invocation sequence of developer's function
 chains by interposing on the triggers and choosing what to invoke
 when. This design does not support multi-tenancy.
 
-Allocation Priority Policies (APP)\cite{app-paper} provides a declarative
-language to express policies. The APP
-language allows developers to specify custom load balancing
-decisions, and the scheduler uses the developers' specification to define a
-mapping of function invocations to workers. \Sys{}, on the other hand, does not
-ask developers to set the load balancing policy, but rather has developers give
-\sys{} the information it needs to do the load balancing itself.
+Allocation Priority Policies (APP)~\cite{app-paper} provides a
+declarative language to express policies that allow a tenant to assign
+a function to one of their pods. APP doesn't, however, support
+scheduling competing functions from different tenants.
+
+%% The APP
+%% language allows developers to specify custom load balancing
+%% decisions, and the scheduler uses the developers' specification to define a
+%% mapping of function invocations to workers. \Sys{}, on the other hand, does not
+%% ask developers to set the load balancing policy, but rather has developers give
+%% \sys{} the information it needs to do the load balancing itself.
 
 AWS offers two different ways for developers to influence their functions'
 scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
