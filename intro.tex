@@ -4,7 +4,7 @@
 %-------------------------------------------------------------------------------
 
 A world where cloud compute runs as serverless functions is attractive to
-developers and providers: developers pay only for what they use, while having
+developers and cloud providers: developers pay only for what they use, while having
 access to many resources when needed; and cloud providers can maximize
 utilization by intelligent scheduling of functions, in contrast to systems in
 which clients reserve resources which then often lie idle.
@@ -38,13 +38,7 @@ Designing \sys{} faces multiple challenges. One of them is that the scheduler
 needs a basis on which to compare the importances of different tenants'
 functions. Each individual tenant can be expected to understand which of its own
 functions are most in need of low latency, but how to compare these decisions
-across tenants? To achieve this global comparability, tenants declare a
-\emph{\priceclass{}} for each function invocation. The \priceclass{} is the
-amount of money the tenant will pay per unit of CPU time. The scheduler can then
-make scheduling decisions among different tenants' functions by comparing their
-price classes.
-% It also incentivizes usage of the lower \class{}es for functions that are less
-% latency sensitive, since they can be run cheaply.
+across tenants?
 
 Another challenge is rapid placement of functions in a large cluster of servers.
 Tracking idle or pre-emptible resources is difficult when both the number of new
@@ -59,3 +53,13 @@ varies across invocations. Instead, \sys{} charges developers based on the
 amount of memory actually used, and requires no bound to be set.~\Sys{} thus
 faces the challenging proposition of blindly placing functions not knowing how
 much memory they will use, but still needing CPU utilization to be high.
+
+A central part of {\sys}'s solutions to these challenges is its notion
+of \emph{\priceclass{}}. Tenants declare a {\priceclass} for each
+function invocation, which determines the amount of money the tenant
+will pay per unit of CPU time. The provider can then schedule tenants'
+functions on the basis of price classes when the load is high,
+favoring functions that will pay more for CPU. The inclusion of price
+is a way to make different tenants' notions of importance comparable,
+since it will motivate them to ask for the lowest priority that yields
+acceptable performance.
