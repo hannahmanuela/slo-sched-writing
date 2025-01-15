@@ -83,18 +83,18 @@ investigate in detail, we can examine the designs of other serverless
 systems to see whether the {\problem} would cause the kind of delay
 variation in the graph.
 
-Knative~\cite{knative} assigns functions to a pod and pods time-share
-the underlying server. Knative assigns functions to pods until the pod
-is fully loaded, and then queues the function until a pod has capacity
-or the autoscaler has created new pod.  We run experiment with Knative
-in which we run a steady stream of background functions and
-periodically run a latency-sensitive
-function. Figure~\ref{fig:knative} shows the spread of end-to-end
-durations for the latency-sensitive functions.  The graph breaks down
-the total duration in queuing time and runtime (i.e., the time from
-the first to last line of code of the function).  The graph shows that
-the duration of latency-sensitive functions is effected by both
-time-sharing and queuing: the \problem{}.
+Knative~\cite{knative} runs a pod for each function and pods
+time-share the provider's server. Knative assigns functions to pods
+until the pod is fully loaded, and then queues the function until a
+pod has capacity or the autoscaler has created new pod.  We run an
+experiment with Knative in which we generate a steady stream of
+background functions and periodically invoke a latency-sensitive
+function that computes for 50ms. Figure~\ref{fig:knative} shows the
+spread of end-to-end durations for the latency-sensitive function.
+The graph breaks down the total duration into queuing and runtime
+(i.e., the time from the first to last line of code of the function).
+The graph shows that the duration of latency-sensitive functions is
+effected by both time-sharing and queuing: the \problem{}.
 
 %% Knative~\cite{knative} similarly queues excess invocations, although it does
 %% so via the load balancer, which is also in charge of
