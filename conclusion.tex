@@ -6,10 +6,12 @@
 Serverless was and is a great option for developers whose load varies and
 providers who don't want to keep resources idle for processes that reserved
 them. However, the reality of serverless today is that functions experience a
-variance in latencies that is not tolerable for latency sensitive workloads. 
+variance in latencies that is not tolerable for latency sensitive workloads.
+This paper shows that the \problem{} means that will remain the case even with
+fast deployment and small overheads.
 
-We propose a new scheduler, \sys{}, that introduces \emph{\priceclass{}es}.
-Developers assign each function they want to run to a \priceclass{}, which
+We propose a new scheduler, \sys{}, that introduces \emph{\priceclass{}es} to
+address the \problem{}. Developers assign each function a \priceclass{}, which
 encodes a priority that \sys{} then enforces at invocation, both in placing the
 function and on the machine level by running priority scheduling. We show that
 \sys{} is able to enforce priorities and keep high \class{} functions latencies
