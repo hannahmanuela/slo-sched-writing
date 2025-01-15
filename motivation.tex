@@ -31,12 +31,20 @@ rapid load variation.
 
 \subsection{The \problem{}}
 
-
 \begin{figure}[t!]
     \centering
       \includegraphics[width=8.5cm]{img/lambda_total_durations.png}
-      \caption{Distribution of end to end durations for a simple function on AWS Lambda. The y axis is log scale. }
+      \caption{Distribution of end-to-end durations for a simple function on AWS Lambda. The y axis is log scale. }
     \label{fig:lambda-total-durations}
+\end{figure}
+
+\begin{figure}[t!]
+    \centering
+      \includegraphics[width=8.5cm]{img/knative_stacked.png}
+      \caption{Distribution of end-to-end durations broken down by
+        queuing (blue) and runtime (orange) delay for a simple function on
+        knative.}
+    \label{fig:knative}
 \end{figure}
 
 Cloud providers are motivated to keep their compute hardware as busy
@@ -75,21 +83,32 @@ investigate in detail, we can examine the designs of other serverless
 systems to see whether the {\problem} would cause the kind of delay
 variation in the graph.
 
-The OpenWhisk~\cite{openwhisk} load balancer chooses a machine to run
-each new function on and adds a message to a Kafka queue addressed to
-that machine; the machine pulls invocation messages as resources are
-freed up by the termination of previous
-functions~\cite{openwhisk-sched}. This means that 
-a latency sensitive function might sit in the Kafka queue while
-another tenant's background function completes: the \problem{}.
+Knative~\cite{knative} assigns functions to a pod and pods time-share
+the underlying server. Knative assigns functions to pods until the pod
+is fully loaded, and then queues the function until a pod has capacity
+or the autoscaler has created new pod.  We run experiment with Knative
+in which we run a steady stream of background functions and
+periodically run a latency-sensitive
+function. Figure~\ref{fig:knative} shows the spread of end-to-end
+durations for the latency-sensitive functions.  The graph breaks down
+the total duration in queuing time and runtime (i.e., the time from
+the first to last line of code of the function).  The graph shows that
+the duration of latency-sensitive functions is effected by both
+time-sharing and queuing: the \problem{}.
 
-Knative~\cite{knative} similarly queues excess invocations, although it does
-so via the load balancer, which is also in charge of
-autoscaling~\cite{knative-sched}: if the existing pods are fully loaded (with a
-small, bounded-size queue in front of them), requests are queued separately
-while the autoscaler starts up more pods. Again, latency sensitive
-functions potentially wait for someone else's background function
-completes: the \problem{}.
+%% Knative~\cite{knative} similarly queues excess invocations, although it does
+%% so via the load balancer, which is also in charge of
+%% autoscaling~\cite{knative-sched}: if the existing pods are fully loaded (with a
+%% small, bounded-size queue in front of them), requests are queued separately
+%% while the autoscaler starts up more pods.
+
+%% The OpenWhisk~\cite{openwhisk} load balancer chooses a machine to run
+%% each new function on and adds a message to a Kafka queue addressed to
+%% that machine; the machine pulls invocation messages as resources are
+%% freed up by the termination of previous
+%% functions~\cite{openwhisk-sched}. This means that 
+%% a latency sensitive function might sit in the Kafka queue while
+%% another tenant's background function completes: the \problem{}.
 
 Hermod~\cite{hermod} is a recent research serverless scheduler, and shows in a
 simulation that late binding (as Openwhisk and Knative do) performs worse than
