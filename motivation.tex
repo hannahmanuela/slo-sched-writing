@@ -99,13 +99,14 @@ address what happens when the machines are out of memory.
 % I (rtm) don't understand this next paragraph, after the first sentence.
 
 None of these schedulers 
-know which functions to prioritize under high load. The way all of
-the above schedulers avoid the \problem{} is by doing different forms of
-accounting concurrency: concurrency can be reserved or provisioned for specific
-functions, and limited for others. This is necessary to ensure that a burst in
-background tasks doesn't starve the latency sensitive functions. Reserving and
-provisioning and limiting are, however, conceptually in tension with the goal of
-serverless, which is to be on-demand and flexible.
+know which functions to prioritize under high load.
+
+% The way all of the above schedulers avoid the \problem{} is by doing different
+% forms of accounting concurrency: concurrency can be reserved or provisioned
+% for specific functions, and limited for others. This is necessary to ensure
+% that a burst in background tasks doesn't starve the latency sensitive
+% functions. Reserving and provisioning and limiting are, however, conceptually
+% in tension with the goal of serverless, which is to be on-demand and flexible.
 
 
 

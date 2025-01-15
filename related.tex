@@ -31,6 +31,16 @@ mapping of function invocations to workers. \Sys{}, on the other hand, does not
 ask developers to set the load balancing policy, but rather has developers give
 \sys{} the information it needs to do the load balancing itself.
 
+AWS offers two different ways for developers to influence their functions'
+scaling: provisioned and reserved concurrency\cite{aws-scaling}. Provisioned
+concurrency specifies a number of instances to keep warm for a given function,
+and reserved concurrency ensures that a fixed amount of the possible concurrency
+reserved for it. This interface is bad for serverless workloads for the same
+reasons that reservation-based systems are: it requires developers to estimate
+their future needs and pay up front, and providers to keep those potentially
+idle resources available. It also does not solve the \problem{}: it only ensures
+that a single tenants different functions don't crowd each other.
+
 Serverless orchestration systems like Dirigent~\cite{dirigent} are orthogonal to
 \sys{}: their approaches can be combined to further reduce the latency overheads
 that functions face.
