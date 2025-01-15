@@ -10,64 +10,63 @@ needing to hold idle resources available for clients who reserved them.
 
 
 There remain roadblocks, however, that make serverless today infeasible for
-workloads that are a good fit. For instance web applications, which often have
-inconsistent and bursty load, but are rarely run completely in serverless
-offerings~\cite{reddit-serverless1}, such as AWS lambda. One of the challenges
-is lambda invocations' variable end to end latencies: in a small benchmark
-(described in Section~\ref{motivation}) we found that total execution time
-latencies for a simple hello world function that sleeps for 20 ms ranged from 20
-to 400ms; whereas an acceptable latency for user-facing pages is be anything
-below 100ms~\cite{page-load-time}. This variability is a problem because it has
+workloads that are a good fit. A central example to this paper is that of web
+applications. Their inconsistent and bursty load patterns make them a great fit
+for serverless, but they are rarely run completely in serverless
+offerings~\cite{reddit-serverless1, reddit-serverless2, not-lambda-blog}. One of
+the reasons is serverless function invocations' variable end to end latencies:
+in a small benchmark (described in Section~\ref{motivation}) we found that total
+execution time latencies for a simple hello world function that sleeps for 20 ms
+ranged from 20 to 400ms in AWS. This variability is a problem because it has
 been shown that small response time differences can matter a lot in interactive
-applications~\cite{amz-page-load,google-page-load}.
+applications~\cite{amz-page-load,google-page-load}, so a maximum acceptable
+latency for a user-facing page might be more like 100ms~\cite{page-load-time}.
 
 
 A well-known cause of these variable latencies is cold starts. This paper takes
 the position that systems research is well underway to reaching low single digit
 ms cold start times, with current state-of-the-art research systems pushing into
-single digit territory~\cite{sigmaos,mitosis}. Which begs the question: if cold
-start is fast enought that more latency sensitive applications, like web
-applications, can have a cold start on the critical path, are we then done? Will
-serverless then be, at least from an infrastructure perspective, ready to
-support these sorts of workloads?
+single digit ms territory~\cite{sigmaos,mitosis}. Which begs the question: if
+cold start is fast enought that latency sensitive applications like web
+applications can have a cold start on the critical path, will serverless then be
+ready to support these sorts of workloads?
 
-This paper argues that no, there still remains a challenge to running such a
-latency sensitive workload on serverless: queueing and delay within the system.
-Load will not always fit in the resources providers have, and so some work must
-be queued or otherwise degraded. In the world of long running servers,
-developers avoid degradation of access to resources by giving latency critical
-services reservations; but reserving servers is incompatible with the serverless
-approach. 
-
-
-This paper proposes \sys{}, a serverless scheduler with the goal of ensuring
-that latency sensitive functions don't end up behind background ones, waiting to
-be placed on machines or to get access to resources. Designing \sys{} faces
-multiple challenges. 
-
-One challenge is that \sys{} needs to be able to support a multi tenant
-environment. The fact that user facing page view functions are more important to
-a web application than image processing jobs is a relative statement: there is
-no way of mapping that prioritization to other developers' jobs, in order to be
-able to directly compare which job should run when. 
+This paper argues that there still remains a challenge to running such a latency
+sensitive workload on serverless: queueing and delay within the system. We call
+this the \emph{big noisy neighbor problem}, or \problem{} for short: when load
+is higher than the resources can process, the scheduler has to queue or delay
+some functions. This means that the runtime of functions during high load is
+determined by how much load other functions have, and how many resources they
+use (hency big noisy neighbors).
 
 
-In order to achieve this global comparability, \sys{} includes in its interface
-\emph{\priceclass{}es}: an amount that it costs to run that function per unit
-time. Rather than dealing in a relative ordering of developers' functions by
-latency sensitivity, which would be difficult to compare across developers, the
-connection to money allows the \class{} to have meaning on an absolute scale. It
-also incentivizes usage of the lower \class{}es for functions that are less
-latency sensitive, since they can be run cheaply.\hmng{is it weird that I give
-the solution to this challenge but not the others?}
+This paper proposes \sys{}, a serverless scheduler that addresses the \problem{}
+by ensuring that latency sensitive functions don't end up behind background
+ones, waiting to be placed on machines or to get access to resources. Designing
+\sys{} faces multiple challenges. 
+
+One challenge is that \sys{} needs to be able to support a multi-tenant
+environment. A core facet of the \problem{} is that it arises in a multi-tenant
+setting: part of the reason it is a problem is because I can't control other
+peoples' load, and there is no fair reason that it should impact my functions
+performance.\hmng{awk} The \problem{} is also more challenging in the
+multi-tenant setting: it is clear that user-facing functions are more important
+to a web application than image processing jobs, but there is no way of mapping
+that prioritization to other developers' jobs, in order to be able to directly
+compare which job should run when. 
 
 
-Another challenge is that of placing functions quickly enough. For example,
-a function that takes 20ms to run cannot spend 50ms in scheduler queues and
-waiting for an execution environment before even starting to run. Knowing where
-the free and idle resources are, or finding out quickly, is challenging in a
-setting where both the number of new functions invocations and the amount of
-resources are large.
+In order to achieve this global comparability, \sys{} uses
+\emph{\priceclass{}es}: the amount that it costs to run functions per unit time.
+This connection to money allows the \class{} to have meaning on an absolute
+scale. It also incentivizes usage of the lower \class{}es for functions that are
+less latency sensitive, since they can be run cheaply.
+
+
+Another challenge is that of placing functions quickly enough. Knowing where the
+free and idle resources are, or finding out quickly, is challenging in a setting
+where both the number of new functions invocations and the amount of resources
+are large.
 
 
 A third key challenge in designing \sys{} is that of managing memory. For
@@ -78,8 +77,7 @@ charging based on that. However, memory usage is at best difficult to know in
 advance and at worst has a large variance so is impossible to say in advance.
 And more importantly, is not correlated with what developers actually care
 about, which is function latency. Instead, \sys{} charges developers based on
-the amount of memory actually used, and requires no bound to be set.~\Sys{} is
-thus faced with the challenging proposition of blindly placing functions not
-knowing how much memory they will use, but still needing memory utilization to
-be high.
+the amount of memory actually used, and requires no bound to be set.~\Sys{} thus
+faces the challenging proposition of blindly placing functions not knowing how
+much memory they will use, but still needing memory utilization to be high.
  
