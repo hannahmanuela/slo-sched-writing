@@ -46,7 +46,7 @@ be set to a low \class{} which costs only 0.5$\mu\cent$ per cpu second.
 low \class{} function, that invocation will run with a high \class{}. This
 inheritance is important in order to avoid priority inversion.
 
-To avoid unexpected costs in the case of for example a DOS attack or a bug,
+To avoid unexpected costs in the case of, for example, a DOS attack or a bug,
 developers also express a monthly budget that they are willing to pay.~\Sys{}
 uses this budget as a guideline and throttles invocations or decreases quality
 of service in the case that usage is not within reason given the expected
@@ -113,7 +113,7 @@ shard $i$'s idle list.
 
 The dispatcher is also in charge of managing the machine's memory. When memory
 pressure occurs, the dispatcher uses \textit{\class{}-based swapping} to move
-low \class{} functions off the machine's memory. Having priority scheduling
+low \class{} functions off the machine's memory. Having prices classes
 creates an opportunity: because the dispatcher knows that the lowest \class{}
 functions will not be run until the high \class{} functions have all finished,
 it can swap its memory out knowing it will not be needed soon. The dispatcher

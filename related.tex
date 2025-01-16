@@ -16,7 +16,7 @@ invocation sequences of function chains by interposing on
 triggers. Allocation Priority Policies (APP)~\cite{app-paper} provides
 a declarative language to express policies that allow a tenant to
 assign a function to one of their pods.  Like Hermod~\cite{hermod},
-evaluated in \autoref{s:eval}, all these systems lack the notion of
+evaluated in \autoref{s:eval}, all these systems lack a notion of
 cross-tenant priority.
 
 %% The APP
@@ -30,7 +30,7 @@ AWS offers two different ways for developers to influence their functions'
 scaling: provisioned and reserved concurrency~\cite{aws-scaling}. Provisioned
 concurrency specifies a number of instances to keep warm for a given function,
 and reserved concurrency ensures that a fixed amount of the possible concurrency
-reserved for it. This interface is bad for serverless workloads for the same
+reserved for it. This interface is undesirable for serverless workloads for the same
 reasons that reservation-based systems are: it requires developers to estimate
 their future needs and pay up front, and providers to keep those potentially
 idle resources available. It also does not solve the \problem{}: it only ensures
