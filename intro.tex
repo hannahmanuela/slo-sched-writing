@@ -10,7 +10,7 @@ utilization by intelligent scheduling of functions, in contrast to systems in
 which clients reserve resources which then often lie idle.
 
 Web applications are an example of a workload that could potentially benefit
-from serverless, due to their bursty load patterns. However, they rarely use use
+from serverless, due to their bursty load patterns. However, they rarely use
 serverless~\cite{reddit-serverless1, reddit-serverless2, not-lambda-blog}. One
 reason is that even short functions sometimes suffer long delays under
 serverless: in a small benchmark on AWS (described in~\autoref{s:motivation}), we found that total execution times for a
@@ -55,10 +55,10 @@ faces the challenging proposition of blindly placing functions not knowing how
 much memory they will use, but still needing CPU utilization to be high.
 
 A central part of {\sys}'s solutions to these challenges is its notion
-of \emph{\priceclass{}}. Tenants declare a {\priceclass} for each
+of \emph{\priceclass{}}. Tenants choose a {\priceclass} for each
 function invocation, which determines the amount of money the tenant
 will pay per unit of CPU time. The provider can then schedule tenants'
-functions on the basis of price classes when the load is high,
+functions on the basis of \priceclass{}es when the load is high,
 favoring functions that will pay more for CPU. The inclusion of price
 is a way to make different tenants' notions of importance comparable,
 since it will motivate them to ask for the lowest priority that yields
