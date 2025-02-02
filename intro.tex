@@ -13,9 +13,10 @@ Web applications are an example of a workload that could potentially benefit
 from serverless, due to their bursty load patterns. However, they rarely use
 serverless~\cite{reddit-serverless1, reddit-serverless2, not-lambda-blog}. One
 reason is that even short functions sometimes suffer long delays under
-serverless: in a small benchmark on AWS (described in~\autoref{s:motivation}), we found that total execution times for a
-simple hello world function that sleeps for 20 ms ranged from 20 to 400ms. Small
-response time differences can have a large negative impact in interactive
+serverless: in a small benchmark on AWS (described in~\autoref{s:motivation}),
+we found that total execution times for a simple hello world function that
+sleeps for 20 ms ranged from 20 to 400ms. Small response time differences can
+have a large negative impact in interactive
 applications~\cite{amz-page-load,google-page-load}; the maximum acceptable
 latency for a user-facing function is closer to 100ms~\cite{page-load-time}.
 

@@ -29,112 +29,121 @@ reserved resources (e.g., EC2 instances), but such adjustments can take
 multiple minutes~\cite{ec2-autoscaling} and are thus not suited to
 rapid load variation.
 
+\subsection{Serverless today}
+
+\begin{figure}[t!]
+  \centering
+    \includegraphics[width=8.5cm]{img/aws_webapp_times.png}
+    \caption{Distribution of end-to-end durations for a simple function on AWS Lambda }
+  \label{fig:lambda-total-durations}
+\end{figure}
+
+
+Serverless today does not provide the latencies that would be required of a web
+server. We demonstrate this with a simple web application hosted on AWS that
+uses the recommended serverless stack of: an ingress load balancer (API
+Gateway), handler code (Lambda), and a database (DynamoDB). 
+
+We model the distribution of gets/puts of real web applications, which have been
+shown to have a skew of $\sim$95$\%$ gets, 5$\%$ puts. Gets fetch a table with
+$~\sim$2K posts in it, and puts edit the content of one of those posts. We make
+an API request every 30 seconds, and measure the end to end latencies of the
+request within the AWS infrastructure using AWS XRay. The results are in
+Figure~\ref{fig:lambda-total-durations}. The times for the puts are mostly long,
+because puts are rare and so are usually hitting cold starts. The times for gets
+have a wide distribution, though this cannot be caused by cold starts since
+requests are usually 30 seconds apart. We can see from this distribution that
+the observed end-to-end latencies are not acceptable for a web application. We
+cannot, however, draw conclusions as to where this variation comes from.
+\hmng{that's a little bit of a lie, we have a bit of a breakdown of these times.
+Working on a graph for that rn, we can look at some candidates/discuss in the
+meeting}
+
+\hmng{how does this point relate to the crowding problem? Is it that we think
+one of the reasons for the variance is the crowding problem? Would be great if
+we could at least start to draw that connection, but will have lots of
+conjecture. Ig this is what we did for the hotos draft, but feels like with the
+other (more micro-benchmark-y) aws experiment is able to make a stronger
+connection. Or is the point more separately proving that the state of the world
+is such that it is implausible to run a web application on serverless? That's
+kinda how I'm phrasing it here and how I read it }
+
+
+
 \subsection{The \problem{}}
 
 \begin{figure}[t!]
-    \centering
-      \includegraphics[width=8.5cm]{img/lambda_total_durations.png}
-      \caption{Distribution of end-to-end durations for a simple function on AWS Lambda. The y axis is log scale. }
-    \label{fig:lambda-total-durations}
+  \centering
+    \includegraphics[width=8.5cm]{img/aws_cpubench_times.png}
+    \caption{ Distribution of function wall-clock time passed during computation of a $\sim$20ms function on AWS lambda. The y axis is log scale. }
+  \label{fig:lambda-cpu-bench}
 \end{figure}
 
 \begin{figure}[t!]
     \centering
-      \includegraphics[width=8.5cm]{img/knative_stacked.png}
+      \includegraphics[width=8.5cm]{img/knative_loadexp_times.png}
       \caption{Distribution of end-to-end durations broken down by
         queuing (blue) and runtime (orange) delay for a simple function on
         knative.}
     \label{fig:knative}
 \end{figure}
 
-Cloud providers are motivated to keep their compute hardware as busy
-as possible, in order to avoid waste and reduce costs. In a
-non-reservation system like serverless, if the average load is near
-capacity (to minimize average waste), the peak load will be above
-capacity, imposing either queuing or time-sharing delays on functions.
+Cloud providers like AWS are motivated to keep their compute hardware as busy as
+possible, in order to avoid waste and reduce costs. In a non-reservation system
+like serverless, if the average load is near capacity (to minimize average
+waste), the peak load will be above capacity, imposing either queuing or
+time-sharing delays on functions. The \problem{} is that this undesirable
+behavior of queueing/delay happens indiscriminately in current serverless
+systems, meaning that a function's latency is affected by the load of other
+potentially less latency sensitive functions, and even other tenants' functions.
 
-% an important part of the story is that we expect there to be
-% lots of BE traffic, so that there is something to pre-empt 
-% during bursts of LC work.
+Measurements of a cpu-bound serverless function in AWS Lambda show evidence of
+this \problem{}. The function we run mainly consists of a double for loop that
+computes a matrix multiplication. It measures the wall clock time that passes
+between the beginning and the end of the loop, as well as the cpu time that it
+got. In AWS, the fractional amount of CPU time a function gets is tied to the
+maximum amount of memory it configures, so we run the function in two settings:
+once with memory a limit of 128 MB, and once with 512 MB. We invoke each
+function every 30 seconds for 24 hours.
 
-Measurements of cold-start delays in AWS Lambda show evidence
-of
-this \problem{}.
-The experiment launches a test function at intervals randomly
-spaced between 0 and 10 minutes; the function
-just sleeps for 20ms and then returns. AWS Xray~\cite{aws-xray}
-records end-to-end latencies.
-The results are in Figure~\ref{fig:lambda-total-durations}. The spike
-on the left side of the graph reflects warm-start executions,
-which use a cached container left over from a previous execution.
-We verify this by having each function look for some state changed
-in the container by the previous invocation.
-
-The right-hand grouping in Figure~\ref{fig:lambda-total-durations}
-reflects invocations that required cold start (creation of a new
-container). The delays have a wide spread, between $\sim$200 and
-$\sim$400ms, suggesting that there is more going on than just creation
-of a new container. One potential cause we can rule out is fetching
-the container image from S3; such fetches have been measured to take
-on the order of a second~\cite{sigmaos}; and this experiment uses a
-generic Python container that is also used by many others on AWS
-Lambda and thus likely cached. Though AWS Lambda is difficult to
-investigate in detail, we can examine the designs of other serverless
-systems to see whether the {\problem} would cause the kind of delay
-variation in the graph.
-
-Knative is popular open-source serverless system~\cite{knative}, which runs a
-Kubernetes pod for each function; pods time-share the provider's servers.
-Knative assigns function invocations to pods until the pods are fully loaded, and
-then queues invocations until a pod has capacity or the autoscaler has created
-new pod. We run an experiment with Knative in which we generate a steady stream
-of background functions and periodically invoke a latency-sensitive function
-that computes for 50ms. Figure~\ref{fig:knative} shows the spread of end-to-end
-durations for the latency-sensitive function.  The graph breaks down the total
-duration into queuing and runtime (i.e., the time from the first to last line of
-code of the function).  The graph shows that the duration of latency sensitive
-functions is affected by both time-sharing and queuing: the \problem{}.
-
-%% Knative~\cite{knative} similarly queues excess invocations, although it does
-%% so via the load balancer, which is also in charge of
-%% autoscaling~\cite{knative-sched}: if the existing pods are fully loaded (with a
-%% small, bounded-size queue in front of them), requests are queued separately
-%% while the autoscaler starts up more pods.
-
-%% The OpenWhisk~\cite{openwhisk} load balancer chooses a machine to run
-%% each new function on and adds a message to a Kafka queue addressed to
-%% that machine; the machine pulls invocation messages as resources are
-%% freed up by the termination of previous
-%% functions~\cite{openwhisk-sched}. This means that 
-%% a latency sensitive function might sit in the Kafka queue while
-%% another tenant's background function completes: the \problem{}.
-
-%% Hermod~\cite{hermod} is a recent research serverless scheduler, and shows in a
-%% simulation that late binding (as Knative does) performs worse than
-%% early binding. Under high load, Hermod places the excess functions on machines
-%% anyway (used a least loaded policy) and does Processor Sharing scheduling among
-%% them. This means that all are equally slowed down, and no one function has a
-%% high delay. This still leads to the \problem{}: now rather than experiencing
-%% queuing, latency sensitive functions experience time-sharing delay. Hermod does not
-%% address what happens when the machines are out of memory. 
-
-% I (rtm) don't understand this next paragraph, after the first sentence.
-
-% None of these schedulers 
-% know which functions to prioritize under high load.
-
-% The way all of the above schedulers avoid the \problem{} is by doing different
-% forms of accounting concurrency: concurrency can be reserved or provisioned
-% for specific functions, and limited for others. This is necessary to ensure
-% that a burst in background tasks doesn't starve the latency sensitive
-% functions. Reserving and provisioning and limiting are, however, conceptually
-% in tension with the goal of serverless, which is to be on-demand and flexible.
+The results are in Figure~\ref{fig:lambda-cpu-bench}; not pictured are the
+cpu-times of each run, which hold steady at $\sim$ 20ms. At a glance, the
+\problem{} is evident: the wall-clock time it takes to run the exact same code
+varies significantly. The absolute size of the spread for the 512MB
+configuration is about half the size of the 128MB configuration's.
+\hmng{actually, this makes me curious what happens if we go up to 1 vCPU. Could
+there be a graph relating spread size to mem config/vCPU amt?} A separate
+interesting artifact in the graph are the spikes, prominent even in a log-scale
+y axis depiction. The spikes occur every 4ms, which is the default linux
+scheduling interval. The likely conclusion is that each spike represents a
+number of scheduling cycles passed before the function was able to finish, with
+times in between being caused by an intermediate function not using its whole
+4ms scheduling interval.
 
 
+We find that the crowding problem also happens in open-source serverless
+systems. One such system is Knative,\cite{knative}, which runs a Kubernetes pod
+for each function; pods time-share the provider's servers. Knative assigns
+function invocations to pods until the pods are fully loaded, and then queues
+invocations until a pod has capacity or the autoscaler has created new pod. We
+run an experiment with Knative in which we generate a steady stream of
+background functions and periodically invoke a latency-sensitive function that
+computes for $\sim$50ms. Figure~\ref{fig:knative} shows how the end-to-end
+request durations for the foreground function change in the face of a spike in
+load of the background traffic. The graph breaks down the duration into queuing
+and runtime (i.e., the time from the first to last line of code of the
+function). It shows that both become more variable when the background traffic
+load is higher, with spikes in queueing time and variable as well as overall
+significantly higher runtimes. \hmng{ queueing immediately becomes a little more
+variable, but only really starts spiking a little less than one second later
+which is also when runtimes spike (what is happening there?). Half a second
+later runtimes go back down again, though stay more variable, and queueing
+stabilizes (presumably this is that the new pods have been started?). Do we want
+a more aggressive experiment where background load becomes so high that capcity
+is overall exceeded, so that even when new pods are started the times stay
+higher? Becuase this is kind of making the point more about auto scaling being
+slow, which is also crowding but while its waiting for stuff to start}
 
-% It is impossible to know what proprietary systems like AWS do, but since AWS
-% guarantees an amount of memory as well as a fraction of vCPUs to each function,
-% it is likely AWS also queues the invocations to ensure they aren't put in a
-% position of having to break those guarantees.\hmng{that might be a test we could
-% run: do a tight while loop and look at cpu time and wall clock time to see how
-% we are being scheduled} 
+The takeaway here is that the duration of latency sensitive functions is
+affected significantly by the background load, which leads to both queueing and
+time-sharing delay: the \problem{}.
