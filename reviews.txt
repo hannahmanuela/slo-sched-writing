@@ -1,0 +1,64 @@
+HotOS XX Paper #99 Reviews and Comments
+===========================================================================
+Paper #99 Can user facing and background functions coexist in serverless?
+
+
+Review #99A
+===========================================================================
+
+Paper summary
+-------------
+The paper proposes a scheduler for serverless systems that allows users to configure different price classes for different components (e.g., web pages) within a system. These price classes effectively operate as priorities. This is intended to help the system better adjust to shifting load patterns and avoid “crowding” when the system is near capacity.
+
+Comments for authors
+--------------------
+The paper is generally well written. It describes a problem that is common in very different scenarios – how to handle different kinds of requests in the presence of resource oversubscription, particularly in the presence of shifting load patterns. This problem is investigated in the context of serverless (which is finer-grained than, say, spinning up or shutting down VMs), but is otherwise a fairly well-known problem. The same problem applies to RPC scheduling in other contexts as well, not just in serverless.
+
+The novel contribution proposed by the paper is a tiered pricing system where different requests are assigned a different “price class” by the user. However, this is an old idea as well – except that this price class is usually called a priority. Unfortunately, there are some well known problems with static priorities that the paper does not address. For example, if the system is heavily oversubscribed, then requests that have a low priority can get starved because there is always a higher-priority request that can run. The other problem with this approach is that it is very difficult for users to get predictable performance – the system can run arbitrarily poorly for reasons that are outside the developer’s control.
+
+For this reason, there are generally two alternative approaches that can be more suitable in a case like this: 1) A bidding system, which gives users the ability to get their requests prioritized by paying more for them, if needed, or 2) Tiers of service with specific SLOs for each, which provides specific guarantees to users. Both are not new, and both are more likely to work in practice than the approach proposed in this paper.
+
+I think the evaluation methodology is not suitable for the envisioned scenario. It focuses on the technical mechanism to enable sharing with priorities, but this is a well-solved problem. The challenge in this case is one of market dynamics, and it would be necessary to have some kind of economic model to anticipate how users would behave in the market that the paper proposes. Using an off-the-shelf benchmark does not capture this.
+
+In summary, while intriguing, I don’t think that the paper is a good fit for HotOS – the problems and solutions proposed are well-known and thus not likely to lead to fundamentally new directions in the systems community. However, it looks like the authors are already on their way towards a full conference paper, and I hope this feedback is helpful.
+
+Overall merit
+-------------
+1. Reject
+
+Reviewer expertise
+------------------
+3. Knowledgeable
+
+
+
+Review #99B
+===========================================================================
+
+Paper summary
+-------------
+This paper observes that task execution on commercial FaaS platforms like AWS Lambda has high latency variability, partly due to the well-known problem of cold starts but also due to resource contention at high load between multiple functions from different tenants sharing resources (which the authors refer to as the "crowding problem"). The paper argues that when all functions are treated as equal (which is the case by default in today's platforms), it is difficult for the provider to make scheduling decisions to ensure that latency-sensitive functions have good performance (because the provider is not aware of which functions are in fact latency-sensitive). The paper proposes asking users to associate the functions they register in a FaaS service with a "price-class" which determines the amount of money the tenant will pay per unit of CPU time and also to what extent the provider will prioritize their functions. The goal is to make different tenant's notions of function priorities comparable in a set of defined classes that the provider exposes and users get to pick from.
+
+Comments for authors
+--------------------
+Thanks for submitting your work to HotOS. I like the motivation experiment in Figure 1 showing the degree of variability in AWS Lambda when it comes to cold starts. It's indeed significantly variability and this is problematic for many applications that need more predictable and stable performance! Unfortunately though, it's difficult to conclude from Figure 1 whether the cold start latency variability is largely due to the crowding problem, which is the paper's hypothesis. Wouldn't resource contention also be a problem when executing warm start invocations? And if so, shouldn't we see observe variability in the warm requests on the left of Figure 1? Perhaps you can learn more by repeating this kind of experiment on an open-source serverless platform where you have more ability to monitor what is going on.
+
+My main concern with the proposed solution is that it adds complexity for the user without offering performance guarantees nor cost guarantees. This work aims to improve the latency variability problem for serverless functions (at least for latency-sensitive functions) by letting users specify price-classes for each of their functions. My main question is how should users decide their price-class? I imagine that it is common for users to know what latency they need for their function (i.e., latency SLO). How should a user who knows their function's latency SLO is let's say 100ms use this information to decide a price-class? Is the idea that the user needs to run the function with each level of price class and then pick the cheapest price class that seems to satisfy the SLO? This would be annoying for users and such profiling also adds extra costs that can add up and become significant if users need to do this for all their functions. The last paragraph in Section 3.2 also comments about users being able to express a monthly budget that will throttle invocations (decrease QoS) but there is still no guarantee of not exceeding the budget (and there is definitely no performance guarantee, in fact this throttling sounds like it would introduce significant performance degradation). I see where the paper is coming from (the provider indeed has a hard time today distinguishing the priorities of functions because there is no API for users to specify this in a normalized way across users), but the proposed solution here seems to just place this burden on the user instead. Users also doesn't know how the provider's notions of price classes translate into expected performance for their function. So I am not convinced that this solution will benefit users. 
+
+I would love to see an experiment similar to the one with Figure 1, but done with an open-source serverless platform with default/single price-class vs. when you assign different price-classes for functions. I'm wondering how much does performance variability improve for top price-class functions compared to the default case and how much does the performance variability of lower price-class functions increase. My hunch is that users will not be willing to pay for higher price-classes unless they can have strong performance guarantees.
+
+The paper would be stronger if the preliminary experiments were done in a real system rather than simulator that makes simplifying assumptions like not modeling memory swapping latency and assuming that functions do not do I/O (or that I/O takes zero latency). 
+
+I found the proposed cost model a bit confusing, because one one hand you say you charge based on memory consumed, but on the other hand, you charge based on CPU time associated with a particular price-class. Are the CPU time and memory costs simply summed or how are these two dimensions of cost combined or related in your proposed cost model? 
+
+Regarding the paragraph in the introduction which states that current systems require developers to declare the maximum amount of memory for their function, this is not necessarily true of all cloud providers. It is true for AWS, but for example Azure Functions already does what you propose of charging based on memory usage rather than requiring users to specify their memory limit and charging based on that max. 
+
+Please increase the font of figure axes titles and tick marks and legends. It was very difficult to read when printing out the paper. It seems that the plot images are also rather blurry; consider using vector image formats.
+
+Overall merit
+-------------
+2. Weak reject
+
+Reviewer expertise
+------------------
+3. Knowledgeable
