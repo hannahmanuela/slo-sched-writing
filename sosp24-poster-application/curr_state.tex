@@ -1,0 +1,25 @@
+%-------------------------------------------------------------------------------
+\section{Current State}
+%-------------------------------------------------------------------------------
+
+Implementing this design required changing linux's EEVDF implementation. Linux's
+EEVDF scheduler has a strong tenant of avoiding unfairness, and as a result
+implements eligibility solely as a function of how much time a process had
+gotten compared to other processes. This means that (assuming equally weighted
+processes), after a tick of running, a process becomes ineligible, because it
+got more time that it should have (in an ideal system the tick would have been
+shared equally among all processes).
+
+In \sysname, however, being able to be unfair for long periods of time is key:
+jobs with short deadlines need to get absolute priority over jobs that have
+later deadlines. To achieve this goal we had to modify Linux's EEVDF
+implementation, to include the notion of request-based eligibility.
+
+We developed a prototype application that follows the scheme of the website:
+four different types of jobs, with deadlines ranging from 15ms to 6s, and
+maximum computes from 12ms to 4s. Figure~\ref{fig:graph} shows the results on a
+single machine, with and without the change to linux. 
+
+Overall the graph shows success: being temporarily unfair to longer processes
+that had a large amount of slack allowed the shorter processes with less slack
+to consistently complete on time.

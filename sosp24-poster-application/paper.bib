@@ -1,0 +1,145 @@
+
+
+@inproceedings {caladan,
+author = {Joshua Fried and Zhenyuan Ruan and Amy Ousterhout and Adam Belay},
+title = {Caladan: Mitigating Interference at Microsecond Timescales},
+booktitle = {14th USENIX Symposium on Operating Systems Design and Implementation (OSDI 20)},
+year = {2020},
+isbn = {978-1-939133-19-9},
+pages = {281--297},
+url = {https://www.usenix.org/conference/osdi20/presentation/fried},
+publisher = {USENIX Association},
+month = nov
+}
+
+@inproceedings {shinjuku,
+author = {Kostis Kaffes and Timothy Chong and Jack Tigar Humphries and Adam Belay and David Mazi{\`e}res and Christos Kozyrakis},
+title = {Shinjuku: Preemptive Scheduling for {mico-second-scale} Tail Latency},
+booktitle = {16th USENIX Symposium on Networked Systems Design and Implementation (NSDI 19)},
+year = {2019},
+isbn = {978-1-931971-49-2},
+address = {Boston, MA},
+pages = {345--360},
+url = {https://www.usenix.org/conference/nsdi19/presentation/kaffes},
+publisher = {USENIX Association},
+month = feb
+}
+
+@inproceedings{jockey,
+author = {Ferguson, Andrew D. and Bodik, Peter and Kandula, Srikanth and Boutin, Eric and Fonseca, Rodrigo},
+title = {Jockey: guaranteed job latency in data parallel clusters},
+year = {2012},
+isbn = {9781450312233},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2168836.2168847},
+doi = {10.1145/2168836.2168847},
+abstract = {Data processing frameworks such as MapReduce [8] and Dryad [11] are used today in business environments where customers expect guaranteed performance. To date, however, these systems are not capable of providing guarantees on job latency because scheduling policies are based on fair-sharing, and operators seek high cluster use through statistical multiplexing and over-subscription. With Jockey, we provide latency SLOs for data parallel jobs written in SCOPE. Jockey precomputes statistics using a simulator that captures the job's complex internal dependencies, accurately and efficiently predicting the remaining run time at different resource allocations and in different stages of the job. Our control policy monitors a job's performance, and dynamically adjusts resource allocation in the shared cluster in order to maximize the job's economic utility while minimizing its impact on the rest of the cluster. In our experiments in Microsoft's production Cosmos clusters, Jockey meets the specified job latency SLOs and responds to changes in cluster conditions.},
+booktitle = {Proceedings of the 7th ACM European Conference on Computer Systems},
+pages = {99–112},
+numpages = {14},
+keywords = {scheduling, dynamic adaptation, deadline, data parallel, SLO, MapReduce, Dryad},
+location = {Bern, Switzerland},
+series = {EuroSys '12}
+}
+
+@inproceedings {morpheus,
+author = {Sangeetha Abdu Jyothi and Carlo Curino and Ishai Menache and Shravan Matthur Narayanamurthy and Alexey Tumanov and Jonathan Yaniv and Ruslan Mavlyutov and Inigo Goiri and Subru Krishnan and Janardhan Kulkarni and Sriram Rao},
+title = {Morpheus: Towards Automated {SLOs} for Enterprise Clusters},
+booktitle = {12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)},
+year = {2016},
+isbn = {978-1-931971-33-1},
+address = {Savannah, GA},
+pages = {117--134},
+url = {https://www.usenix.org/conference/osdi16/technical-sessions/presentation/jyothi},
+publisher = {USENIX Association},
+month = nov
+}
+
+
+@inproceedings {eevdf,
+author = {Ion Stoica and Hussein Abdel-Wahab},
+title = {Earliest Eligible Virtual Deadline First: A Flexible and Accurate Mechanism for Proportional Share Resource Allocation},
+booktitle = {12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)},
+year = {1996},
+url = {https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564},
+publisher = {USENIX Association},
+month = nov
+}
+
+@online{linuxeevdf,
+author = {Jonathan Corbet},
+title = {An EEVDF CPU scheduler for Linux},
+url = {https://lwn.net/Articles/925371/},
+date = {March 9, 2023}
+}
+
+@inproceedings{rayon,
+author = {Curino, Carlo and Difallah, Djellel E. and Douglas, Chris and Krishnan, Subru and Ramakrishnan, Raghu and Rao, Sriram},
+title = {Reservation-based Scheduling: If You're Late Don't Blame Us!},
+year = {2014},
+isbn = {9781450332521},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2670979.2670981},
+doi = {10.1145/2670979.2670981},
+abstract = {The continuous shift towards data-driven approaches to business, and a growing attention to improving return on investments (ROI) for cluster infrastructures is generating new challenges for big-data frameworks. Systems originally designed for big batch jobs now handle an increasingly complex mix of computations. Moreover, they are expected to guarantee stringent SLAs for production jobs and minimize latency for best-effort jobs.In this paper, we introduce reservation-based scheduling, a new approach to this problem. We develop our solution around four key contributions: 1) we propose a reservation definition language (RDL) that allows users to declaratively reserve access to cluster resources, 2) we formalize planning of current and future cluster resources as a Mixed-Integer Linear Programming (MILP) problem, and propose scalable heuristics, 3) we adaptively distribute resources between production jobs and best-effort jobs, and 4) we integrate all of this in a scalable system named Rayon, that builds upon Hadoop / YARN.We evaluate Rayon on a 256-node cluster against workloads derived from Microsoft, Yahoo!, Facebook, and Cloud-era's clusters. To enable practical use of Rayon, we open-sourced our implementation as part of Apache Hadoop 2.6.},
+booktitle = {Proceedings of the ACM Symposium on Cloud Computing},
+pages = {1–14},
+numpages = {14},
+location = {Seattle, WA, USA},
+series = {SOCC '14}
+}
+
+
+@online{kubernetes,
+  title = {Autoscaling Workloads},
+  author = {Kubernetes},
+  url = {https://kubernetes.io/docs/concepts/workloads/autoscaling/},
+  urldate = {2024-02-18},
+}
+
+@online{kubernetestime,
+  title = {Horizontal Pod Autoscaling},
+  author = {Kubernetes},
+  url = {https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/},
+  urldate = {2024-02-18},
+}
+
+@online{awssla,
+  title = {AWS Service Level Agreements (SLAs)},
+  author = {AWS},
+  url = {https://aws.amazon.com/legal/service-level-agreements/?aws-sla-cards.sort-by=item.additionalFields.serviceNameLower&aws-sla-cards.sort-order=asc&awsf.tech-category-filter=*all},
+  urldate = {2024-02-18},
+}
+
+@online{cloudwatch,
+  title = {Amazon Cloudwatch},
+  author = {AWS},
+  url = {https://aws.amazon.com/cloudwatch/},
+  urldate = {2024-02-18},
+}
+
+@online{overprovision,
+  title = {Overprovisioning in AWS? Cost-control tools and strategies can help},
+  author = {Will Kelly},
+  url = {https://www.techtarget.com/searchaws/news/2240209793/Overprovisioning-in-AWS-Cost-control-tools-and-strategies-can-help},
+  date = {2013-11-22}
+}
+
+@inproceedings{snowflake,
+author = {Melissaris, Themis and Nabar, Kunal and Radut, Rares and Rehmtulla, Samir and Shi, Arthur and Chandrashekar, Samartha and Papapanagiotou, Ioannis},
+title = {Elastic cloud services: scaling snowflake's control plane},
+year = {2022},
+isbn = {9781450394147},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3542929.3563483},
+doi = {10.1145/3542929.3563483},
+abstract = {Snowflake's "Data Cloud", provided as Software-as-a-Service (SaaS), enables data storage, processing, and analytic solutions in a performant, easy to use, and flexible manner. Although cloud service providers provide the foundational infrastructure to run and scale a variety of workloads, operating Snowflake on cloud infrastructure presents interesting challenges. Customers expect Snowflake to be available at all times and to run their workloads with high performance. Behind the scenes, the software that runs customer workloads needs to be serviced and managed. Additionally, failures in individual components such as Virtual Machines (VM) need to be handled without disrupting running workloads. As a result, lifecycle management of compute artifacts, their scheduling and placement, software rollout (and rollback), replication, failure detection, automatic scaling, and load balancing become extremely important.In this paper, we describe the design and operation of Snowflake's Elastic Cloud Services (ECS) layer that manages cloud resources at global scale to meet the needs of the Snowflake Data Cloud. It provides the control plane to enable elasticity, availability, fault tolerance and efficient execution of customer workloads. ECS runs on multiple cloud service providers and provides capabilities such as cluster management, safe code rollout and rollback, management of pre-started pools of running VMs, horizontal and vertical autoscaling, throttling of incoming requests, VM placement, load-balancing across availability zones and cross-cloud and cross-region replication. We showcase the effect of these capabilities through empirical results on systems that execute millions of queries over petabytes of data on a daily basis.},
+booktitle = {Proceedings of the 13th Symposium on Cloud Computing},
+pages = {142–157},
+numpages = {16},
+location = {San Francisco, California},
+series = {SoCC '22}
+}

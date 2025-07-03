@@ -1,0 +1,53 @@
+%-------------------------------------------------------------------------------
+\section{Introduction}
+%-------------------------------------------------------------------------------
+
+Developers use Service Level Objectives (SLOs) between teams and Service Level
+Agreements (SLAs) towards customers, which represent guarantees about uptime and
+maximal latencies of the API that team/company is in charge of~\cite{awssla}.
+Monitoring systems watch performance and page on-call developers if these
+guarantees are not being met~\cite{cloudwatch}.
+
+However, the interface to many scheduling frameworks, such as
+Kubernetes~\cite{kubernetes} and many research systems~\cite{caladan}, offers
+developers two options: latency-critical (LC) applications have concrete
+reservations, and jobs with no immediate deadline can be run as best-effort (BE)
+tasks. The scheduler bin-packs LC work, and runs BE work opportunistically.
+
+
+For a developer to translate their requirements into this interface requires two
+steps: pick a category (LC or BE), and, if the its the former, generate a
+concrete reservation. Both of these steps are difficult: some work might not be
+completely LC or BE, and reservations require the developer to make estimations
+about peak load, and in fact incentivizes them to
+overestimate~\cite*{overprovision} --- making achieving high utilization hard.
+
+Imagine a web developer, whose website has four different types of work it has
+to do: \\
+(1) load static pages (eg the homepage) --- shortest and very time critical; 
+(2) load dynamic pages (eg a users profile page) --- slightly longer and less
+time critical;
+(3) foreground data processing (eg processing a user uploaded file of image) ---
+requires a fair amount of processing but still user-facing and thus latency
+sensitive;
+(4) background data processing (eg updating a data warehouse) --- runs overnight
+and just needs to finish by morning.
+
+The only candidate for BE is (4). The other three are user-facing and as such
+are LC and require reservations. But among 1-3 there are levels of
+criticality: it is essential that the homepage load time be low and constant,
+but processing a user upload can take more time during high load.
+
+This submission presents \textit{\sysname}, a SLA-based scheduling system.
+Central to \sysname{} is the observation that the priorities of utilization and
+latency don't have to be opposing.\ \sysname{} changes the interface with which
+resource requirements are communicated: it makes \textit{deadlines} and
+\textit{maximum compute times} the central metrics provided, thereby
+side-stepping the LC/BE binary, and making the developer's requirements explicit
+to the scheduler.
+
+In \sysname{}, developers submit jobs, attached with the maximum execution time
+as well as a deadline. In the website example, rather than estimate load for
+each job, the resources required to run it, then add 20\% padding, developers
+can simply give the scheduler the handler for each endpoint, and attach to each
+its deadline and an experiential maximum compute time.

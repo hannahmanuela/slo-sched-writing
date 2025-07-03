@@ -1,0 +1,638 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{anyt/global//global/global}
+    \entry{cloudwatch}{online}{}
+      \name{author}{1}{}{%
+        {{hash=4847e034bb0a55fcbc8a3380d6a3ab80}{%
+           family={AWS},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{fullhash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{bibnamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authorbibnamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authornamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authorfullhash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \field{extraname}{1}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Amazon Cloudwatch}
+      \field{urlday}{18}
+      \field{urlmonth}{2}
+      \field{urlyear}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://aws.amazon.com/cloudwatch/
+      \endverb
+      \verb{url}
+      \verb https://aws.amazon.com/cloudwatch/
+      \endverb
+    \endentry
+    \entry{awssla}{online}{}
+      \name{author}{1}{}{%
+        {{hash=4847e034bb0a55fcbc8a3380d6a3ab80}{%
+           family={AWS},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{fullhash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{bibnamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authorbibnamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authornamehash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \strng{authorfullhash}{4847e034bb0a55fcbc8a3380d6a3ab80}
+      \field{extraname}{2}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{AWS Service Level Agreements (SLAs)}
+      \field{urlday}{18}
+      \field{urlmonth}{2}
+      \field{urlyear}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://aws.amazon.com/legal/service-level-agreements/?aws-sla-cards.sort-by=item.additionalFields.serviceNameLower&aws-sla-cards.sort-order=asc&awsf.tech-category-filter=*all
+      \endverb
+      \verb{url}
+      \verb https://aws.amazon.com/legal/service-level-agreements/?aws-sla-cards.sort-by=item.additionalFields.serviceNameLower&aws-sla-cards.sort-order=asc&awsf.tech-category-filter=*all
+      \endverb
+    \endentry
+    \entry{linuxeevdf}{online}{}
+      \name{author}{1}{}{%
+        {{hash=729670cd9d39b9b575390147a29d51d7}{%
+           family={Corbet},
+           familyi={C\bibinitperiod},
+           given={Jonathan},
+           giveni={J\bibinitperiod}}}%
+      }
+      \strng{namehash}{729670cd9d39b9b575390147a29d51d7}
+      \strng{fullhash}{729670cd9d39b9b575390147a29d51d7}
+      \strng{bibnamehash}{729670cd9d39b9b575390147a29d51d7}
+      \strng{authorbibnamehash}{729670cd9d39b9b575390147a29d51d7}
+      \strng{authornamehash}{729670cd9d39b9b575390147a29d51d7}
+      \strng{authorfullhash}{729670cd9d39b9b575390147a29d51d7}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{An EEVDF CPU scheduler for Linux}
+      \verb{urlraw}
+      \verb https://lwn.net/Articles/925371/
+      \endverb
+      \verb{url}
+      \verb https://lwn.net/Articles/925371/
+      \endverb
+      \warn{\item online entry 'linuxeevdf' (paper.bib): Invalid format 'March 9, 2023' of date field 'date' - ignoring}
+    \endentry
+    \entry{rayon}{inproceedings}{}
+      \name{author}{6}{}{%
+        {{hash=08efe335b13664148cd14a5ad2d64b52}{%
+           family={Curino},
+           familyi={C\bibinitperiod},
+           given={Carlo},
+           giveni={C\bibinitperiod}}}%
+        {{hash=8bf3732b207289850b892660487de49f}{%
+           family={Difallah},
+           familyi={D\bibinitperiod},
+           given={Djellel\bibnamedelima E.},
+           giveni={D\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=81d23f4a377a102b66b1523c628ae215}{%
+           family={Douglas},
+           familyi={D\bibinitperiod},
+           given={Chris},
+           giveni={C\bibinitperiod}}}%
+        {{hash=67515508117b1c63fa2275cf48764ca9}{%
+           family={Krishnan},
+           familyi={K\bibinitperiod},
+           given={Subru},
+           giveni={S\bibinitperiod}}}%
+        {{hash=5fd2a1e92f74585d94de45092d5794a5}{%
+           family={Ramakrishnan},
+           familyi={R\bibinitperiod},
+           given={Raghu},
+           giveni={R\bibinitperiod}}}%
+        {{hash=54e572c8dcc19a2c613d5ca21bd03ed2}{%
+           family={Rao},
+           familyi={R\bibinitperiod},
+           given={Sriram},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Seattle, WA, USA}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computing Machinery}%
+      }
+      \strng{namehash}{4ee4e0bd276d164191580cd8f616faaa}
+      \strng{fullhash}{4ee4e0bd276d164191580cd8f616faaa}
+      \strng{bibnamehash}{4ee4e0bd276d164191580cd8f616faaa}
+      \strng{authorbibnamehash}{4ee4e0bd276d164191580cd8f616faaa}
+      \strng{authornamehash}{4ee4e0bd276d164191580cd8f616faaa}
+      \strng{authorfullhash}{4ee4e0bd276d164191580cd8f616faaa}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{The continuous shift towards data-driven approaches to business, and a growing attention to improving return on investments (ROI) for cluster infrastructures is generating new challenges for big-data frameworks. Systems originally designed for big batch jobs now handle an increasingly complex mix of computations. Moreover, they are expected to guarantee stringent SLAs for production jobs and minimize latency for best-effort jobs.In this paper, we introduce reservation-based scheduling, a new approach to this problem. We develop our solution around four key contributions: 1) we propose a reservation definition language (RDL) that allows users to declaratively reserve access to cluster resources, 2) we formalize planning of current and future cluster resources as a Mixed-Integer Linear Programming (MILP) problem, and propose scalable heuristics, 3) we adaptively distribute resources between production jobs and best-effort jobs, and 4) we integrate all of this in a scalable system named Rayon, that builds upon Hadoop / YARN.We evaluate Rayon on a 256-node cluster against workloads derived from Microsoft, Yahoo!, Facebook, and Cloud-era's clusters. To enable practical use of Rayon, we open-sourced our implementation as part of Apache Hadoop 2.6.}
+      \field{booktitle}{Proceedings of the ACM Symposium on Cloud Computing}
+      \field{isbn}{9781450332521}
+      \field{series}{SOCC '14}
+      \field{title}{Reservation-based Scheduling: If You're Late Don't Blame Us!}
+      \field{year}{2014}
+      \field{pages}{1\bibrangedash 14}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.1145/2670979.2670981
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1145/2670979.2670981
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1145/2670979.2670981
+      \endverb
+    \endentry
+    \entry{jockey}{inproceedings}{}
+      \name{author}{5}{}{%
+        {{hash=ce56ee933ca85cabb18b715b5d436973}{%
+           family={Ferguson},
+           familyi={F\bibinitperiod},
+           given={Andrew\bibnamedelima D.},
+           giveni={A\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=0b4318ce66293a0c52e99f5df3450f03}{%
+           family={Bodik},
+           familyi={B\bibinitperiod},
+           given={Peter},
+           giveni={P\bibinitperiod}}}%
+        {{hash=01b7874900a60eb87de24eded06ed296}{%
+           family={Kandula},
+           familyi={K\bibinitperiod},
+           given={Srikanth},
+           giveni={S\bibinitperiod}}}%
+        {{hash=5d870b4b2032da4339beff061ef73f3a}{%
+           family={Boutin},
+           familyi={B\bibinitperiod},
+           given={Eric},
+           giveni={E\bibinitperiod}}}%
+        {{hash=7ac67101266fa4441ee76cf3a31eb8bc}{%
+           family={Fonseca},
+           familyi={F\bibinitperiod},
+           given={Rodrigo},
+           giveni={R\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Bern, Switzerland}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computing Machinery}%
+      }
+      \strng{namehash}{48277afdda126cdd94ec489f465a05ca}
+      \strng{fullhash}{48277afdda126cdd94ec489f465a05ca}
+      \strng{bibnamehash}{48277afdda126cdd94ec489f465a05ca}
+      \strng{authorbibnamehash}{48277afdda126cdd94ec489f465a05ca}
+      \strng{authornamehash}{48277afdda126cdd94ec489f465a05ca}
+      \strng{authorfullhash}{48277afdda126cdd94ec489f465a05ca}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Data processing frameworks such as MapReduce [8] and Dryad [11] are used today in business environments where customers expect guaranteed performance. To date, however, these systems are not capable of providing guarantees on job latency because scheduling policies are based on fair-sharing, and operators seek high cluster use through statistical multiplexing and over-subscription. With Jockey, we provide latency SLOs for data parallel jobs written in SCOPE. Jockey precomputes statistics using a simulator that captures the job's complex internal dependencies, accurately and efficiently predicting the remaining run time at different resource allocations and in different stages of the job. Our control policy monitors a job's performance, and dynamically adjusts resource allocation in the shared cluster in order to maximize the job's economic utility while minimizing its impact on the rest of the cluster. In our experiments in Microsoft's production Cosmos clusters, Jockey meets the specified job latency SLOs and responds to changes in cluster conditions.}
+      \field{booktitle}{Proceedings of the 7th ACM European Conference on Computer Systems}
+      \field{isbn}{9781450312233}
+      \field{series}{EuroSys '12}
+      \field{title}{Jockey: guaranteed job latency in data parallel clusters}
+      \field{year}{2012}
+      \field{pages}{99\bibrangedash 112}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.1145/2168836.2168847
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1145/2168836.2168847
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1145/2168836.2168847
+      \endverb
+      \keyw{scheduling,dynamic adaptation,deadline,data parallel,SLO,MapReduce,Dryad}
+    \endentry
+    \entry{caladan}{inproceedings}{}
+      \name{author}{4}{}{%
+        {{hash=c3ff05f43fb4178eae8490456dc574ce}{%
+           family={Fried},
+           familyi={F\bibinitperiod},
+           given={Joshua},
+           giveni={J\bibinitperiod}}}%
+        {{hash=b8016134e7b194b9a8d73570d4886047}{%
+           family={Ruan},
+           familyi={R\bibinitperiod},
+           given={Zhenyuan},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=fc79155fad34d0e11ca543033c1dad54}{%
+           family={Ousterhout},
+           familyi={O\bibinitperiod},
+           given={Amy},
+           giveni={A\bibinitperiod}}}%
+        {{hash=35e498eed7832a69342c9e51489e37e6}{%
+           family={Belay},
+           familyi={B\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {USENIX Association}%
+      }
+      \strng{namehash}{1c9a9228e58712124962bda0256423ae}
+      \strng{fullhash}{1c9a9228e58712124962bda0256423ae}
+      \strng{bibnamehash}{1c9a9228e58712124962bda0256423ae}
+      \strng{authorbibnamehash}{1c9a9228e58712124962bda0256423ae}
+      \strng{authornamehash}{1c9a9228e58712124962bda0256423ae}
+      \strng{authorfullhash}{1c9a9228e58712124962bda0256423ae}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{14th USENIX Symposium on Operating Systems Design and Implementation (OSDI 20)}
+      \field{isbn}{978-1-939133-19-9}
+      \field{month}{11}
+      \field{title}{Caladan: Mitigating Interference at Microsecond Timescales}
+      \field{year}{2020}
+      \field{pages}{281\bibrangedash 297}
+      \range{pages}{17}
+      \verb{urlraw}
+      \verb https://www.usenix.org/conference/osdi20/presentation/fried
+      \endverb
+      \verb{url}
+      \verb https://www.usenix.org/conference/osdi20/presentation/fried
+      \endverb
+    \endentry
+    \entry{morpheus}{inproceedings}{}
+      \name{author}{11}{}{%
+        {{hash=fcd9588ecfc462abaeeaec5f0b3019b5}{%
+           family={Jyothi},
+           familyi={J\bibinitperiod},
+           given={Sangeetha\bibnamedelima Abdu},
+           giveni={S\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=08efe335b13664148cd14a5ad2d64b52}{%
+           family={Curino},
+           familyi={C\bibinitperiod},
+           given={Carlo},
+           giveni={C\bibinitperiod}}}%
+        {{hash=eddd7868fc3d9e38f199ae168f2ad763}{%
+           family={Menache},
+           familyi={M\bibinitperiod},
+           given={Ishai},
+           giveni={I\bibinitperiod}}}%
+        {{hash=e092340857bd6eea4f0d9885d6a6847e}{%
+           family={Narayanamurthy},
+           familyi={N\bibinitperiod},
+           given={Shravan\bibnamedelima Matthur},
+           giveni={S\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=ad2f246f98d3a755e02cb3f20af4057e}{%
+           family={Tumanov},
+           familyi={T\bibinitperiod},
+           given={Alexey},
+           giveni={A\bibinitperiod}}}%
+        {{hash=bd642fdafc6da27ab3dd799eaf59e391}{%
+           family={Yaniv},
+           familyi={Y\bibinitperiod},
+           given={Jonathan},
+           giveni={J\bibinitperiod}}}%
+        {{hash=7584c9069952e6bdf84c5e965249fbaa}{%
+           family={Mavlyutov},
+           familyi={M\bibinitperiod},
+           given={Ruslan},
+           giveni={R\bibinitperiod}}}%
+        {{hash=ab52a24ef3f9a513303547e8d4e1528c}{%
+           family={Goiri},
+           familyi={G\bibinitperiod},
+           given={Inigo},
+           giveni={I\bibinitperiod}}}%
+        {{hash=67515508117b1c63fa2275cf48764ca9}{%
+           family={Krishnan},
+           familyi={K\bibinitperiod},
+           given={Subru},
+           giveni={S\bibinitperiod}}}%
+        {{hash=1d2d6cbff9ca0477ee058d93afaff0e4}{%
+           family={Kulkarni},
+           familyi={K\bibinitperiod},
+           given={Janardhan},
+           giveni={J\bibinitperiod}}}%
+        {{hash=54e572c8dcc19a2c613d5ca21bd03ed2}{%
+           family={Rao},
+           familyi={R\bibinitperiod},
+           given={Sriram},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Savannah, GA}%
+      }
+      \list{publisher}{1}{%
+        {USENIX Association}%
+      }
+      \strng{namehash}{62f826f79edc8086c7cd0650793a6c75}
+      \strng{fullhash}{62f826f79edc8086c7cd0650793a6c75}
+      \strng{bibnamehash}{62f826f79edc8086c7cd0650793a6c75}
+      \strng{authorbibnamehash}{62f826f79edc8086c7cd0650793a6c75}
+      \strng{authornamehash}{62f826f79edc8086c7cd0650793a6c75}
+      \strng{authorfullhash}{62f826f79edc8086c7cd0650793a6c75}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)}
+      \field{isbn}{978-1-931971-33-1}
+      \field{month}{11}
+      \field{title}{Morpheus: Towards Automated {SLOs} for Enterprise Clusters}
+      \field{year}{2016}
+      \field{pages}{117\bibrangedash 134}
+      \range{pages}{18}
+      \verb{urlraw}
+      \verb https://www.usenix.org/conference/osdi16/technical-sessions/presentation/jyothi
+      \endverb
+      \verb{url}
+      \verb https://www.usenix.org/conference/osdi16/technical-sessions/presentation/jyothi
+      \endverb
+    \endentry
+    \entry{shinjuku}{inproceedings}{}
+      \name{author}{6}{}{%
+        {{hash=c49881d020712405cf691622e0896800}{%
+           family={Kaffes},
+           familyi={K\bibinitperiod},
+           given={Kostis},
+           giveni={K\bibinitperiod}}}%
+        {{hash=a9aa46c398a0ee0d565551cd87754273}{%
+           family={Chong},
+           familyi={C\bibinitperiod},
+           given={Timothy},
+           giveni={T\bibinitperiod}}}%
+        {{hash=3e1628d19fe6d4950954d9578632365e}{%
+           family={Humphries},
+           familyi={H\bibinitperiod},
+           given={Jack\bibnamedelima Tigar},
+           giveni={J\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+        {{hash=35e498eed7832a69342c9e51489e37e6}{%
+           family={Belay},
+           familyi={B\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod}}}%
+        {{hash=d95f845d2bc39e6d692ea4242278e0ef}{%
+           family={Mazières},
+           familyi={M\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod}}}%
+        {{hash=ea87e386461230ec18273b6b4f3d33bc}{%
+           family={Kozyrakis},
+           familyi={K\bibinitperiod},
+           given={Christos},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Boston, MA}%
+      }
+      \list{publisher}{1}{%
+        {USENIX Association}%
+      }
+      \strng{namehash}{77cc0460639a868f80aa882f95851dc8}
+      \strng{fullhash}{77cc0460639a868f80aa882f95851dc8}
+      \strng{bibnamehash}{77cc0460639a868f80aa882f95851dc8}
+      \strng{authorbibnamehash}{77cc0460639a868f80aa882f95851dc8}
+      \strng{authornamehash}{77cc0460639a868f80aa882f95851dc8}
+      \strng{authorfullhash}{77cc0460639a868f80aa882f95851dc8}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{16th USENIX Symposium on Networked Systems Design and Implementation (NSDI 19)}
+      \field{isbn}{978-1-931971-49-2}
+      \field{month}{2}
+      \field{title}{Shinjuku: Preemptive Scheduling for {mico-second-scale} Tail Latency}
+      \field{year}{2019}
+      \field{pages}{345\bibrangedash 360}
+      \range{pages}{16}
+      \verb{urlraw}
+      \verb https://www.usenix.org/conference/nsdi19/presentation/kaffes
+      \endverb
+      \verb{url}
+      \verb https://www.usenix.org/conference/nsdi19/presentation/kaffes
+      \endverb
+    \endentry
+    \entry{overprovision}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f010af7d7a77526ce3031902eec29e72}{%
+           family={Kelly},
+           familyi={K\bibinitperiod},
+           given={Will},
+           giveni={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f010af7d7a77526ce3031902eec29e72}
+      \strng{fullhash}{f010af7d7a77526ce3031902eec29e72}
+      \strng{bibnamehash}{f010af7d7a77526ce3031902eec29e72}
+      \strng{authorbibnamehash}{f010af7d7a77526ce3031902eec29e72}
+      \strng{authornamehash}{f010af7d7a77526ce3031902eec29e72}
+      \strng{authorfullhash}{f010af7d7a77526ce3031902eec29e72}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{day}{22}
+      \field{month}{11}
+      \field{title}{Overprovisioning in AWS? Cost-control tools and strategies can help}
+      \field{year}{2013}
+      \field{dateera}{ce}
+      \verb{urlraw}
+      \verb https://www.techtarget.com/searchaws/news/2240209793/Overprovisioning-in-AWS-Cost-control-tools-and-strategies-can-help
+      \endverb
+      \verb{url}
+      \verb https://www.techtarget.com/searchaws/news/2240209793/Overprovisioning-in-AWS-Cost-control-tools-and-strategies-can-help
+      \endverb
+    \endentry
+    \entry{kubernetes}{online}{}
+      \name{author}{1}{}{%
+        {{hash=30136395f01879792198317c11831ea4}{%
+           family={Kubernetes},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{30136395f01879792198317c11831ea4}
+      \strng{fullhash}{30136395f01879792198317c11831ea4}
+      \strng{bibnamehash}{30136395f01879792198317c11831ea4}
+      \strng{authorbibnamehash}{30136395f01879792198317c11831ea4}
+      \strng{authornamehash}{30136395f01879792198317c11831ea4}
+      \strng{authorfullhash}{30136395f01879792198317c11831ea4}
+      \field{extraname}{1}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Autoscaling Workloads}
+      \field{urlday}{18}
+      \field{urlmonth}{2}
+      \field{urlyear}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://kubernetes.io/docs/concepts/workloads/autoscaling/
+      \endverb
+      \verb{url}
+      \verb https://kubernetes.io/docs/concepts/workloads/autoscaling/
+      \endverb
+    \endentry
+    \entry{kubernetestime}{online}{}
+      \name{author}{1}{}{%
+        {{hash=30136395f01879792198317c11831ea4}{%
+           family={Kubernetes},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{30136395f01879792198317c11831ea4}
+      \strng{fullhash}{30136395f01879792198317c11831ea4}
+      \strng{bibnamehash}{30136395f01879792198317c11831ea4}
+      \strng{authorbibnamehash}{30136395f01879792198317c11831ea4}
+      \strng{authornamehash}{30136395f01879792198317c11831ea4}
+      \strng{authorfullhash}{30136395f01879792198317c11831ea4}
+      \field{extraname}{2}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Horizontal Pod Autoscaling}
+      \field{urlday}{18}
+      \field{urlmonth}{2}
+      \field{urlyear}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+      \endverb
+      \verb{url}
+      \verb https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+      \endverb
+    \endentry
+    \entry{snowflake}{inproceedings}{}
+      \name{author}{7}{}{%
+        {{hash=80e68b0113239e47d94665c0e4a9c37d}{%
+           family={Melissaris},
+           familyi={M\bibinitperiod},
+           given={Themis},
+           giveni={T\bibinitperiod}}}%
+        {{hash=e52278614e0afcc6065ffc641bd87a8e}{%
+           family={Nabar},
+           familyi={N\bibinitperiod},
+           given={Kunal},
+           giveni={K\bibinitperiod}}}%
+        {{hash=ed569a0493ca7c00eaa22e94839120ae}{%
+           family={Radut},
+           familyi={R\bibinitperiod},
+           given={Rares},
+           giveni={R\bibinitperiod}}}%
+        {{hash=6fba4abd3fe6a935da9c64949d45186d}{%
+           family={Rehmtulla},
+           familyi={R\bibinitperiod},
+           given={Samir},
+           giveni={S\bibinitperiod}}}%
+        {{hash=dcd273a2ce8041bfc63be6da43395cda}{%
+           family={Shi},
+           familyi={S\bibinitperiod},
+           given={Arthur},
+           giveni={A\bibinitperiod}}}%
+        {{hash=323ac01283126c8acb4bede340c0bb20}{%
+           family={Chandrashekar},
+           familyi={C\bibinitperiod},
+           given={Samartha},
+           giveni={S\bibinitperiod}}}%
+        {{hash=1f025fa4c52665aaaa848ed187830282}{%
+           family={Papapanagiotou},
+           familyi={P\bibinitperiod},
+           given={Ioannis},
+           giveni={I\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {San Francisco, California}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computing Machinery}%
+      }
+      \strng{namehash}{64c9859b3407b2d830c39ecae92319e1}
+      \strng{fullhash}{64c9859b3407b2d830c39ecae92319e1}
+      \strng{bibnamehash}{64c9859b3407b2d830c39ecae92319e1}
+      \strng{authorbibnamehash}{64c9859b3407b2d830c39ecae92319e1}
+      \strng{authornamehash}{64c9859b3407b2d830c39ecae92319e1}
+      \strng{authorfullhash}{64c9859b3407b2d830c39ecae92319e1}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Snowflake's "Data Cloud", provided as Software-as-a-Service (SaaS), enables data storage, processing, and analytic solutions in a performant, easy to use, and flexible manner. Although cloud service providers provide the foundational infrastructure to run and scale a variety of workloads, operating Snowflake on cloud infrastructure presents interesting challenges. Customers expect Snowflake to be available at all times and to run their workloads with high performance. Behind the scenes, the software that runs customer workloads needs to be serviced and managed. Additionally, failures in individual components such as Virtual Machines (VM) need to be handled without disrupting running workloads. As a result, lifecycle management of compute artifacts, their scheduling and placement, software rollout (and rollback), replication, failure detection, automatic scaling, and load balancing become extremely important.In this paper, we describe the design and operation of Snowflake's Elastic Cloud Services (ECS) layer that manages cloud resources at global scale to meet the needs of the Snowflake Data Cloud. It provides the control plane to enable elasticity, availability, fault tolerance and efficient execution of customer workloads. ECS runs on multiple cloud service providers and provides capabilities such as cluster management, safe code rollout and rollback, management of pre-started pools of running VMs, horizontal and vertical autoscaling, throttling of incoming requests, VM placement, load-balancing across availability zones and cross-cloud and cross-region replication. We showcase the effect of these capabilities through empirical results on systems that execute millions of queries over petabytes of data on a daily basis.}
+      \field{booktitle}{Proceedings of the 13th Symposium on Cloud Computing}
+      \field{isbn}{9781450394147}
+      \field{series}{SoCC '22}
+      \field{title}{Elastic cloud services: scaling snowflake's control plane}
+      \field{year}{2022}
+      \field{pages}{142\bibrangedash 157}
+      \range{pages}{16}
+      \verb{doi}
+      \verb 10.1145/3542929.3563483
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1145/3542929.3563483
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1145/3542929.3563483
+      \endverb
+    \endentry
+    \entry{eevdf}{inproceedings}{}
+      \name{author}{2}{}{%
+        {{hash=51d9ef26181e2e8a9dc546b401e0bb26}{%
+           family={Stoica},
+           familyi={S\bibinitperiod},
+           given={Ion},
+           giveni={I\bibinitperiod}}}%
+        {{hash=654ca4a1e54f1aea844cf4adb8be9c32}{%
+           family={Abdel-Wahab},
+           familyi={A\bibinithyphendelim W\bibinitperiod},
+           given={Hussein},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {USENIX Association}%
+      }
+      \strng{namehash}{76484b3482fab9bf5d1451d85f66b297}
+      \strng{fullhash}{76484b3482fab9bf5d1451d85f66b297}
+      \strng{bibnamehash}{76484b3482fab9bf5d1451d85f66b297}
+      \strng{authorbibnamehash}{76484b3482fab9bf5d1451d85f66b297}
+      \strng{authornamehash}{76484b3482fab9bf5d1451d85f66b297}
+      \strng{authorfullhash}{76484b3482fab9bf5d1451d85f66b297}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)}
+      \field{month}{11}
+      \field{title}{Earliest Eligible Virtual Deadline First: A Flexible and Accurate Mechanism for Proportional Share Resource Allocation}
+      \field{year}{1996}
+      \verb{urlraw}
+      \verb https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564
+      \endverb
+      \verb{url}
+      \verb https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
