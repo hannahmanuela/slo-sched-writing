@@ -9,8 +9,6 @@ containers.\ cgroups allow for the control of many different resources,
 including cpu, memory, and i/o. In this thesis we take a closer look at the way
 the cpu isolation is used and enforced. 
 
-\subsection{}
-
 Kubernetes\cite{kubernetes}, for example, allows users to specify resource
 requests and limits. Limits are directly passed on to the cgroups cpu.limit
 interface. The way Linux in turn implements cpu limits is straightforward: the
