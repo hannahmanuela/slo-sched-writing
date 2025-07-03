@@ -1,0 +1,51 @@
+% MIT Thesis Proposal Template
+% Created by Micah Smith <micahs@mit.edu>
+% link: https://github.com/mit-eecs-gsa/mit-eecs-thesis-proposal-template/tree/master#
+
+\documentclass{article}
+
+\usepackage{geometry}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+% must be last in usepackage list!
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+
+% other stuff
+\newcommand{\mydate}{August 2025}
+\newcommand{\mycompletion}{September 2025}
+\newcommand{\mytitle}{Modifying Linux to separate best effort from latency critical workloads}
+
+\newcommand{\schedidle}{\texttt{sched\_idle}}
+
+\author{
+    Hannah Manuela Nelle Gross\\
+    Massachusetts Institute of Technology\\
+    \texttt{hannah@csail.mit.edu}
+}
+
+\date{\mydate}
+
+\title{\mytitle}
+
+\begin{document}
+
+\input{titlepage}
+
+\newpage
+
+\maketitle
+
+\input{abstract}
+
+\input{intro}
+
+\input{timeline}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
