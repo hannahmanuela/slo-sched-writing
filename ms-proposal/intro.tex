@@ -9,10 +9,11 @@ containers.\ cgroups interface files allow for the control of resources,
 including cpu, memory, and i/o. In this thesis we take a closer look at the way
 the cpu isolation is used and enforced. 
 
-Kubernetes\cite{kubernetes}, for example, allows users to specify resource
-requests and limits. Limits are directly passed on to the cgroups cpu.limit
-interface. Linux implements cpu limits using timers and accounting to ensure
-that the processes in the cgroup do not get more cpu time than allowed. 
+Kubernetes\cite{kubernetes}, for example, allows users to specify cpu resource
+requirements in two ways: requests and limits. Limits are directly passed on to
+the cgroups cpu.limit interface. Linux implements cpu limits using accounting to
+ensure that the processes in the cgroup get no more cpu time than
+allowed.\hmng{do we care to explain the details?}
 
 For Kubernetes' resource requests interface, it is desirable that containers be
 allowed to burst when possible. For example, a service $s_1$ might ask for two
@@ -56,15 +57,15 @@ in principle a large range, and should allow for BE tasks to have a negligible
 performance impact on LC tasks, even during high load. 
 
 However, we found that even when setting the weights of cgroups to the outermost
-extremes, the presence of low weight (BE) tasks has a large performance impact
-on a high-weight (ie LC) task. In an experiment, we run a (LC) server that
-processes requests coming in from an open loop client, running on a separate
-machine. The client has 100 \hmng{is this what we want?} connections to the
-server, each connection creates a separate server thread that reads from the
+extremes, the presence of low weight (ie BE) tasks has a large performance
+impact on a high-weight (ie LC) task. In an experiment, we run a (LC) server
+that processes requests coming in from an open loop client, running on a
+separate machine. The client has 100 \hmng{is this what we want?} connections to
+the server, each connection creates a new server thread that reads from the
 socket and synchronously processes requests in a tight loop. The server threads
 run in a cgroup with the highest possible weight: 10000. The server initially
 runs on an uncontended four cores, during which time the cpu utilization of the
-server is around 83\%. After $\sim$10 seconds, we start two background tasks on
+server is around 85\%. After $\sim$10 seconds, we start two background tasks on
 the same four cores, each performing an image resize job. Each background task
 is in its own cgroup, which both have the lowest possible weight, 1. We then
 measure the latencies experienced by the LC server, before and after starting
@@ -72,9 +73,9 @@ the background tasks. Figure~\ref{fig:unedited-weight-low-two} shows the
 results. We see that mean latencies spike up from steady at just under 6ms to as
 high as 13ms, and much higher for 99th percentile latencies.
 
-With a higher baseline load for the LC server the spikes are higher, in
-Figure~\ref{fig:unedited-weight-high-two} the utilization of the uncontended
-server load is around 96\%.
+With a higher baseline load for the LC server the spikes are higher,
+figure~\ref{fig:unedited-weight-high-two} shows the latencies when the
+utilization of the uncontended server load is around 95\%.
 
 
 

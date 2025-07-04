@@ -2,9 +2,10 @@
 \section{Real time scheduling}
 \label{sec:sched-rt}
 
-There is a way to configure tasks so that Linux enforces gloabl priorities: when
-run in a real time setting, processes are under a different scheduler that
-enforces strict and global priorities.
+There is a way to configure tasks so that Linux enforces gloabl priorities:
+processes that run in real time have strict priority over other processes, and
+are under a different scheduler that enforces strict and global priorities among
+the real time threads.
 
 Linux implements real time scheduling alongside the usual weighted fair share by
 supporting different \textit{scheduling classes}. There are three scheduling
@@ -19,13 +20,12 @@ run queues and per-entity state; implement their own scheduling algorithms to
 choose from the entities on their runqueue; and balance the load across
 runqueues on different cores.
 
-Linux also isolates strictly between different scheduling classes: it only
-schedules a lower scheduling class if the higher scheduling classes found
-nothing to run, and each scheduling class tries to steal work from other cores
-before returning that it has nothing to run and letting the lower scheduling
-classes run. It is thereby true that if something in the Normal scheduling class
-is running, it means there are no Fifo tasks waiting to run anywhere on the
-machine.
+Linux isolates strictly between different scheduling classes: it only schedules
+a lower scheduling class if the higher scheduling classes found nothing to run,
+and each scheduling class tries to steal work from other cores before returning
+that it has nothing to run. It is thereby true that if something in the Normal
+scheduling class is running, it means there are no Fifo tasks waiting to run
+anywhere on the machine.
 
 This points to two possible solutions: 1: put LC and BE at two different priority
 levels in the Fifo scheduling class, or 2: put LC in Fifo and BE in Normal. These
@@ -52,21 +52,27 @@ these two are equivalent for out purposes.\hmng{do I even need to mention option
 We choose to minimize the changes, and run the LC server in the Fifo class and
 BE in Normal. Figure~\ref{fig:unedited-rt} shows the resulting measured
 latencies in the same low and high load setting as previously. We see much
-stabler latencies, as expected.
+stabler latencies, as expected; in the baseline as well as once the BE tasks are
+started. This looks incredibly promising on two fronts: 1: we see better tail
+latency for the LC task by using a fifo run-to-completion scheduling algorithm,
+and 2: we get better isolation by making use of Linux's strict boundaries
+between scheduling classes.
 
-However, this comes stability comes at a cost. One is that, because the global
-ordering is so strict, Linux is performing balancing and potentially migration
-almost every time a task wakes up or exits. This requires the scheduling core to
-potentially lock the runqueues of all the other cores as it ensures the task it
-will run the next is the one with the highest priority. This increase in
-scheduling latency leads to the small increase in the baseline latency that are
-visible in the graphs.
+Unfortunately, the observed improved tail latency is a side-effect of the
+experimental setup, where request does the exact same thing and processing times
+are uniform. This is not true for a production environment, where request
+processing times are variable and unknown. If a fifo run-to-completion scheduler
+is used in that setting, it leads to HoL blocking, and thus to much worse tail
+latencies for short requests.
 
-Running servers in the Fifo scheduler also means that the requests will be
-served in a fifo manner. This is untenable for a production environment with
-variable and unknown request processing lengths, because it leads to HoL
-blocking. In this experiment that is not visible because all requests have the
-same length, but it is a well-known issue with fifo scheduling.
+And the improved stability comes at a cost. Because the global ordering is so
+strict, also within the Fifo scheduling class, Linux is performing balancing and
+potentially migration almost every time an LC thread wakes up or exits. This
+requires the scheduling core to potentially lock the runqueues of all the other
+cores as it ensures the task it will run the next is the one with the highest
+priority, and within that priority the once that first became runnable. This
+increase in scheduling latency leads to the small increase in the baseline
+latency that is visible in the graphs.
 
 We conclude that the Fifo scheduling class is not a good solution: although it
 is able to globally ensure isolation between LC and BE tasks, its scheduling

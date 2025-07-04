@@ -21,10 +21,12 @@ running a \schedidle{} entity.
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{graphs/unedited-idle-high-two.png}
+        \includegraphics[width=\textwidth]{graphs/patched-idle-high-two.png}
         \caption{High load}\label{fig:patched-idle-high-two}
     \end{subfigure}
-\end{figure*}\label{fig:patched-idle}
+    \caption{using a patched \schedidle{} that steals queued \schednormal{}
+    tasks before running \schedidle{} ones}\label{fig:patched-idle}
+\end{figure*}
 
 We can see the resulting performance in figure~\ref{fig:patched-idle}, and as
 desired the latency of the server is completely unaffected by the background

@@ -47,13 +47,12 @@ Submitted by: & Hannah Gross\\
 \vspace{1em}
 \begin{minipage}{\dimexpr\textwidth-1cm}
 
-\noindent Many popular containers rely on Linux's cgroups to isolate the
-performance of latency critical containers from best effort ones running on the
-same machine. This thesis shows that Linux's current mechanism for doing so,
-based on weights, is unable to enforce the desired isolation. We make the split
-explicit by putting best effort work in a separate scheduling class, and show
-that doing so dramatically improves Linux's ability to isolate latency critical
-workloads from best effort ones.
+\noindent Many popular containerization framekworks rely on Linux's cgroups to
+isolate the performance of latency critical containers from best effort ones
+running on the same machine. This thesis shows that Linux's current mechanism
+for cpu isolation, based on weights, is unable to isolate workloads effectively.
+We make the split explicit by putting best effort work in a separate scheduling
+class, and show that this dramatically improves Linux's ability to isolate them.
 
 \end{minipage}
 
