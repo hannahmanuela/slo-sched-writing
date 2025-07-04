@@ -1,0 +1,76 @@
+
+\section{Real time scheduling}
+\label{sec:sched-rt}
+
+There is a way to configure tasks so that Linux enforces gloabl priorities: when
+run in a real time setting, processes are under a different scheduler that
+enforces strict and global priorities.
+
+Linux implements real time scheduling alongside the usual weighted fair share by
+supporting different \textit{scheduling classes}. There are three scheduling
+classes that are accessible to users, listed in descending order of priority:
+Deadline, Fifo, and Normal. Generally speaking most load is expected to fall
+into the Normal scheduling class (hence the name). It is the default scheduling
+class, and it is only within the Normal scheduling class that the cgroup
+cpu.weight interface is relevant.
+
+Each scheduling class exists completely separately: classes maintain their own
+run queues and per-entity state; implement their own scheduling algorithms to
+choose from the entities on their runqueue; and balance the load across
+runqueues on different cores.
+
+Linux also isolates strictly between different scheduling classes: it only
+schedules a lower scheduling class if the higher scheduling classes found
+nothing to run, and each scheduling class tries to steal work from other cores
+before returning that it has nothing to run and letting the lower scheduling
+classes run. It is thereby true that if something in the Normal scheduling class
+is running, it means there are no Fifo tasks waiting to run anywhere on the
+machine.
+
+This points to two possible solutions: 1: put LC and BE at two different priority
+levels in the Fifo scheduling class, or 2: put LC in Fifo and BE in Normal. These
+are in reality not all that different, the Normal scheduling class is equivalent
+to a special priority level that is under all the ones in Fifo that happens to
+internally run weighted fair share, rather than fifo. Since we are not, in this
+project, concerned with the performance characteristics of the BE workload,
+these two are equivalent for out purposes.\hmng{do I even need to mention option
+1? seems a bit silly}
+
+\begin{figure*}[t]
+    \centering
+    \begin{subfigure}[t]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{graphs/unedited-rt-low-two.png}
+        \caption{Low load, two background tasks}\label{fig:unedited-rt-low-two}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{graphs/unedited-rt-high-two.png}
+        \caption{High load; two background tasks}\label{fig:unedited-rt-high-two}
+    \end{subfigure}
+\end{figure*}\label{fig:unedited-rt}
+
+We choose to minimize the changes, and run the LC server in the Fifo class and
+BE in Normal. Figure~\ref{fig:unedited-rt} shows the resulting measured
+latencies in the same low and high load setting as previously. We see much
+stabler latencies, as expected.
+
+However, this comes stability comes at a cost. One is that, because the global
+ordering is so strict, Linux is performing balancing and potentially migration
+almost every time a task wakes up or exits. This requires the scheduling core to
+potentially lock the runqueues of all the other cores as it ensures the task it
+will run the next is the one with the highest priority. This increase in
+scheduling latency leads to the small increase in the baseline latency that are
+visible in the graphs.
+
+Running servers in the Fifo scheduler also means that the requests will be
+served in a fifo manner. This is untenable for a production environment with
+variable and unknown request processing lengths, because it leads to HoL
+blocking. In this experiment that is not visible because all requests have the
+same length, but it is a well-known issue with fifo scheduling.
+
+We conclude that the Fifo scheduling class is not a good solution: although it
+is able to globally ensure isolation between LC and BE tasks, its scheduling
+time overheads and algorithm make in poorly suited for a production setting.
+
+
+

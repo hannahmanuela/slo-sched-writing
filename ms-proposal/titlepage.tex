@@ -47,13 +47,13 @@ Submitted by: & Hannah Gross\\
 \vspace{1em}
 \begin{minipage}{\dimexpr\textwidth-1cm}
 
-\noindent Many popular containerization frameworks, such as Kubernetes and
-AFaas, rely on Linux's cgroups to isolate the performance of different
-containers running on the same machine. This thesis shows that Linux's ability
-to actually implement that isolation is lacking, mostly due to the way that load
-is balanced across cores. We implement a small change to Linux, and show that it
-dramatically improves Linux's ability to isolate latency critical workloads from
-best effort ones.
+\noindent Many popular containers rely on Linux's cgroups to isolate the
+performance of latency critical containers from best effort ones running on the
+same machine. This thesis shows that Linux's current mechanism for doing so,
+based on weights, is unable to enforce the desired isolation. We make the split
+explicit by putting best effort work in a separate scheduling class, and show
+that doing so dramatically improves Linux's ability to isolate latency critical
+workloads from best effort ones.
 
 \end{minipage}
 

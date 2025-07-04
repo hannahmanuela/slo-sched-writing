@@ -3,44 +3,47 @@
 \section{Timeline}
 \label{sec:timeline}
 
-\textbf{Choosing the problem:} We landed on this problem space about a year ago.
-The choice was motivated by multiple experiences of confusing performance
-results in other projects, which pointed to a gap between expectation and
-reality of Linux's cgroup interface.
+\textbf{1. Current state of the project:} 
+The driving problem that motivated the project was multiple experiences of
+confusing performance results in other projects, which pointed to a gap between
+expectation and reality of Linux's cgroup interface. 
 
-\textbf{Understanding existing systems:} This happened around the past fall this
-spring, and included reading up on Linux's design as well as actual code, and
-running a bunch of benchmarks and experiments to understand the dynamics of
-Linux's behavior as well as the reasons for the observed performance
-discrepancies.
+We have done a comprehensive analysis of the problem at different levels, by
+looking at Linux's scheduling code as well as running many benchmarks and
+profiling traces. This has allowed us to narrow down the problem to a simple
+case that exhibits the undesirable behavior, and to be able to point to what
+goes wrong, both in the traces and in the code.
 
-\textbf{Understanding the solution space:} This has happened throughout this
-past spring and summer. We answered the question of whether this is even
-possible in the timelines that Linux operates at by experimenting with existing
-options in the Linux scheduler (concretely, by making use of Linux's real time
-scheduler). We then ran further more complex experiments to understand the
-implications of running workloads in the real time scheduler, and came to the
-conclusion that this was not a viable solution. We landed on the option of
-creating a new scheduling class. 
+We have experimented with different solution approaches, and landed on one that
+requires editing the linux migration code during scheduling decisions. We are
+now at a point where we have a patch that leads to the desired behavior, and
+have shown that it solves the simple case that we initially narrowed the problem
+down to.
 
-\textbf{Implementing the change:} There are multiple ways to go about
-implementing this change in something as big and complicated as Linux. In the
-past month we experimented with different approaches and ended up landing on the
-choice of enhancing Linux's treatment of \schedidle{}. This involved choosing
-between a tradeoff: creating the more intellectually clean but code-wise
-invasive change of a whole new scheduling class, vs choosing to reuse the
-existent special-casing of \schedidle{} and building it out with the one main
-missing feature to have it effectively be a separate scheduling class. We chose
-the latter, and spent the past couple weeks implementing the patch and testing
-it in our microbenchmark settings. 
-
-
-\textbf{Measuring the change:} In the time between now and the deadline, we plan
+\textbf{2. Steps remaining:} In the time between now and the deadline, we plan
 to further understand and push the solution. This includes three main
 dimensions: we want to measure the exact costs (how long does the added code
 take to run); we want to understand its implications (do things break when BE
 processes are starved for longer periods of time); and finally we want to create
 more realistic and end-to-end scenarios to understand the practical implications
 of the change we made.
+
+\textbf{5.a Measure the cost:} We plan to run a small microbenchmark where we
+trigger the new patch code by running three \schednormal{} tasks and one
+\schedidle{} task on two cores. We know the kernel will, once the \schednormal{}
+task that has a core to itself completes, steal one of the others. We can use
+that opportunity to measure how long it takes to run the code in the worst case
+scenario, ie when it has to check the load and then also actually go and steal work.
+
+\textbf{5.b Understand the implications:} Linux has many mechanisms to avoid
+starvation of processes, and the change we make allows for starvation. We will
+test this by starving a complex BE task (ie one that has open TCP connections,
+files, etc) for a long period of time and ensuring that it can still continue
+running as normal after.
+
+\textbf{5.c End to end scenario:} The initial problem came from more complex
+examples of more realistic applications than what we ended up reducing it to, so
+we want to take the solution and apply it to these settings and demonstrate that
+it improves performance as expected.
 
 

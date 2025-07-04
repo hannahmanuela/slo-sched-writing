@@ -8,6 +8,7 @@
 \usepackage{parskip}
 \usepackage{graphicx}
 \usepackage{subcaption}
+\usepackage{xcolor}
 
 % must be last in usepackage list!
 \usepackage{hyperref}
@@ -15,11 +16,13 @@
 
 
 % other stuff
+\newcommand\hmng[1]{\textcolor{blue!40!red}{[hmng: {#1}]}}
 \newcommand{\mydate}{August 2025}
 \newcommand{\mycompletion}{September 2025}
 \newcommand{\mytitle}{Modifying Linux to separate best effort from latency critical workloads}
 
 \newcommand{\schedidle}{\texttt{sched\_idle}}
+\newcommand{\schednormal}{\texttt{sched\_normal}}
 
 \author{
     Hannah Manuela Nelle Gross\\
@@ -43,7 +46,13 @@
 
 \input{intro}
 
-\input{solution-space}
+\input{why}
+
+\input{sched-rt}
+
+\input{sched-idle}
+
+\input{my-patch}
 
 \input{timeline}
 
