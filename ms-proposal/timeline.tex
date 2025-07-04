@@ -28,20 +28,20 @@ processes are starved for longer periods of time); and finally we want to create
 more realistic and end-to-end scenarios to understand the practical implications
 of the change we made.
 
-\textbf{5.a Measure the cost:} We plan to run a small microbenchmark where we
+\textbf{2.a Measure the cost:} We plan to run a small microbenchmark where we
 trigger the new patch code by running three \schednormal{} tasks and one
 \schedidle{} task on two cores. We know the kernel will, once the \schednormal{}
 task that has a core to itself completes, steal one of the others. We can use
 that opportunity to measure how long it takes to run the code in the worst case
 scenario, ie when it has to check the load and then also actually go and steal work.
 
-\textbf{5.b Understand the implications:} Linux has many mechanisms to avoid
+\textbf{2.b Understand the implications:} Linux has many mechanisms to avoid
 starvation of processes, and the change we make allows for starvation. We will
 test this by starving a complex BE task (ie one that has open TCP connections,
 files, etc) for a long period of time and ensuring that it can still continue
 running as normal after.
 
-\textbf{5.c End to end scenario:} The initial problem came from more complex
+\textbf{2.c End to end scenario:} The initial problem came from more complex
 examples of more realistic applications than what we ended up reducing it to, so
 we want to take the solution and apply it to these settings and demonstrate that
 it improves performance as expected.
