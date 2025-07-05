@@ -16,23 +16,18 @@ to examine the scheduling decisions Linux is making.
     }\label{fig:schedviz}
 \end{figure*}
 
-In figure~\ref{fig:schedviz}, we look at a 10ms outtake from the run whose
-results are in figure~\ref{fig:unedited-weight-low-two}\hmng{dbl check}, that
-shows the problem occuring. The undesirable behavior we see here is that, on
-core 6, the red process that is running the whole time is a BE process. All the
-active server threads, shown in varying shades of blue, are on the other cores,
-running and, more importantly, waiting.~\hmng{wait so does that mean if it was
-always a new/running-low-weight core that picked up the new request then this
-problem would go away? I guess that's what running only one thread per core
-would do \ldots / that's what I'm ensuring with my patch? it just seems like by
-having this many workers we are exacerbating the problem? is that bad? }
+In figure~\ref{fig:schedviz}, we look at a 10ms outtake from one of the runs,
+that shows the problem occurring. The undesirable behavior we see here is that,
+on core 6, the red process that is running the whole time is a BE process. All
+the active server threads, shown in varying shades of blue, are on the other
+cores, running and, more importantly, waiting.
 
 The reason this happens is that Linux maintains a separate runqueue on each
 core. This avoids the synchronization overheads of accessing global state for
-every scheduling, but also means that the weight is ony strictly enforced within
-the individual runqueues, ie within each core. This leads to the depicted
+every scheduling, but also means that the weight is only strictly enforced
+within the individual runqueues, ie within each core. This leads to the depicted
 failure mode, where an LC task is waiting on one core while another runs a BE
 task.
 
-\hmng{should I also mention the giving at minimum 4ms? and how that can impact
- tail latency}
+% \hmng{should I also mention the giving at minimum 4ms? and how that can impact
+%  tail latency}
