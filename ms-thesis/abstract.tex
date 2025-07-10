@@ -1,0 +1,22 @@
+% From mitthesis package
+% Version: 1.01, 2023/06/19
+% Documentation: https://ctan.org/pkg/mitthesis
+%
+% The abstract environment creates all the required headers and footnote. 
+% You only need to add the text of the abstract itself.
+%
+% Approximately 500 words or less; try not to use formulas or special characters
+% If you don't want an initial indentation, do \noindent at the start of the abstract
+
+Linux is an operating system that underlies most of modern computing
+infrastructure. As such, it has conflicting requirements of being both general
+purpose and performant. This thesis identifies a limitation in Linux's interface
+for a use case that is both generic enough and important enough to deserve first
+class support in the kernel: the separation of latency critical (LC) workloads
+from best effort (BE) ones. The current interface for separating these two, used
+by popular containerization software such as Kubernetes and AFaaS, is based on
+weights and is poorly enforced. This thesis explores making the LC/BE split
+explicit by putting best effort work in a separate scheduling class. We show
+that doing so enables Linux to enforce the LC/BE split across cores with
+acceptable overheads, and that this stabilizes the performance of LC workload in
+the presence of BE.
