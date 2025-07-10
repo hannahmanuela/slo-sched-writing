@@ -26,6 +26,18 @@ that it has nothing to run. It is thereby true that if something in the Normal
 scheduling class is running, it means there are no Fifo tasks waiting to run
 anywhere on the machine.
 
+This global enforcement is not succeptible to the 4ms granularity. This is
+because Linux is also able to schedule at other points in time, not just the 4ms
+hardware ticks. These occur when the control flow is in the kernel anyway, and
+include the \textit{exit} path, when the running thread blocks, and
+\textit{entry}, when a sleeping thread is woken up (via a separate signal, for
+example receiving a packet on a listening socket). In these contexts Linux is
+able to make fast scheduling decisions, and scheduling at these events is
+sufficient to enforce isolation: the tick-based preemption granularity is
+relevant for latencies of the processes within a priority, but isolating across
+priorities only requires the correct scheduling decision to be made on entry and
+exit. 
+
 \begin{figure*}[t]
     \centering
     \begin{subfigure}[t]{0.48\textwidth}
