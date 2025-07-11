@@ -2,9 +2,7 @@
 \chapter{Real time scheduling}
 
 There is a way to configure tasks so that Linux enforces global priorities:
-processes that run in real time have strict priority over other processes, and
-are under a different scheduler that enforces strict and global priorities among
-the real time threads.
+processes that run in real time have strict priority over other processes.
 
 Linux implements real time scheduling alongside the usual weighted fair share by
 supporting different \textit{scheduling classes}. There are three scheduling
@@ -52,31 +50,72 @@ exit.
     \caption{Results of the same experiment, with LC running as a real time process}\label{fig:unedited-rt}
 \end{figure*}
 
-This points to a possible solution: run LC in Fifo and BE in Normal. Doing so
-effectively promotes the latency criticality of the LC task in the eyes of the
-system, and makes use of Linux's strong isolation of real time workloads.
+This points to a possible solution: run LC in a realtime scheduling class and BE
+in Normal. The Deadline class requires processes to specify a runtime $r$,
+deadline $d$, and a period $p$; it guarantees that each process will get $r$
+cputime by $d$, every $p$ time. So if the $r$ is 2ms, $d$ is 3, and $p$ is 10,
+the Deadline scheduler guarantees that the process will get 2 ms every 10ms,
+within 3ms of the period starting. The Deadline scheduler does admission control
+in order to be able to make these guarantees. The Fifo scheduling class, on the
+other hand, allows for oversubscription. It is a priority scheduler: it has 99
+priorities, each takes strict precedent over the one lower; within priorities
+the scheduler enforces a global first-in-first-out (hence the Fifo class name),
+based on when processes become runnable.
+
+So, we run the same experiment as in section~\ref{chp:introduction}, but put the
+LC task in the Fifo scheduling class, and don't put the BE tasks into groups.
+Doing so effectively promotes the latency criticality of the LC task in the eyes
+of the system, and makes use of Linux's strong isolation of real time workloads.
 Figure~\ref{fig:unedited-rt} shows the resulting measured latencies in the same
 low and high load setting as previously. We see much stabler latencies, as
 expected; in the baseline as well as once the BE tasks are started. This looks
 promising on two fronts: 1: we get better isolation by making use of Linux's
 strict boundaries between scheduling classes, and 2: we see improved tail
-latency for the LC task by using a fifo run-to-completion scheduling algorithm.
+latency for the LC task because of the fifo run-to-completion scheduling
+algorithm.
 
-However, the first benefit of improved stability comes at a cost. Because the
-global ordering is so strict, also within the Fifo scheduling class, Linux is
-performing balancing and potentially migration almost every time an LC thread
-wakes up or exits. This requires the scheduling core to potentially lock the
-runqueues of all the other cores as it ensures the task it will run the next is
-the one with the highest priority, and within that priority the once that first
-became runnable. This increase in scheduling latency leads to the small increase
-in the baseline latency that is visible in the graphs.
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{graphs/hol-blocking.png}
+    \caption{Blah blah blah}\label{fig:hol-blocking}
+\end{figure*}
 
-And second benefit, the observed improved tail latency, is a side-effect of the
+
+However, the observed improved tail latency is actually a side-effect of the
 experimental setup, where each request does the exact same thing and processing
-times are uniform. This is not true for a production environment, where request
-processing times are variable and unknown. If a fifo run-to-completion scheduler
-is used in that setting, it leads to HoL blocking, and thus to much worse tail
-latencies for short requests.
+times are uniform. Fifo's run-to-completion scheduling is known to have a
+failure mode of head-of-line (HoL) blocking, where long-running requests
+monopolize the CPU while short requests wait in the queue. This leads to much
+worse tail latencies for short requests, at the expense of long requests being
+slightly faster (proprtionally a smaller amount than the short requests are
+waiting). We can see this phenomenon in a separate experiment, where we make a
+small percentage (2\%) of requests take longer, and then graph the latencies of
+only the short requests. Figure~\ref{fig:hol-blocking} shows the results, we can
+see exactly when there are enough long requests that all the cores are blocked
+processing them and the short requests' latencies spike. In real applications
+requests almost always have a distribution of runtimes, sometimes long-tailed
+sometimes short-tailed, but definitely enough of a tail that head-of-line
+blocking would become a problem.
+
+Solving the problem of HoL blocking is possible but requires knowing about
+expected processing times and ensuring that requests on the same core have about
+the same processing time. There is related work that does this~\cite{TODO}; but
+requires a whole distributed infrastructure. The solution approach of using the
+Fifo scheduler would thus require a whole infrastructure above it to minimize
+the variance of processing times on cores/machines; given the original problem
+was separating the LC and BE worklaods on a machine, this moves beyond the scope
+of the problem.
+
+The solution is also overkill in another dimension: Fifo enforces not only
+cross-core isolation between different priorities, but also within the same
+priority. This means that Linux is performing balancing and potentially
+migration almost every time an LC thread wakes up or exits; in order to ensure
+that the next process the core runs is next in the global fifo ordering. This
+requires the scheduling core to potentially lock the runqueues of all the other
+cores as it ensures the task it will run the next is the one with the highest
+priority, and within that priority the once that first became runnable.\hmng{the
+uptick was visible in the last graph, I think because of the spikes now it's
+not. Should I try stuff to see if I can get that back?}
 
 We conclude that the Fifo scheduling class is not a good solution: although it
 is able to globally ensure isolation between LC and BE tasks, its scheduling
