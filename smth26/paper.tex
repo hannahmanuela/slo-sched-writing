@@ -47,12 +47,14 @@
 \setcounter{biburllcpenalty}{7000}
 \setcounter{biburlucpenalty}{8000}
 
-\newcommand\hmng[1]{\textcolor{blue!40!red}{[hmng: {#1}]}}
-\newcommand\fk[1]{\textcolor{green!55!blue}{[fk: {#1}]}}
-\newcommand\rtm[1]{\textcolor{blue!55!blue}{[rtm: {#1}]}}
-\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+\newcommand{\schedidle}{\texttt{sched\_idle}}
+\newcommand{\schednormal}{\texttt{sched\_normal}}
+\newcommand{\cgroups}{\texttt{cgroups}}
+
 \newcommand{\eg}{{e.g.},\xspace}
 \newcommand{\ie}{{i.e.},\xspace}
+
+\newcommand\hmng[1]{\textcolor{blue!40!red}{[hmng: {#1}]}}
 
 \newcommand{\one}{({\em i}\/)}
 \newcommand{\two}{({\em ii}\/)}
@@ -60,9 +62,6 @@
 \newcommand{\four}{({\em iv}\/)}
 \newcommand{\five}{({\em v}\/)}
 \newcommand{\six}{({\em vi}\/)}
-
-\newcommand{\sys}{XX}
-\newcommand{\Sys}{XX}
 
 \def\Snospace~{\S{}}
 \def\sectionautorefname{\Snospace}
@@ -127,7 +126,9 @@
 \maketitle
 
 \input{intro}
-\input{motivation}
+\input{why}
+\input{realtime}
+\input{idle}
 \input{design}
 \input{eval}
 \input{related}
