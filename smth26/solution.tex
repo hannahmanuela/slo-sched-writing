@@ -1,6 +1,6 @@
 \section{Solution}\label{s:solution}
 
-\hmng{currently working on this; her structure is in fl ux but most of the main
+\hmng{currently working on this; her structure is in flux but most of the main
 ideas are in there? }
 
 The performance of the current \schedidle{} policy shows us that if we want to
@@ -45,6 +45,25 @@ significant impact on response latency. Compounded with a large number of BE
 workloads, this can lead to significant overheads even in a world where weights
 are correctly enforced across cores.
 
+As we have seen, in order to enforce a strict priority across multiple cores the
+minimum amount of synchronization is around entry (a new high-class thread
+waking up on a core alreadt running high-class work) and exit (start to run a
+low-class thread). The information that needs to be communicated is simple: for
+each core, what class is it currently running and what classes are queued. In
+order to enforce a weight split globally, synchronization would need to happen
+basically every time the scheduler runs: all weight splits would need to be
+checked globally, given that the scheduler cannot know if the weight of the
+process it is running is high or low compared to processes running on other
+CPUs.
+
+Even if the scheduler were to set a threshold where only splits that straddle
+the threshold are enforced globally, it would need to synchronize across cores
+every time a process under the threshold is chosen to run next (independently of
+whether the process running previously was above or below the threshold).
+Calculating whether the low-weight process is owed time globally requires
+knowing the total weight across all cores as well as the amount of time that
+threads in the process have gotten.\hmng{don't love the work with hypotheticals
+here}
 
 
 
@@ -56,8 +75,9 @@ load burst duration, on the order of milliseconds), then that is a distributed
 scheduler's problem, and needs to be solved at a distributed level. In the mean
 time, we argue that that machine should continue to run the LC tasks as fast as
 it can. We explore the implications of starving for more extended periods of
-time (order of tens of seconds) in the evaluation.\hmng{this argumentation feels
-more from first principle than I think you'll like, and could be better
-organized }
+time (order of tens of seconds) in the evaluation.\hmng{I feel like a lot of the
+argumentation around this will be in the eval? proof is in the pudding. but it
+will also be taking away fears/trying to prove a negative (that there are no
+problems), kinda rough}
 
 
