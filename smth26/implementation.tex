@@ -1,0 +1,17 @@
+\section{Implementation}\label{s:implementation}
+
+
+In order to affect the changes required, we modify Linux and put in the pieces
+to make \schedidle{} effectively its own scheduling class. We chose to do this
+rather than create an entirely new scheduling class in the code, which would be
+intellectually cleaner and closer to the conceptual reality, but would require
+more code changes and leave \schedidle{} in it's current half-formed
+state.\hmng{bad structure}
+
+We write a Linux patch that turns \schedidle{} into effectively a separate
+scheduling class. The patch intervenes in two places in the current scheduling
+process of the Normal scheduler: 1: it ensures that no \schedidle{} entity will
+be chosen if there is a runnable \schednormal{} entity (this overrides the fair
+share that even a weight 1 process would occasionally get in the unmodified
+kernel), and 2: it tries to steal queued \schednormal{} entities from other
+cores before running a \schedidle{} entity.

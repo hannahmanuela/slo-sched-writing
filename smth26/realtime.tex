@@ -63,11 +63,11 @@ priorities, each takes strict precedent over the one lower; within priorities
 the scheduler enforces a global first-in-first-out (hence the Fifo class name),
 based on when processes become runnable.
 
-So, we run the same experiment as in section~\ref{chp:introduction}, but put the
+So, we run the same experiment as in \autoref{s:intro}, but put the
 LC task in the Fifo scheduling class, and don't put the BE tasks into groups.
 Doing so effectively promotes the latency criticality of the LC task in the eyes
 of the system, and makes use of Linux's strong isolation of real time workloads.
-Figure~\ref{fig:unedited-rt} shows the resulting measured latencies in the same
+\autoref{fig:unedited-rt} shows the resulting measured latencies in the same
 low and high load setting as previously. We see much stabler latencies, as
 expected; in the baseline as well as once the BE tasks are started. This looks
 promising on two fronts: 1: we get better isolation by making use of Linux's

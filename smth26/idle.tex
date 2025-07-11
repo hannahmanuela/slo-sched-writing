@@ -1,35 +1,46 @@
 
 \section{\schedidle{}: Half a scheduling class}\label{s:idle}
 
-% \hmng{transition??}
-Within the Normal scheduling \textit{class}, Linux supports two different
-scheduling \textit{policies}: \schednormal{} and \schedidle{}, where
-\schednormal{} is the default. Under the hood, the scheduler for the Normal
-class keeps the tasks of both policies on the same runqueue, and they are all
-scheduled using the same algorithm. Thus, \schedidle{} is in principle not very
-different from just being a low-weight process: From the scheduler's
-perspective, \schedidle{} entities are just entities with a predefined low
-weight (currently 3). There is, confusingly, also and Idle scheduling
-\textit{class}, but that not accessible to userspace and exists solely to manage
-the core's transition in and out of being actually idle (ie running nothing).
+It now clear that what we want is the same global isolation between scheduling
+classes that the using Fifo gives, but without the side-effects of the Fifo
+scheduler itself. We are thus faced with an alternative of, rather than moving
+the LC workload up a class, moving the BE workload down.\hmng{I kind of hate
+this}
 
-The main way that \schedidle{} entities are special-cased from \schednormal{}
-entities is during wakeup: in 2019 a patch to Linux\cite{fixing-sched-idle-lwn}
+This takes us to \schedidle{}, which is the scheduling \textit{policy} that was
+mentioned in \autoref{ss:intro-cgroups}. Policies are not full scheduling classes, but
+allow for special casing within a scheduling class. The Normal scheduling class
+supports two policies: \schednormal{}, the default, and \schedidle{}. Because
+both policies are in the same class the scheduler for the Normal class is in
+charge of both: it keeps the tasks of both policies on the same runqueue, and
+they are all scheduled using the same algorithm. Thus, \schedidle{} is in
+principle not very different from just being a low-weight process: From the
+scheduler's perspective, \schedidle{} entities are just entities with a
+predefined low weight (currently 3).
+
+There is, confusingly, also an Idle scheduling \textit{class}, but that not
+accessible to userspace and exists solely to manage the core's transition in and
+out of being actually idle (ie running nothing).
+
+The main way that the Normal scheduler special-cases \schedidle{} entities from
+\schednormal{} entities is during wakeup: in a 2019 patch~\cite{TODO}, Linux
 added a check where, when a \schednormal{} entity becomes newly runnable, if the
 core where the entity is waking up is already running something in
 \schednormal{}, it will look for other cores that might be currently running a
 \schedidle{} entity, and migrates the new entity there.
 
-In doing so, Linux created a half scheduling class. In order to implement fully
-invariant that no process of category B is ever running if a task of category A
-is queued, that requires 1: checking if other cores are running a B task when an
-A task wakes up on a core already running an A task, and 2: checking if another
-core has a queued A task before running a B task.\ \schedidle{} does step 1, but
-not step 2.
+In doing so, Linux created a half scheduling class. As discussed in
+\autoref{s:realtime}, in order to fully isolate two groups of processes the
+scheduler needs to try synchronize across cores at two points: entry and exit.
+The described patch adds only the entry check.
 
-\schedidle{} is also promising because it was extended to have cgroup support
-recently\cite{cgroup-idle-patch}: when set via the cpu.idle cgroup interface
-file, the entire cgroup is counted as a \schedidle{} entity.
+\schedidle{} is additionally promising because, as we saw in
+\autoref{ss:intro-cgroups}, it was extended to have cgroup support
+recently\cite{TODO}: when set via the cpu.idle cgroup interface file, the entire
+cgroup is counted as a \schedidle{} entity. This means that rather than needing
+to set the scheduling policy from within each process, a solution that uses
+\schedidle{} would be able to rely on the usual mechanism of using the
+\cgroups{} interface.
 
 \begin{figure}[t]
     \centering
@@ -48,7 +59,7 @@ file, the entire cgroup is counted as a \schedidle{} entity.
 
 And indeed, we find that when we use cgroups' new cpu.idle interface feature,
 the latency impact of the BE tasks decreases, although it does not entirely drop
-to what we saw with the Fifo class. Figure~\ref{fig:unedited-idle} shows the
+to what we saw with the Fifo class.\ \autoref{fig:unedited-idle} shows the
 results, for the familiar settings of low and high load. The jump we see in the
 mean latency has decreased from peaks as high as 13ms to around 7ms (even though
 in principle they now have a higher weight).

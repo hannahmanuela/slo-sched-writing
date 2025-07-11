@@ -24,7 +24,7 @@ isolation context, usually either in containers or VMs, and these rely on
 \hmng{a little awk, but I think saying the things that need to be said. Flow
 could to be cleaner}
 
-\subsection{The \cgroups{} interface}
+\subsection{The \cgroups{} interface}\label{ss:intro-cgroups}
 
 \cgroups{} are a Linux construct that group processes, and apply resource
 constraints on a per-group basis. This allows resource restrictions apply to the
@@ -49,11 +49,10 @@ affect the cpu allocation:
 \end{enumerate}
 
 We discuss what exactly scheduling policies are and how they affect the
-scheduler in section \ref{s:sched_idle}; since the cpu.idle \cgroups{}
-interface file is relatively new (added in 2021), the software discussed below
-does not yet support setting this. Thus the main interface files that are used
-by existing software isolation systems are \texttt{cpu.max} and
-\texttt{cpu.weight}.
+scheduler in \autoref{s:idle}; since the cpu.idle \cgroups{} interface file is
+relatively new (added in 2021), the software discussed below does not yet
+support setting this. Thus the main interface files that are used by existing
+software isolation systems are \texttt{cpu.max} and \texttt{cpu.weight}.
 
 Given the rigid nature of the \texttt{cpu.max} interface, and the dynamic
 reallocation needed to support BE workloads, we will find that all the isolation
@@ -86,6 +85,10 @@ of BE workloads, for which Kubernetes relies on \cgroups{}' \texttt{cpu.weight}
 feature. BE containers are defined as containers that have no resource requests
 or limits, for which Kubernetes sets the weight to the lowest weight value,
 \ie{} 1.
+
+\hmng{Ana made a good point, which is that she asked what other OSs do. A quick
+look at the OCI for Windows shows they also use the same interface of shares and
+max, I could talk about that here, and/or make a separate section for other OSs}
 
 % OCI interface
 % - https://github.com/opencontainers/runtime-spec/blob/main/config-linux.md
@@ -185,10 +188,10 @@ server is around 85\%. After $\sim$10 seconds, we start two background tasks on
 the same four cores, each performing an image resize job. Each background task
 is in its own cgroup, which both have the lowest possible weight, 1. We then
 measure the latencies experienced by the LC server, before and after starting
-the background tasks. Figure~\ref{fig:unedited-weight-low-two} shows the
-results. We see that mean latencies spike up from steady at just under 6ms to as
-high as 13ms, and much higher for 99th percentile latencies.
+the background tasks.\ \autoref{fig:unedited-weight-low-two} shows the results.
+We see that mean latencies spike up from steady at just under 6ms to as high as
+13ms, and much higher for 99th percentile latencies.
 
 With a higher baseline load for the LC server the spikes are higher,
-figure~\ref{fig:unedited-weight-high-two} shows the latencies when the
-utilization of the uncontended server load is around 95\%.
+\autoref{fig:unedited-weight-high-two} shows the latencies when the utilization
+of the uncontended server load is around 95\%.

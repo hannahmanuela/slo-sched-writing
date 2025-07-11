@@ -1,0 +1,63 @@
+\section{Solution}\label{s:solution}
+
+\hmng{currently working on this; her structure is in fl ux but most of the main
+ideas are in there? }
+
+The performance of the current \schedidle{} policy shows us that if we want to
+completely isolate LC and BE, we need to put BE in a an entirely separate
+scheduling class.
+
+Linux has a strong requirement for fairness in its scheduling: even though there
+are strict priorities between the scheduling classes, Linux ensures that
+Deadline and Fifo processes can never starve Normal ones, by rate-limiting each.
+And within the Normal scheduling class the approach is to insluate processes
+from each other by using weighted fair share scheduling, not priorities.
+
+For the Deadline class this is fine because it does admission control so there
+is never unexpected throttling. For the Fifo class the rate-limiting may lead to
+throttling, but it is expected that the realtime applications encompass a small
+set of high-sensitivity and low-processing-time workloads. As such, the Fifo
+class is not expected to reach high utilization except in error.
+
+However, it is expected that LC processes temporarily use all the
+available cputime. We argue that LC tasks should not ever be throttled to run BE
+tasks, especially in a system like Linux where the interruption could
+potentially last a full scheduling tick. 
+
+
+\subsection{The case against fair scheduling}
+
+
+An alternative would be to simply enforce the weights properly across cores.
+This is an unappealing proposition for two main reasons: (1) small weights are
+still weights, and (2) enforcing a split across cores requires more
+syncronization than enforcing a strict priority.
+
+Although low weights run infrequently, they still get a fair share, and in doing
+so impact the latency of the higher weight (LC) processes. As we argued in
+section \autoref{s:why}, a large number of BE workloads each with a small weight
+could add up to represent a significant amount of weight in the system, now
+contending directly with the LC workload. Weights also interact with the 4ms
+tick granularity unfortunately, where when it is a low-weight processes time to
+run, it will likely be scheduled for a full tick. It is common for microservices
+to have SLAs in the order of 10ms or even less, where a gap of 4ms will have a
+significant impact on response latency. Compounded with a large number of BE
+workloads, this can lead to significant overheads even in a world where weights
+are correctly enforced across cores.
+
+
+
+
+\subsection{The case for unfair scheduling}
+
+
+If it is the case that the starvation lasts a long time (more than the expected
+load burst duration, on the order of milliseconds), then that is a distributed
+scheduler's problem, and needs to be solved at a distributed level. In the mean
+time, we argue that that machine should continue to run the LC tasks as fast as
+it can. We explore the implications of starving for more extended periods of
+time (order of tens of seconds) in the evaluation.\hmng{this argumentation feels
+more from first principle than I think you'll like, and could be better
+organized }
+
+

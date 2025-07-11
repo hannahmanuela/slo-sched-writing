@@ -72,12 +72,12 @@ an idle state, and in doing so would steal the queued LC thread.
 \end{figure}
 
 In fact, we see this occurring in traces of the experiment in
-figure~\ref{fig:unedited-weight}. We examine the trace using
-schedviz~\cite{schedviz}, a tool that visualizes perf traces. A 10ms outtake of
-the resulting image is show in figure~\ref{fig:schedviz}. This shows the
-explained phenomenon occurring: on core 6, the red process that is running the
-whole time is a BE process, whereas the active server threads, shown in varying
-shades of blue, are on the other cores, running and waiting.
+\autoref{fig:unedited-weight}. We examine the trace using schedviz~\cite{TODO},
+a tool that visualizes perf traces. A 10ms outtake of the resulting image is
+show in \autoref{fig:schedviz}. This shows the explained phenomenon occurring:
+on core 6, the red process that is running the whole time is a BE process,
+whereas the active server threads, shown in varying shades of blue, are on the
+other cores, running and waiting.
 
 
 This could be a problem that migration solves: every so often, Linux balances
@@ -89,12 +89,12 @@ that are farther away, and measures the disparity of load against an estimation
 of the migration cost. 
 
 That being said, migration already does improve the performance: in
-figure~\ref{fig:schedviz}, we can see that the experiment uses cores 2,4,6, and
-8; rather than the potentially more obvious 0-5. This is because the machine we
-ran this experiment on had NUMA nodes, and the results were much worse when
-using cores 0-5.\hmng{should I put in a graph of this?} We can conclude that the
-more frequent balancing and migration that happens accross nearby cores
-mitigates the effect of the BE workloads.
+\autoref{fig:schedviz}, we can see that the experiment uses cores 2,4,6, and 8;
+rather than the potentially more obvious 0-5. This is because the machine we ran
+this experiment on had NUMA nodes, and the results were much worse when using
+cores 0-5.\hmng{should I put in a graph of this?} We can conclude that the more
+frequent balancing and migration that happens accross nearby cores mitigates the
+effect of the BE workloads.
 
 
 % \hmng{should I also mention the giving at minimum 4ms? and how that can impact
