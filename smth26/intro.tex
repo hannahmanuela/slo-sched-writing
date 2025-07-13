@@ -34,12 +34,14 @@ interface, for instance Windows exposes a number of shares.
     \centering
     \begin{subfigure}[b]{0.49\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/unedited-weight-low-two.png}
-        \caption{Low load stetting}\label{fig:unedited-weight-low-two}
+        \caption{Low load stetting, utilization before starting the BE tasks is
+        around 85\%}\label{fig:unedited-weight-low-two}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[b]{0.49\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/unedited-weight-high-two.png}
-        \caption{High load setting}\label{fig:unedited-weight-high-two}
+        \caption{High load setting, utilization before starting the BE tasks is
+        around 95\%}\label{fig:unedited-weight-high-two}
     \end{subfigure}
     \vspace{4pt}
     \caption{Latencies of the server and iteration counts of the background
@@ -61,8 +63,8 @@ percentile latencies. We explore the reasons for this behavior in detail in
 weights across cores.
 
 In this paper, we argue that the split between LC and BE should be categorical
-rather than ends of a spectrum, and that unfairness should be the goal. We
-implement the desired policy in Linux by modifying an existing mostly unused
+rather than ends of a weight spectrum, and that unfairness should be the goal.
+We implement the desired policy in Linux by modifying an existing mostly unused
 scheduling policy called \schedidle{}, and show that doing so enables Linux to
 isolate LC from BE: in the same experiment, the increase in average latency when
 starting a BE workload goes from $\sim x 2$ to none, and the tail latency XX.
@@ -71,11 +73,10 @@ The contributions of this paper are thus as follows:
     \item the insight that weighted fair share breaks down with large weight
     splits because the weights are not enforced across cores; and that this
     dramatically affects end-to-end latencies
-    \item showing that enforcing weights across core is prohibitvely expensive,
+    \item showing that enforcing weights across core is prohibitively expensive,
     but categorical priorities are simpler to enforce, and that Linux does this
     well
     \item a patch to Linux that effectively creates a fully separated scheduling
-    class that be tasks can run in, which dramatically improves the performance
-    isolation that LC workloads get from BE ones, and minimizes the amount of
-    added latency to do cross-core checks
+    class that BE tasks can run in, which isolates LC workloads get from BE ones
+    and minimizes the amount of added latency to do cross-core checks
 \end{enumerate}

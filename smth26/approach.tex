@@ -17,7 +17,7 @@ workloads will add up to a significant weight in the system; for example, even
 if the weights were correctly globally enforced, packing 100 BE workloads on a
 machine would lead the proportional weight of the LC workload to decrease
 significantly. A categorical split between LC and BE avoids this: as more BE
-workloads start up, the share that BE gets doesn't change. As a resultof this
+workloads start up, the share that BE gets doesn't change. As a result of this
 unbounded unfairness towards BE workloads, we have bounded the amount of impact
 that BE workloads can have on LC workloads' CPU time.
 
@@ -37,10 +37,11 @@ BE process while an LC one is runnable and waiting}.
 There is a way to configure tasks so that Linux enforces global priorities:
 processes that run in real time have strict priority over other processes.
 
-Each scheduling class exists completely separately: classes maintain their own
-run queues and per-entity state; implement their own scheduling algorithms to
-choose from the entities on their runqueue; and balance the load across
-runqueues on different cores.
+Linux does this by using \textit{scheduling classes}. Each scheduling class
+exists completely separately: classes maintain their own runqueues and
+per-entity state; implement their own scheduling algorithms to choose from the
+entities on their runqueue; and balance the load across runqueues on different
+cores.
 
 Linux isolates strictly between different scheduling classes: it only schedules
 a lower scheduling class if the higher scheduling classes found nothing to run,
