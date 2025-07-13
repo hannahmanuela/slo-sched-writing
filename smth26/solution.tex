@@ -1,83 +1,59 @@
-\section{Solution}\label{s:solution}
 
-\hmng{currently working on this; her structure is in flux but most of the main
-ideas are in there? }
+\section{Solution: A lower scheduling class}\label{s:idle}
 
-The performance of the current \schedidle{} policy shows us that if we want to
-completely isolate LC and BE, we need to put BE in a an entirely separate
-scheduling class.
+Rather than moving the LC workload up a class, we move the BE workload down. In
+order to do this, we make use of a scheduling policy that Linux has and already
+special cases in some places.
 
-Linux has a strong requirement for fairness in its scheduling: even though there
-are strict priorities between the scheduling classes, Linux ensures that
-Deadline and Fifo processes can never starve Normal ones, by rate-limiting each.
-And within the Normal scheduling class the approach is to insluate processes
-from each other by using weighted fair share scheduling, not priorities.
+\schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
+classes, but allow for special casing within a scheduling class. The Normal
+scheduling class supports two policies: \schednormal{}, the default, and
+\schedidle{}. Because both policies are in the same class the scheduler for the
+Normal class is in charge of both: it keeps the tasks of both policies on the
+same runqueue, and they are all scheduled using the same algorithm. Thus,
+\schedidle{} is in principle not very different from just being a low-weight
+process: From the scheduler's perspective, \schedidle{} entities are just
+entities with a predefined low weight (currently 3).\footnote{There is,
+confusingly, also an Idle scheduling \textit{class}, but that not accessible to
+userspace and exists solely to manage the core's transition in and out of being
+actually idle (ie running nothing).}
 
-For the Deadline class this is fine because it does admission control so there
-is never unexpected throttling. For the Fifo class the rate-limiting may lead to
-throttling, but it is expected that the realtime applications encompass a small
-set of high-sensitivity and low-processing-time workloads. As such, the Fifo
-class is not expected to reach high utilization except in error.
+The main way that the Normal scheduler special-cases \schedidle{} entities from
+\schednormal{} entities is during wakeup: in a 2019 patch~\cite{TODO}, Linux
+added a check where, when a \schednormal{} entity becomes newly runnable, if the
+core where the entity is waking up is already running something in
+\schednormal{}, it will look for other cores that might be currently running a
+\schedidle{} entity, and migrates the new entity there.
 
-However, it is expected that LC processes temporarily use all the
-available cputime. We argue that LC tasks should not ever be throttled to run BE
-tasks, especially in a system like Linux where the interruption could
-potentially last a full scheduling tick. 
+In doing so, Linux created a half scheduling class. As discussed in
+\autoref{ss:interface}, in order to fully isolate two groups of processes the
+scheduler needs to try synchronize across cores at two points: entry and exit.
+The described patch adds only the entry check.
 
+\schedidle{} is additionally promising because it was extended to have cgroup
+support recently\cite{TODO}: a whole groups' policy can be set to \schedidle{}
+via the \cgroups{} interface.
 
-\subsection{The case against fair scheduling}
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/unedited-idle-low-two.png}
+        \caption{Low load}\label{fig:unedited-idle-low-two}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/unedited-idle-high-two.png}
+        \caption{High load}\label{fig:unedited-idle-high-two}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{using \schedidle{}}\label{fig:unedited-idle}
+\end{figure}
 
-
-An alternative would be to simply enforce the weights properly across cores.
-This is an unappealing proposition for two main reasons: (1) small weights are
-still weights, and (2) enforcing a split across cores requires more
-syncronization than enforcing a strict priority.
-
-Although low weights run infrequently, they still get a fair share, and in doing
-so impact the latency of the higher weight (LC) processes. As we argued in
-section \autoref{s:why}, a large number of BE workloads each with a small weight
-could add up to represent a significant amount of weight in the system, now
-contending directly with the LC workload. Weights also interact with the 4ms
-tick granularity unfortunately, where when it is a low-weight processes time to
-run, it will likely be scheduled for a full tick. It is common for microservices
-to have SLAs in the order of 10ms or even less, where a gap of 4ms will have a
-significant impact on response latency. Compounded with a large number of BE
-workloads, this can lead to significant overheads even in a world where weights
-are correctly enforced across cores.
-
-As we have seen, in order to enforce a strict priority across multiple cores the
-minimum amount of synchronization is around entry (a new high-class thread
-waking up on a core alreadt running high-class work) and exit (start to run a
-low-class thread). The information that needs to be communicated is simple: for
-each core, what class is it currently running and what classes are queued. In
-order to enforce a weight split globally, synchronization would need to happen
-basically every time the scheduler runs: all weight splits would need to be
-checked globally, given that the scheduler cannot know if the weight of the
-process it is running is high or low compared to processes running on other
-CPUs.
-
-Even if the scheduler were to set a threshold where only splits that straddle
-the threshold are enforced globally, it would need to synchronize across cores
-every time a process under the threshold is chosen to run next (independently of
-whether the process running previously was above or below the threshold).
-Calculating whether the low-weight process is owed time globally requires
-knowing the total weight across all cores as well as the amount of time that
-threads in the process have gotten.\hmng{don't love the work with hypotheticals
-here}
-
-
-
-\subsection{The case for unfair scheduling}
-
-
-If it is the case that the starvation lasts a long time (more than the expected
-load burst duration, on the order of milliseconds), then that is a distributed
-scheduler's problem, and needs to be solved at a distributed level. In the mean
-time, we argue that that machine should continue to run the LC tasks as fast as
-it can. We explore the implications of starving for more extended periods of
-time (order of tens of seconds) in the evaluation.\hmng{I feel like a lot of the
-argumentation around this will be in the eval? proof is in the pudding. but it
-will also be taking away fears/trying to prove a negative (that there are no
-problems), kinda rough}
+And indeed, we find that when we use cgroups' new cpu.idle interface feature,
+the latency impact of the BE tasks decreases, although it does not entirely drop
+to what we saw with the Fifo class.\ \autoref{fig:unedited-idle} shows the
+results, for the familiar settings of low and high load. The jump we see in the
+mean latency has decreased from peaks as high as 13ms to around 7ms (even though
+in principle they now have a higher weight).
 
 
