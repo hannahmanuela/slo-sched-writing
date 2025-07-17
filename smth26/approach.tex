@@ -10,20 +10,19 @@ A categorical differentiation in the scheduler enables unbounded unfairness
 towards BE during high load, and requires few and well-defined synchronization
 points between cores.
 
-Unbounded unfairness is a requirement for practical independence between LC and
-BE workloads: LC service times need to be independent of the load as well as the
-number of BE workloads. For any weighted split, a large enough number of BE
-workloads will add up to a significant weight in the system; for example, even
-if the weights were correctly globally enforced, packing 100 BE workloads on a
-machine would lead the proportional weight of the LC workload to decrease
-significantly. A categorical split between LC and BE avoids this: as more BE
-workloads start up, the share that BE gets doesn't change. As a result of this
-unbounded unfairness towards BE workloads, we have bounded the amount of impact
-that BE workloads can have on LC workloads' CPU time.
+Kubernetes uses the nested nature of \cgroups{} to do what we now support
+explicitly: a categorically separate class for BE. As new BE tasks start, only
+the CPU time of other BE tasks is affected. This type of unfairness is a
+requirement for practical independence between LC and BE workloads: LC service
+times need to be independent of the load as well as the number of BE workloads.
+A categorical split between LC and BE enforce this: as more BE workloads start
+up, the share that BE gets doesn't change. As a result of this unbounded
+unfairness towards BE workloads, we have bounded the amount of impact that BE
+workloads can have on LC workloads' CPU time.
 
 Creating separate categories also allows for fewer synchronization points
-without losing any of the global guarantees. In order to enforce a categorical
-priority, the scheduler only needs to sychronize at two points: on
+without compromising the enforcement of global isolation. In order to enforce a
+categorical priority, the scheduler only needs to sychronize at two points: on
 \textit{entry}, when a new high-priority thread wakes up on a core already
 running something high-priority, and \textit{exit}, when starting to run a low
 priority thread. If on entry the scheduler looks for cores running low priority
@@ -78,11 +77,13 @@ We run the same experiment as in \autoref{s:intro}, but put the LC task in the
 Fifo scheduling class, and leave BE tasks with the default process weight.
 \autoref{fig:unedited-rt} shows the resulting measured latencies in the same low
 and high load setting as previously. As expected, we see that Linux is able to
-isolate the two very well. However, this is an untenable final solution because
-of Fifo's run-to-completion scheduling, which is known to have a failure mode of
-head-of-line (HoL) blocking, where long-running requests monopolize the CPU
-while short requests wait in the queue. The Fifo scheduler also enforces not
-only cross-core isolation between different priorities, but also a global
+isolate the two very well. 
+
+However, this is an untenable final solution because of Fifo's run-to-completion
+scheduling, which is known to have a failure mode of head-of-line (HoL) blocking
+under varied request processing times, where long-running requests monopolize
+the CPU while short requests wait in the queue. The Fifo scheduler also enforces
+not only cross-core isolation between different priorities, but also a global
 ordering within the same priority.
 
 The takeaway is that Linux's current mechanism of scheduling classes can isolate

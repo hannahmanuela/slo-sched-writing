@@ -6,12 +6,37 @@ to make \schedidle{} effectively its own scheduling class. We chose to do this
 rather than create an entirely new scheduling class in the code, which would be
 intellectually cleaner and closer to the conceptual reality, but would require
 more code changes and leave \schedidle{} in it's current half-formed
-state.\hmng{bad structure}
+state.
 
-We write a Linux patch that turns \schedidle{} into effectively a separate
-scheduling class. The patch intervenes in two places in the current scheduling
-process of the Normal scheduler: 1: it ensures that no \schedidle{} entity will
-be chosen if there is a runnable \schednormal{} entity (this overrides the fair
-share that even a weight 1 process would occasionally get in the unmodified
-kernel), and 2: it tries to steal queued \schednormal{} entities from other
-cores before running a \schedidle{} entity.
+We patch Linux version 6.14.2, and the patch requires XX lins of code change. It
+intervenes in two places in the current scheduling process of the Normal
+scheduler: 
+\begin{enumerate}
+    \item it ensures that no \schedidle{} entity will be chosen if there is a
+runnable \schednormal{} entity (this overrides the fair share that even a weight
+1 process would occasionally get in the unmodified kernel),
+    \item it tries to steal queued \schednormal{} entities from other cores
+before running a \schedidle{} entity.
+
+\end{enumerate}
+
+
+Doing the first part required changing the code that picks the next entity in
+the Normal scheduler, in the function \texttt{pick\_eevdf}. The Normal scheduler
+maintains the runqueue in the structure of a binary tree, which is ordered by
+the amount of virtual CPU time each process has gotten (virtual because it takes
+into account the entities weight). The current function searches that tree, and
+chooses the most leftmost eligible entity to run. The patch first adds checks
+whether the runqueue is currently in an `idle' state, ie only has \schedidle{}
+entites on its runqueue. If that is true then the search is performed as usual,
+if not then the patch checks each movement through the tree to ensure that the
+subtree being chosen has at least one \schednormal{} entity, and that the final
+process chosen is one as well. This ensures that the most eligible
+\schednormal{} task is chosen to run next.
+
+Should the task chosen be in \schedidle{}, but the one running before was
+\schednormal{}, then we know we are in an \textit{exit} path. The patch adds
+code that, in this situation, will try to steal queued \schednormal{} tasks from
+other cores. It will steal up to half of the busiest cores' queued
+\schednormal{} tasks.
+

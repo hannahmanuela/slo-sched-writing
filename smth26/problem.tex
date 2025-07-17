@@ -48,7 +48,7 @@ interface is at odds with machine-wide policy enforcement.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.8\columnwidth]{graphs/todo.png}
+    \includegraphics[width=\columnwidth]{graphs/cmp-x-numa.png}
     \caption{the low load setting of the same experiment, running on cores
     across two NUMA nodes}\label{fig:across-numa}
 \end{figure}
@@ -58,15 +58,13 @@ interface is at odds with machine-wide policy enforcement.
 We see that this is the case by running the same experiment in a setting where
 synchronization is even more expensive: on cores across NUMA nodes. In
 \autoref{fig:across-numa}, we run the exact same experiment, but use cores that
-span different NUMA nodes. The graph shows a greatly increased latency spike,
-due to a decreased number of migrations: in the original experiment there were
-XX migrations over the course of the experiment, and in this version there were
-only YY. This indicates that, as expected, more synchronization points increases
-the degree to which the weights are enforced across cores. In order to strictly
-and completely enforce the weights, the scheduler would need to synchronize at
-every scheduling decision: calculating whether a given process is owed time
-globally requires knowing the total weight across all cores as well as the sum
-of time that all the processes in the group have gotten. 
+span different NUMA nodes. The graph shows more variable latencies as well as
+higher spikes. This indicates that, as expected, more synchronization points
+increases the degree to which the weights are enforced across cores. In order to
+strictly and completely enforce the weights, the scheduler would need to
+synchronize at every scheduling decision: calculating whether a given process is
+owed time globally requires knowing the total weight across all cores as well as
+the sum of time that all the processes in the group have gotten. 
 
 
 \subsection{Weights add up}
@@ -84,17 +82,14 @@ Although low weights run infrequently, they still get a fair share, and in doing
 so impact the latency of the higher weight (LC) processes. A large number of BE
 workloads each with a small weight adds up to represent a significant amount of
 weight in the system, now contending directly with the LC workload. In
-\autoref{fig:many-be}, we show the mean and 99th pctile latency increase when
-starting different numbers of BE workload, as compared to an uncontended
-baseline. As expected, as the number of BE workloads goes up, the impact on the
-latency of the LC server goes up.
+\autoref{fig:many-be}, we show the mean and 99th pctile latency increase for the
+LC server when starting different numbers of BE workload, as compared to an
+uncontended baseline. As expected, as the number of BE workloads goes up, the
+impact on the latency of the LC server goes up.
 
-Weights also interact with Linux's 4ms scheduling tick granularity: when it is a
-low-weight processes time to run, it will likely be scheduled for a full tick.
-It is common for microservices to have SLAs in the order of 10ms or even less,
-where a gap of 4ms will have a significant impact on response latency.
-Compounded with a large number of BE workloads, this can lead to significant
-overheads, even in a world where weights are correctly enforced across cores.
+In order avoid this, Kubernetes makes use of the nested structure of \cgroups{}
+to create a parent group that gets a weight of 1 and holds all the best effort
+containers within it.
 
 
 
