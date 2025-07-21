@@ -3,14 +3,21 @@
 \label{s:intro}
 %-------------------------------------------------------------------------------
 
-Providers like best effort (BE) workloads, because these allow them to get high
-utilization by oversubscribing their machines without compromising any
-guarantees: Under high load, latency critical (LC) workloads run without
-impediment, but in low load BE runs opportunistically and the servers maintain
-high utilization.\hmng{it's not just providers though, b/c what about people
-running their own kubernetes deployment... but it's also not really developers}
-This is why for example, in recent measures, around XX\% of the workload running
-in YY was BE.
+Many modern scheduling systems separate the work they run into classes, that
+include one class for \textit{latency critical} (LC) work, which has resource
+requirements, and one class for \textit{best effort} (BE) work, which doesn't.
+The scheduler uses these categories when deciding what to schedule, and what to
+kill under resource pressre. This includes distributed schedulers, \eg{}
+Borg\cite{TODO} or Kubernetes\cite{TODO}, and single machine schedulers, \eg{}
+Caladan\cite{TODO}. 
+
+Providers like BE workloads, because these allow them to get high utilization by
+oversubscribing their machines without compromising any guarantees: Under high
+load, latency critical (LC) workloads run without impediment, but in low load BE
+runs opportunistically and the servers maintain high utilization.\hmng{it's not
+just providers though, b/c what about people running their own kubernetes
+deployment... but it's also not really developers} This is why for example, in
+recent measures, around XX\% of the workload running in YY was BE.
 
 Dynamically reallocating CPUs as the load changes is challenging: the scheduler
 needs to maintain low latencies for LC requests by ensuring that when the LC

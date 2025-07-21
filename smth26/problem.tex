@@ -2,15 +2,19 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
-On an empirical level, the problem is that Linux occasionally will run a BE
-process on one core, unaware that an LC process is runnable and waiting on
-another. This observation points to a problem with the \cgroups{} weight
+The problem that leads to the spike in latencies is that Linux occasionally will
+run a BE process on one core, unaware that an LC process is runnable and waiting
+on another. This observation points to a problem with the \cgroups{} weight
 interface: it is expensive to enforce weights across cores, which is why Linux
-avoids doing so. The \cgroups{} weight interface also is not good at isolating
-for another reason: it doesn't really try to. Weights are supposed to be ends of
-a spectrum, and many small weights can add up.
+avoids doing so. The \cgroups{} weight interface is also not well-suited for
+isolating for other reasons: (1) it's not meant to, weights are supposed to be
+vague and add up, and (2) weights interact with sheduling quanta in bad ways:
+the scheduler can't help but run the BE processes for a whole quantum when it's
+weight does accrue, leaving LC processes interrupted for 4 ms at a
+time.\hmng{this is my current thesis for what the flow of this section
+could/should be}
 
-\subsection{Empirical problem}
+\subsection{The problem}
 
 \begin{figure}[t]
     \centering
@@ -21,13 +25,13 @@ a spectrum, and many small weights can add up.
     }\label{fig:schedviz}
 \end{figure}
 
-We analyze perf traces of the scheduling decisions, and the failure mode we
-observe is that \textit{one core is running a BE process, while an LC process is
-waiting on another}. We visualize the trace using schedviz~\cite{TODO}; a 10ms
-outtake of the resulting image is show in \autoref{fig:schedviz}. The process
+The failure mode we observe is that \textit{one core is running a BE process,
+while an LC process is waiting on another}. We analyze perf traces of the
+scheduling decisions, and visualize the trace using schedviz~\cite{TODO}.
+\autoref{fig:schedviz} shows a 10ms outtake of the resulting image. The process
 running on each core is shown as a an oval, and queued processes are shown as
-rectangles below. The root of the undesirable behavior is clear: on core 6, the
-red process that is running the whole time is a BE process, whereas LC threads,
+rectangles below. The root of the undesirable behavior is: on core 6, the red
+process that is running the whole time is a BE process, whereas LC threads,
 shown in varying shades of blue, are queued on the other cores.
 
 The reason this happens is that Linux maintains a separate runqueue on each
@@ -40,35 +44,32 @@ one, whereas another core has queued high weight processes. This problem goes
 away when there are no BE processes, because cores try to steal work before
 going idle.
 
-\subsection{Weights across cores}
+\subsection{This is not a bug}
 
-The root of the problem goes deeper than just a poor implementation: in a
-setting of per-core runqueues where synchronization is expensive, a weight-based
-interface is at odds with machine-wide policy enforcement.
+The root of the problem goes deeper than just a poor implementation: a
+weight-based interface is at odds with machine-wide policy enforcement. In
+increasingly multi-core and multi-NUMA machines, synchronization is expensive.
+This means that the overheads of maintaining global invariants can quickly
+become prohibitive.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/cmp-x-numa.png}
-    \caption{the low load setting of the same experiment, running on cores
-    across two NUMA nodes}\label{fig:across-numa}
-\end{figure}
-
-% what is the experiment here? more cores? cores across NUMA nodes so it
-% migrates less?
-We see that this is the case by running the same experiment in a setting where
-synchronization is even more expensive: on cores across NUMA nodes. In
-\autoref{fig:across-numa}, we run the exact same experiment, but use cores that
-span different NUMA nodes. The graph shows more variable latencies as well as
-higher spikes. This indicates that, as expected, more synchronization points
-increases the degree to which the weights are enforced across cores. In order to
-strictly and completely enforce the weights, the scheduler would need to
-synchronize at every scheduling decision: calculating whether a given process is
-owed time globally requires knowing the total weight across all cores as well as
-the sum of time that all the processes in the group have gotten. 
+In order to strictly and globally enforce a processes weight, the scheduler
+would need to synchronize at every scheduling decision: calculating whether a
+given process is owed time globally requires knowing the total weight across all
+cores as well as the sum of time that all the processes in the group have
+gotten. At the same time, servers now have up to 8 NUMA nodes, and hundreds up
+CPUs across them~\cite{TODO}. Synchronizing across them is expensive: in a
+microbenchmark we found that even on a single NUMA node if each core takes a
+lock to read the state on the other cores at every scheduling, this already
+slows down the execution time of a simple cpu-bound loop by XX\%. This number
+goes up to YY\% across two NUMA nodes. This is not surprising, other work has
+also found that kernel lock contention is a bottleneck to performance at
+scale~\cite{TODO}\hmng{the AFaaS cgroups pool thing here}
 
 
-\subsection{Weights add up}
+\subsection{The problems with weights add up}
 
+\hmng{yes this section title is a pun, and yes I will be deleting it (jk jk\dots
+unless\dots)}
 
 \begin{figure}[t]
     \centering
@@ -77,19 +78,31 @@ the sum of time that all the processes in the group have gotten.
     workloads}\label{fig:many-be}
 \end{figure}
 
+Using very large weight differentials as an interface to isolate LC and BE is
+also bad for other reasons.
 
-Although low weights run infrequently, they still get a fair share, and in doing
-so impact the latency of the higher weight (LC) processes. A large number of BE
-workloads each with a small weight adds up to represent a significant amount of
-weight in the system, now contending directly with the LC workload. In
-\autoref{fig:many-be}, we show the mean and 99th pctile latency increase for the
-LC server when starting different numbers of BE workload, as compared to an
-uncontended baseline. As expected, as the number of BE workloads goes up, the
-impact on the latency of the LC server goes up.
+The first is that weights add up: although low weights run infrequently, they
+still get a fair share, and in doing so impact the latency of the higher weight
+(LC) processes. A large number of BE workloads each with a small weight adds up
+to represent a significant amount of weight in the system, now contending
+directly with the LC workload. We see this happen in a small microbenchmark, run
+on one core in order to ensure a setting where we know Linux enforces weights
+correctly.~\autoref{fig:many-be} shows the mean and 99th pctile latency increase
+for the LC server when starting different numbers of BE workload, as compared to
+an uncontended baseline. As expected, as the number of BE workloads goes up, the
+impact on the latency of the LC server goes up. In fact, in order avoid this,
+Kubernetes makes use of the nested structure of \cgroups{} to create a parent
+group that gets a weight of 1 and holds all the best effort containers within
+it.
 
-In order avoid this, Kubernetes makes use of the nested structure of \cgroups{}
-to create a parent group that gets a weight of 1 and holds all the best effort
-containers within it.
+The second reason that weights don't work as an interface to isolate LC from BE
+is that the just discussed small fair share interacts with the scheduling tick
+size. Barring other events such as blocking or wakeup, Linux only schedules
+every hardware tick, which is usually 4ms. That means that when a BE processes'
+turn to run does come around, it will interrupt any running LC process for
+potentially a whole 4ms. This is a large amount of for microservice workloads,
+whose SLOs are often in the low double digit or even single digit ms
+realm.~\cite{TODO}
 
 
 
