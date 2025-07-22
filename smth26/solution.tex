@@ -1,11 +1,7 @@
 
 \section{Solution: A lower scheduling class}\label{s:idle}
 
-Rather than moving the LC workload up a class, we move the BE workload down.
-Linux does not natively have a scheduling class below Normal, so we make use of
-a scheduling policy that Linux has and already special cases in some
-places.\hmng{this section is a weird middle between `design', which we don't
-really have, and implementation}
+
 
 \schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
 classes, but allow for special casing within a scheduling class. The Normal

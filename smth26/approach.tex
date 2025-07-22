@@ -1,40 +1,35 @@
 \section{Approach}\label{s:approach}
 
+We argue that creating a categorical split between LC and BE in the scheduler
+solves these problems (\autoref{ss:new-interface}). And in fact, the
+infrastructure to enforce categorical separation already exists in Linux, and it
+works remarkably well (\autoref{ss:sched-rt})
 
-Creating a categorical split between LC and BE in the scheduler solves these
-problems, and the infrastructure for doing so already exists in Linux.
+\subsection{A better interface: categorical separation}\label{ss:new-interface}
 
-\subsection{A better interface: categorical separation}\label{ss:interface}
+A categorical differentiation in the scheduler allows for fewer synchronization
+points without compromising the enforcement of global isolation. In order to
+enforce a categorical priority, the scheduler only needs to sychronize at two
+points: on \textit{entry}, when a new high-priority thread wakes up on a core
+already running something high-priority, and \textit{exit}, when starting to run
+a low priority thread. If on entry the scheduler looks for cores running low
+priority work to go interrupt, and on exit the scheduler looks for high priority
+work to steal, it has ensured the global property that \textit{no core is ever
+running a BE process while an LC one is runnable and waiting}.
 
-A categorical differentiation in the scheduler enables unbounded unfairness
-towards BE during high load, and requires few and well-defined synchronization
-points between cores.
-
-Kubernetes uses the nested nature of \cgroups{} to do what we now support
-explicitly: a categorically separate class for BE. As new BE tasks start, only
-the CPU time of other BE tasks is affected. This type of unfairness is a
-requirement for practical independence between LC and BE workloads: LC service
-times need to be independent of the load as well as the number of BE workloads.
-A categorical split between LC and BE enforce this: as more BE workloads start
-up, the share that BE gets doesn't change. As a result of this unbounded
-unfairness towards BE workloads, we have bounded the amount of impact that BE
-workloads can have on LC workloads' CPU time.
-
-Creating separate categories also allows for fewer synchronization points
-without compromising the enforcement of global isolation. In order to enforce a
-categorical priority, the scheduler only needs to sychronize at two points: on
-\textit{entry}, when a new high-priority thread wakes up on a core already
-running something high-priority, and \textit{exit}, when starting to run a low
-priority thread. If on entry the scheduler looks for cores running low priority
-work to go interrupt, and on exit the scheduler looks for high priority work to
-steal, it has ensured the global property that \textit{no core is ever running a
-BE process while an LC one is runnable and waiting}.
+This also has the added benefit that it can side-step the scheduling quantum
+problem: the places where the scheduler needs to change which category it is
+running are defined by wakeups and thread exit/blocking, which are points where
+the scheduler is already running immediately, and can interpose and schedule.
+Thus the fidelity of the isolation between separate categories is independent
+from the size of the scheduling tick.
 
 
-\subsection{Linux already does it}
+\subsection{Scheduling Classes isolate well}\label{ss:sched-rt}
 
-There is a way to configure tasks so that Linux enforces global priorities:
-processes that run in real time have strict priority over other processes.
+There already exists a way to configure tasks to be categorically distinct in a
+way that Linux enforces globally: processes that run in real time have strict
+priority over other processes.
 
 Linux does this by using \textit{scheduling classes}. Each scheduling class
 exists completely separately: classes maintain their own runqueues and
@@ -89,6 +84,19 @@ ordering within the same priority.
 The takeaway is that Linux's current mechanism of scheduling classes can isolate
 workloads effectively, but existing scheduling classes use scheduling
 algorithms that are not a good fit for modern workloads.
+
+\subsection{Be: A new scheduling class}
+
+
+\hmng{I'm trying something by moving this in here, but from here on out the
+structure gets kinda weird/is not the standard paper structure. It seems to me
+that the pieces we need to hit before eval are: our solution is a new, lower,
+scheduling class; \schedidle{} already exists but doesn't work; we patch it up
+so that it does}
+
+In order to have the benefits of categorical separation while maintaining the
+expected Processor Sharing scheduler for the LC services, we propose creating a
+new scheduling class, Be, that exists below the Normal scheduling class.
 
 
 

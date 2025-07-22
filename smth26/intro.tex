@@ -3,39 +3,51 @@
 \label{s:intro}
 %-------------------------------------------------------------------------------
 
-Many modern scheduling systems separate the work they run into classes, that
-include one class for \textit{latency critical} (LC) work, which has resource
-requirements, and one class for \textit{best effort} (BE) work, which doesn't.
-The scheduler uses these categories when deciding what to schedule, and what to
-kill under resource pressre. This includes distributed schedulers, \eg{}
+Many microservices contend with varying load as well as being \textit{latency
+critical} (LC), meaning they have strict SLOs that guarantee uptime and caps on
+latency. However, when developers want to run microservices, scheduling systems
+like AWS ec2 or Kubernetes required them to give a fixed amount of resources the
+microservice needs, \ie{} a number of CPUs and an amount of memory~\cite{TODO}.
+As a result, developers choose those requirements based on the expected peak
+load, and the resources are rarely fully used~\cite{TODO}. 
+
+Other tasks do not fall into this category: \textit{best effort} (BE) tasks such
+as long-running map reduce jobs or background data analytics do not have an SLO.
+
+Indeed, many modern scheduling systems separate the work they run into classes,
+that include one class for LC tasks, which have resource requirements, and one
+class for BE tasks, which don't. This includes distributed schedulers, \eg{}
 Borg\cite{TODO} or Kubernetes\cite{TODO}, and single machine schedulers, \eg{}
 Caladan\cite{TODO}. 
 
-Providers like BE workloads, because these allow them to get high utilization by
+In an ideal world, BE tasks allows providers to get high utilization by
 oversubscribing their machines without compromising any guarantees: Under high
-load, latency critical (LC) workloads run without impediment, but in low load BE
-runs opportunistically and the servers maintain high utilization.\hmng{it's not
-just providers though, b/c what about people running their own kubernetes
-deployment... but it's also not really developers} This is why for example, in
-recent measures, around XX\% of the workload running in YY was BE.
+load, microservice workloads run without impediment, but in low load BE tasks
+run opportunistically and the servers maintain high utilization.
 
-Dynamically reallocating CPUs as the load changes is challenging: the scheduler
-needs to maintain low latencies for LC requests by ensuring that when the LC
-processes need resources they appear uncontended, while at the same time using
-idle resources to run BE processes.
+However, realizing high utilization and while enforcing strict isolation is
+challenging. The scheduler needs to dynamically reallocate CPUs as the load
+changes: it needs to maintain low latencies for LC requests by ensuring that
+when the LC processes need resources they appear uncontended, while at the same
+time using idle resources to run BE processes.
 
 The current standard mechanism for isolating LC from BE processes is Linux's
-\cgroups{}. This includes all Open Container Initiative (OCI) compliant
-containers, such as Docker, Kubernetes, CRI-O, and containerd, because the OCI
-specification calls for use of \cgroups{}. VMs, including Firecracker, AFaas,
-and KVM, also rely on \cgroups{} to manage VMs when the number of vCPUs is
-oversubscribed.
+\cgroups{}. Most modern containers rely on \cgroups{}; this includes all
+Open Container Initiative (OCI) compliant containers, such as Docker,
+Kubernetes, CRI-O, and containerd, because the OCI specification calls for use
+of \cgroups{}. VMs, including Firecracker, AFaas, and KVM, also rely on
+\cgroups{} to manage VMs when the number of vCPUs is oversubscribed.
 
 The interface \cgroups{} exposes in order to specify the priority of processes
 is based on weight: each workload is put into its own group, and each group is
-assigned a weight in the range [1, 10000]. Under the hood, Linux runs a weighted
-fair share scheduling algorithm. Other operating systems use a similar
-interface, for instance Windows exposes a number of shares. 
+assigned a weight in the range [1, 10000]. \cgroups{} specifies that each group
+gets CPU time proportional to its weight as a share of the sum of weights of
+runnable groups~\cite{TODO}.\footnote{Other operating systems use a similar
+interface, for instance Windows exposes a number of shares.} For instance, if
+two groups $cg1$ and $cg2$ have weights 200 and 300 respectively, when they are
+both active their CPU time ratio should also be $2:3$. However, if $cg1$ has no
+runnable threads, then $cg2$ would represent 100\% of the runnable weight and
+get all the CPU time.
 
 \begin{figure}[t]
     \centering
@@ -57,25 +69,30 @@ interface, for instance Windows exposes a number of shares.
     histogram of completed iterations of the BE tasks}\label{fig:unedited-weight}
 \end{figure}
 
-In principle, this range is large, and should allow for BE tasks to have a
-negligible performance impact on LC tasks, even during high load. However, we
-find that the presence of low weight (ie BE) tasks has a large performance
-impact on a high-weight (ie LC) task. In an experiment, we run a simple
-cpu-bound server and then start two BE workloads doing image resizing.
+In principle, the range of [1,10000] is large, and should allow for BE tasks to
+have a negligible performance impact on LC tasks, even during high load.
+However, we find that the presence of low weight (ie BE) tasks has a large
+performance impact on a high-weight (ie LC) task. In an experiment, we run a
+simple cpu-bound server and then start two BE workloads doing image resizing,
+using two \cgroups{} groups, with weights 1 and 10000, to isolate the two.
 \autoref{fig:unedited-weight} shows the increase in latencies of the LC server
-at two different baseline utilization levels. We see that mean latencies spike
-up from steady at just under 6ms to as high as 13ms, and much higher for 99th
-percentile latencies. We explore the reasons for this behavior in detail in
-\autoref{s:problem}, with the main takeaway being that Linux fails to enforce
-weights across cores.
+at two different baseline utilization levels. We see that even in the lower
+baseline utilization case, where the server alone uses 85\%, mean latencies
+spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
+percentile latencies.
 
-In this paper, we argue that the split between LC and BE should be categorical
-rather than ends of a weight spectrum, and that unfairness should be the goal.
-We implement the desired policy in Linux by modifying an existing mostly unused
-scheduling policy called \schedidle{}, and show that doing so enables Linux to
-isolate LC from BE: in the same experiment, the increase in average latency when
-starting a BE workload goes from $\sim x 2$ to none, and the tail latency XX.
-The contributions of this paper are thus as follows: 
+As we explore in \autoref{s:problem}, the main reason that this happens is that
+Linux allows BE processes to run on one core, even while another core has a
+queued and waiting LC process. This is an interface problem, not an
+implementation bug: Linux's scheduler uses per-core runqueues, and as a result
+the weights are only enforced on a runqeueue level.
+
+Because of this, this paper argues that the split between LC and BE should be
+categorical rather than ends of a weight spectrum, and that unfairness should be
+the goal. We show that doing so enables Linux to isolate LC from BE:\ in the
+same experiment, the increase in average latency when starting a BE workload
+goes from $>$2x to 0, and the tail latency from $>$5x to 0. The contributions of
+this paper are thus as follows: 
 \begin{enumerate}
     \item the insight that weighted fair share breaks down with large weight
     splits because the weights are not enforced across cores; and that this
