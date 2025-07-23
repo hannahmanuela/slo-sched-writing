@@ -1,51 +1,71 @@
 \section{Implementation}\label{s:implementation}
 
-A categorical differentiation in the scheduler allows for fewer synchronization
-points without compromising the enforcement of global isolation. In order to
-enforce a categorical priority, the scheduler only needs to sychronize at two
-points: on \textit{entry}, when a new high-priority thread wakes up on a core
-already running something high-priority, and \textit{exit}, when starting to run
-a low priority thread. If on entry the scheduler looks for cores running low
-priority work to go interrupt, and on exit the scheduler looks for high priority
-work to steal, it has ensured the global property that \textit{no core is ever
-running a BE process while an LC one is runnable and waiting}.
+In order to create the categorically separate priority for BE tasks, we make use
+of the existing Linux policy \schedidle{}. Scheduling policies are not fully
+separate priorities, but can be used to differentiate within scheduling classes.
+The default scheduling policy is \schednormal{}.\hmng{do I need to introduce
+scheduling classes here too? a bit of a slippery slope, since that begs the
+question of why not use one of those\dots}
 
-In order to affect the changes required, we modify Linux and put in the pieces
-to make \schedidle{} effectively its own scheduling class. We chose to do this
-rather than create an entirely new scheduling class in the code, which would be
-intellectually cleaner and closer to the conceptual reality, but would require
-more code changes and leave \schedidle{} in it's current half-formed
-state.
-
-We patch Linux version 6.14.2, and the patch requires XX lins of code change. It
-intervenes in two places in the current scheduling process of the Normal
-scheduler: 
+We build on the \schedidle{} policy in Linux 6.14.2, turning it into effectively
+a fully fledged scheduling class. We refer to the new scheduling class as
+\schedbe{}: although it is based on and modifies \schedidle{}, it behaves
+significantly differently. The patch intervenes in a couple places, with the
+goal of creating \schedbe{} from the existing \schedidle{} policy, by making it
+more unfair: 
 \begin{enumerate}
-    \item it ensures that no \schedidle{} entity will be chosen if there is a
-runnable \schednormal{} entity (this overrides the fair share that even a weight
-1 process would occasionally get in the unmodified kernel),
+    \item in picking the next entity on each runqueue, it ensures that no
+\schedbe{} entity will be chosen if there is a runnable \schednormal{} entity,
     \item it tries to steal queued \schednormal{} entities from other cores
-before running a \schedidle{} entity.
-
+before running a \schedbe{} entity,
+    \item when waking up a \schednormal{} entities on a core already running a
+    \schednormal{} entity, it looks for other cores running \schedbe{}
+    entities to go interrupt.
 \end{enumerate}
 
+These three pieces together effectively create a scheduling class, and thus the
+desired strict and global priority. The first change ensures that locally
+\schedbe{} will never run when there is a runnable \schednormal{}. The second
+and third that no core is ever running a \schedbe{} process while a
+\schednormal{} one is runnable and waiting. This is because in order to enforce
+a categorical priority, the scheduler only needs to sychronize at two points: on
+\textit{entry}, when a new high-priority thread wakes up on a core already
+running something high-priority, and \textit{exit}, when starting to run a low
+priority thread.
 
-Doing the first part required changing the code that picks the next entity in
-the Normal scheduler, in the function \texttt{pick\_eevdf}. The Normal scheduler
-maintains the runqueue in the structure of a binary tree, which is ordered by
-the amount of virtual CPU time each process has gotten (virtual because it takes
-into account the entities weight). The current function searches that tree, and
-chooses the most leftmost eligible entity to run. The patch first adds checks
-whether the runqueue is currently in an `idle' state, ie only has \schedidle{}
-entites on its runqueue. If that is true then the search is performed as usual,
-if not then the patch checks each movement through the tree to ensure that the
-subtree being chosen has at least one \schednormal{} entity, and that the final
-process chosen is one as well. This ensures that the most eligible
-\schednormal{} task is chosen to run next.
+\subsection{Intra-runqueue unfairness}
 
-Should the task chosen be in \schedidle{}, but the one running before was
-\schednormal{}, then we know we are in an \textit{exit} path. The patch adds
-code that, in this situation, will try to steal queued \schednormal{} tasks from
-other cores. It will steal up to half of the busiest cores' queued
-\schednormal{} tasks.
+In order to enforce that ruqueues only run \schedbe{} threads when there are no
+runnable \schednormal{} ones, the patch interferes in two places. The first is
+the actual function that chooses the next task, where new code initially
+establishes whether there are any \schednormal{} threads on the runqueue, and
+skips any \schedbe{} ones if that is the case. 
+
+The second change is necessary because the first throws the fair share
+eligibility mechanism out of whack. In order to maintain fairness, Linux
+currently accounts for the difference between the fair share processes should
+have gotten and the time they actually got, and stores that `lag'. Even low
+weight processes (which is all \schedidle{} processes are, really) accrue lag
+over time, even if more slowly. Since they are now potentially not being run for
+a long time, there is a potential for deadlock: a \schednormal{} task has been
+running for a while and accrued enough time that its lag is negative and it is
+ineligible. However, if the only other thread is \schedbe{} then we won't run
+that either. In order to avoid this situation, the patch removes the eligibility
+criterion in choosing what to run next.
+
+
+\subsection{Inter-runqueue unfairness}
+
+
+Ensuring the exit and entry path requires interposing on both. The existing code
+already special-cases on the wakeup path, although only checks if the thread
+itself is marked as idle, and not if the group as a whole is. The patch fixes this.
+
+The patch also adds a check on the exit: if the thread chosen to run next is
+\schedbe{}, then the patch tries to steal a queued \schednormal{} task from a
+different core. Specifically, it picks the core with the max number of queued
+but runnable \schednormal{} threads, but only steals one. This is in order to
+not overzealously steal, given that it is the load blanacers job to ensure that
+in general load is well balanced. The stealing is just a stop-gap measure.
+
 
