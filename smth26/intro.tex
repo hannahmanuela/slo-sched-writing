@@ -69,17 +69,15 @@ get all the CPU time.
     histogram of completed iterations of the BE tasks}\label{fig:unedited-weight}
 \end{figure}
 
-In principle, the range of [1,10000] is large, and should allow for BE tasks to
-have a negligible performance impact on LC tasks, even during high load.
-However, we find that the presence of low weight (ie BE) tasks has a large
-performance impact on a high-weight (ie LC) task. In an experiment, we run a
-simple cpu-bound server and then start two BE workloads doing image resizing,
-using two \cgroups{} groups, with weights 1 and 10000, to isolate the two.
-\autoref{fig:unedited-weight} shows the increase in latencies of the LC server
-at two different baseline utilization levels. We see that even in the lower
-baseline utilization case, where the server alone uses 85\%, mean latencies
-spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
-percentile latencies.
+However, even when using the largest possible split of 1:10000, we find that the
+presence of low weight (ie BE) tasks has a large performance impact on a
+high-weight (ie LC) task. In an experiment, we run a simple cpu-bound server and
+then start two BE workloads doing image resizing, using two \cgroups{} groups,
+with weights 1 and 10000, to isolate the two. \autoref{fig:unedited-weight}
+shows the increase in latencies of the LC server at two different baseline
+utilization levels. We see that even in the lower baseline utilization case,
+where the server alone uses 85\%, mean latencies spike up from steady at around
+6ms to as high as 20ms, and much higher for 99th percentile latencies.
 
 As we explore in \autoref{s:problem}, the main reason that this happens is that
 Linux allows BE processes to run on one core, even while another core has a
@@ -100,7 +98,7 @@ this paper are thus as follows:
     \item showing that enforcing weights across core is prohibitively expensive,
     but categorical priorities are simpler to enforce, and that Linux does this
     well
-    \item a patch to Linux that effectively creates a fully separated scheduling
-    class that BE tasks can run in, which isolates LC workloads get from BE ones
-    and minimizes the amount of added latency to do cross-core checks
+    \item implement in Linux a categorical separation, which isolates LC
+    workloads get from BE ones and minimizes the amount of cross-core checks
+    required
 \end{enumerate}

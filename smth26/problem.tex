@@ -58,11 +58,10 @@ cores as well as the sum of time that all the processes in the group have
 gotten. At the same time, servers now have up to 8 NUMA nodes, and hundreds up
 CPUs across them~\cite{TODO}. Synchronizing across them is expensive: in a
 microbenchmark we found that even on a single NUMA node if each core takes a
-lock to read the state on the other cores at every scheduling, this already
-slows down the execution time of a simple cpu-bound loop by XX\%. This number
-goes up to YY\% across two NUMA nodes. This is not surprising, other work has
-also found that kernel lock contention is a bottleneck to performance at
-scale~\cite{TODO}\hmng{the AFaaS cgroups pool thing here}
+lock to read the state of the rq on the other cores at every scheduling, this
+can take between 10 and 20 $\mu$s. Other work has also found that kernel lock
+contention is a bottleneck to performance at scale~\cite{TODO}
+% \hmng{the AFaaS cgroups pool thing}
 
 
 \subsection{Weights interact poorly with tick-based scheduling}\label{ss:quantum}
@@ -72,9 +71,10 @@ to isolate LC and BE doesn't work well because preemption is tick-based. In a
 weight based scheme, BE processes also get a fair share of the CPU. The problem
 is that, when this happens, the BE process will interrupt any running LC process
 for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
-thread processing a request may be interrupted for up to 4ms. This is a large
-amount of for microservice workloads, whose SLOs are often in the low double
-digit or even single digit ms realm.~\cite{TODO}
+thread processing a request may be interrupted for up to 4ms, provided the BE
+process runs for that long. 4ms can be a large amount of for microservice
+workloads, whose SLOs are often in the low double digit or even single digit ms
+realm.~\cite{TODO}
 
 
 
