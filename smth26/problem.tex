@@ -72,9 +72,9 @@ weight based scheme, BE processes also get a fair share of the CPU. The problem
 is that, when this happens, the BE process will interrupt any running LC process
 for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
 thread processing a request may be interrupted for up to 4ms, provided the BE
-process runs for that long. 4ms can be a large amount of for microservice
-workloads, whose SLOs are often in the low double digit or even single digit ms
-realm.~\cite{TODO}
+process runs for that long before blocking. 4ms can be a large amount of for
+microservice workloads, whose SLOs are often in the low double digit or even
+single digit ms realm.~\cite{TODO}
 
 
 

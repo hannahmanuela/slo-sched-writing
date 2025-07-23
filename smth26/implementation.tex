@@ -1,5 +1,14 @@
 \section{Implementation}\label{s:implementation}
 
+A categorical differentiation in the scheduler allows for fewer synchronization
+points without compromising the enforcement of global isolation. In order to
+enforce a categorical priority, the scheduler only needs to sychronize at two
+points: on \textit{entry}, when a new high-priority thread wakes up on a core
+already running something high-priority, and \textit{exit}, when starting to run
+a low priority thread. If on entry the scheduler looks for cores running low
+priority work to go interrupt, and on exit the scheduler looks for high priority
+work to steal, it has ensured the global property that \textit{no core is ever
+running a BE process while an LC one is runnable and waiting}.
 
 In order to affect the changes required, we modify Linux and put in the pieces
 to make \schedidle{} effectively its own scheduling class. We chose to do this
