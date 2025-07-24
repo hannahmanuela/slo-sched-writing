@@ -80,8 +80,6 @@ algorithms that are not a good fit for modern workloads.
 
 \subsubsection{\schedidle}
 
-The scheduling policy \schedidle{} that we modify in our 
-
 \schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
 classes, but allow for special casing within a scheduling class. The Normal
 scheduling class supports two policies: \schednormal{}, the default, and
@@ -135,6 +133,13 @@ in principle they now have a higher weight).
 \subsection{Realistic applications}
 
 
+This work focuses on cpu allocation, and thus will show the strongest gains for
+applications that are cpu bound. 
+
+We test the patch in two different settings: the completely cpu-bound example
+server we have been using for the graphs in this paper so far, and an example
+web application that we run using Kubernetes, that uses a mix of i/o and cpu.
+
 \begin{figure}[t]
     \centering
     \begin{subfigure}[t]{0.49\columnwidth}
@@ -161,13 +166,6 @@ in principle they now have a higher weight).
     threads.}\label{fig:schedviz-patched}
 \end{figure}
 
-This work focuses on cpu allocation, and thus will show the strongest gains for
-applications that are cpu bound. 
-
-We test the patch in two different settings: the cpu-bound example server we
-have been using for the graphs in this paper so far, and an example web application
-that we run using Kubernetes, that uses a mix of i/o and cpu.
-
 For the experiment we have used throughout the paper, we set the BE workloads to
 be marked as idle via the \cgroups{} api. We can see the resulting performance
 in \autoref{fig:patched-idle}. As desired the latency of the server remains
@@ -183,10 +181,19 @@ chosen intially to run a BE process, sometimes followed by an LC process that
 was stolen as a result running next, sometimes by the BE process actually
 running because there was no queued LC thread to steal.
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
+    \caption{E2E repsonse times for the social application, before and after
+    starting a request on a BE service}\label{fig:kubernetes-unedited}
+\end{figure}
+
+
+
 For the web application, we build a REST-api on top of FastAPI, and deploy it
-using async gunicorn workers. The web application itself is a recommendation
-service, it has a connection to a database, which is makes requests to and
-processes data from.
+using uvicorn workers. The web application itself is a social application, it
+has a connection to an in-memory sqlite database, which is makes requests to and
+processes data from. \autoref{fig:kubernetes-unedited} shows the results.
 
 
 

@@ -1,24 +1,10 @@
-\section{Implementation}\label{s:implementation}
+\section{Solution?}\label{s:maybe-solution}
 
-In order to create the categorically separate priority for BE tasks, we make use
-of the existing Linux policy \schedidle{}. Scheduling policies are not fully
-separate priorities, but can be used to differentiate within runqueues. The
-default scheduling policy is \schednormal{}.\hmng{do I need to introduce
-scheduling classes here too? that means we can position \schedbe{} as a new
-scheduling class, but I wrote the below without using the word class and I think
-it still works. Talk about classes could be a bit of a slippery slope, since
-that begs the question of why not use one of those\dots}
-
-We build on the \schedidle{} policy in Linux 6.14.2, and make it more
-unfair.\hmng{do we even need to say that we modify the \schedidle{} policy? Like
-we could talk through the whole thing and not bring it up. Might be a bit weird
-to then have to backtrack later to relate what we did to the alternatives we
-bring up in the eval.} We refer to the new priority as \schedbe{}: although it
-is based on and modifies \schedidle{}, it behaves significantly differently. The
-goal is to create \schedbe{} from the existing \schedidle{} policy by making it
-more unfair, so that the modified kernel enforces the goal that no \schedbe{} is
-ever running if a \schednormal{} task is waiting for a core. The patch
-intervenes in a couple places:
+We implement a new category for processes to be in, which we call \schedbe{},
+which exist in relation to the default scheduling policy, \schednormal{}. The
+goal is to create \schedbe{} so that the modified kernel enforces the goal that
+no \schedbe{} is ever running if a \schednormal{} task is waiting for a core.
+The patch intervenes in a couple places:
 \begin{enumerate}
     \item in picking the next entity on each runqueue, it ensures that no
 \schedbe{} entity will be chosen if there is a runnable \schednormal{} entity,
@@ -30,9 +16,9 @@ before running a \schedbe{} entity,
 \end{enumerate}
 
 These three pieces together create the desired strict and global priority. The
-first change ensures that locally \schedbe{} will never run when there is a
-runnable \schednormal{}. The second and third that no core is ever running a
-\schedbe{} process while a \schednormal{} one is runnable and waiting. This is
+first change ensures that on each runqueue \schedbe{} will never run when there
+is a runnable \schednormal{}. The second and third that no core is ever running
+a \schedbe{} process while a \schednormal{} one is runnable and waiting. This is
 because in order to enforce a categorical priority, the scheduler only needs to
 sychronize at two points: on \textit{entry}, when a new high-priority thread
 wakes up on a core already running something high-priority, and \textit{exit},
@@ -50,13 +36,13 @@ The second change is necessary because the first throws the fair share
 eligibility mechanism out of whack. In order to maintain fairness, Linux
 currently accounts for the difference between the fair share processes should
 have gotten and the time they actually got, and stores that `lag'. Even low
-weight processes (which is all \schedidle{} processes are, really) accrue lag
-over time, even if more slowly. Since they are now potentially not being run for
-a long time, there is a potential for deadlock: a \schednormal{} task has been
-running for a while and accrued enough time that its lag is negative and it is
-ineligible. However, if the only other thread is \schedbe{} then we won't run
-that either. In order to avoid this situation, the patch removes the eligibility
-criterion in choosing what to run next.
+weight processes accrue lag over time, albeit more slowly. Since \schedbe{}
+threads are now potentially not being run for a long time, there is a potential
+for deadlock: a \schednormal{} task has been running for a while and accrued
+enough time that its lag is negative and it is ineligible. However, if the only
+other thread is \schedbe{} then we won't run that either. In order to avoid this
+situation, the patch removes the eligibility criterion in choosing what to run
+next.
 
 
 \subsection{Inter-runqueue unfairness}
@@ -73,4 +59,9 @@ but runnable \schednormal{} threads, but only steals one. This is in order to
 not overzealously steal, given that it is the load blanacers job to ensure that
 in general load is well balanced. The stealing is just a stop-gap measure.
 
+
+\hmng{at what point do I go into how these things relate to the existing
+scheduling classes/policies? obviously it needs to be after I introduce them,
+but if I do that in the eval that's not really an appropriate place to be going
+back into how exactly the patch works?}
 
