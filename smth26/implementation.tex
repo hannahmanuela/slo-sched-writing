@@ -2,17 +2,23 @@
 
 In order to create the categorically separate priority for BE tasks, we make use
 of the existing Linux policy \schedidle{}. Scheduling policies are not fully
-separate priorities, but can be used to differentiate within scheduling classes.
-The default scheduling policy is \schednormal{}.\hmng{do I need to introduce
-scheduling classes here too? a bit of a slippery slope, since that begs the
-question of why not use one of those\dots}
+separate priorities, but can be used to differentiate within runqueues. The
+default scheduling policy is \schednormal{}.\hmng{do I need to introduce
+scheduling classes here too? that means we can position \schedbe{} as a new
+scheduling class, but I wrote the below without using the word class and I think
+it still works. Talk about classes could be a bit of a slippery slope, since
+that begs the question of why not use one of those\dots}
 
-We build on the \schedidle{} policy in Linux 6.14.2, turning it into effectively
-a fully fledged scheduling class. We refer to the new scheduling class as
-\schedbe{}: although it is based on and modifies \schedidle{}, it behaves
-significantly differently. The patch intervenes in a couple places, with the
-goal of creating \schedbe{} from the existing \schedidle{} policy, by making it
-more unfair: 
+We build on the \schedidle{} policy in Linux 6.14.2, and make it more
+unfair.\hmng{do we even need to say that we modify the \schedidle{} policy? Like
+we could talk through the whole thing and not bring it up. Might be a bit weird
+to then have to backtrack later to relate what we did to the alternatives we
+bring up in the eval.} We refer to the new priority as \schedbe{}: although it
+is based on and modifies \schedidle{}, it behaves significantly differently. The
+goal is to create \schedbe{} from the existing \schedidle{} policy by making it
+more unfair, so that the modified kernel enforces the goal that no \schedbe{} is
+ever running if a \schednormal{} task is waiting for a core. The patch
+intervenes in a couple places:
 \begin{enumerate}
     \item in picking the next entity on each runqueue, it ensures that no
 \schedbe{} entity will be chosen if there is a runnable \schednormal{} entity,
@@ -23,15 +29,14 @@ before running a \schedbe{} entity,
     entities to go interrupt.
 \end{enumerate}
 
-These three pieces together effectively create a scheduling class, and thus the
-desired strict and global priority. The first change ensures that locally
-\schedbe{} will never run when there is a runnable \schednormal{}. The second
-and third that no core is ever running a \schedbe{} process while a
-\schednormal{} one is runnable and waiting. This is because in order to enforce
-a categorical priority, the scheduler only needs to sychronize at two points: on
-\textit{entry}, when a new high-priority thread wakes up on a core already
-running something high-priority, and \textit{exit}, when starting to run a low
-priority thread.
+These three pieces together create the desired strict and global priority. The
+first change ensures that locally \schedbe{} will never run when there is a
+runnable \schednormal{}. The second and third that no core is ever running a
+\schedbe{} process while a \schednormal{} one is runnable and waiting. This is
+because in order to enforce a categorical priority, the scheduler only needs to
+sychronize at two points: on \textit{entry}, when a new high-priority thread
+wakes up on a core already running something high-priority, and \textit{exit},
+when starting to run a low priority thread.
 
 \subsection{Intra-runqueue unfairness}
 

@@ -1,9 +1,11 @@
 %-------------------------------------------------------------------------------
-\section{Eval}
+\section{Evaluation}
 \label{s:eval}
 %-------------------------------------------------------------------------------
 
-In our evaluation, we explore the following questions:
+We begin by evaluating the existing alternatives to \cgroups{} that currently
+exist in Linux in \autoref{ss:existing}. We then explore the performance of our
+edit, in relation to the following questions:
 \begin{enumerate}
     \item Does the new \schedbe{} isolate LC from BE workloads for real
     applications?
@@ -13,22 +15,20 @@ In our evaluation, we explore the following questions:
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
 that our patch builds on.
 
-\subsection{Existing approaches}
+\subsection{Existing approaches}\label{ss:existing}
 
-We explore the currently available alternatives to \cgroups{} in Linux, and how
-they work/don't.
+We explore the currently available alternatives to \cgroups{} in Linux, and show
+that they don't work, or are not suited for the applications we expect to be
+running.
 
 \subsubsection{Realtime scheduling}
 
-There already exists a way to configure tasks to be categorically distinct in a
-way that Linux enforces globally: processes that run in real time have strict
-priority over other processes.
-
-Linux does this by using \textit{scheduling classes}. Each scheduling class
-exists completely separately: classes maintain their own runqueues and
-per-entity state; implement their own scheduling algorithms to choose from the
-entities on their runqueue; and balance the load across runqueues on different
-cores.
+Linux does enforce categorical global priority in one dimension: processes that
+run in real time have strict priority over other processes. It does this by
+using \textit{scheduling classes}. Each scheduling class exists completely
+separately: classes maintain their own runqueues and per-entity state; implement
+their own scheduling algorithms to choose from the entities on their runqueue;
+and balance the load across runqueues on different cores.
 
 Linux isolates strictly between different scheduling classes: it only schedules
 a lower scheduling class if the higher scheduling classes found nothing to run,
@@ -38,7 +38,7 @@ synchronization points. It is thereby true that if something in the Normal
 scheduling class is running, it means there are no Fifo tasks waiting to run
 anywhere on the machine.
 
-This points to a possible solution: run LC in the Fifo scheduling class and BE
+This points to a possible alternative: run LC in the Fifo scheduling class and BE
 in Normal.\footnote{The Deadline scheduling class is not a good fit, since it
 requires accurate knowledge of a processes runtime (processing time per request)
 and period (when requests come in)} Fifo runs a priority scheduler: it has 99
@@ -67,7 +67,7 @@ Fifo scheduling class, and leave BE tasks with the default process weight.
 and high load setting as previously. As expected, we see that Linux is able to
 isolate the two very well. 
 
-However, this is an untenable final solution because of Fifo's run-to-completion
+However, this is an untenable solution because of Fifo's run-to-completion
 scheduling, which is known to have a failure mode of head-of-line (HoL) blocking
 under varied request processing times, where long-running requests monopolize
 the CPU while short requests wait in the queue. The Fifo scheduler also enforces
@@ -79,6 +79,8 @@ workloads effectively, but existing scheduling classes use scheduling
 algorithms that are not a good fit for modern workloads.
 
 \subsubsection{\schedidle}
+
+The scheduling policy \schedidle{} that we modify in our 
 
 \schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
 classes, but allow for special casing within a scheduling class. The Normal
