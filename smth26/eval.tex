@@ -9,6 +9,7 @@ edit, in relation to the following questions:
 \begin{enumerate}
     \item Does the new \schedbe{} isolate LC from BE workloads for real
     applications?
+    \item bloop bleep something about starvation?
     \item How much does the patch cost?
 \end{enumerate}
 
@@ -17,18 +18,19 @@ that our patch builds on.
 
 \subsection{Existing approaches}\label{ss:existing}
 
-We explore the currently available alternatives to \cgroups{} in Linux, and show
-that they don't work, or are not suited for the applications we expect to be
-running.
+To show the benefits of \schedbe{}, we compare with existing alternatives within
+Linux. The first is real time scheduling, because this is a place where Linux
+already enforces categorical global priorities: processes that run in real time
+have strict priority over other processes. The second is the existing mechansism
+of \schedidle{}, which \schedbe{} is based on.
 
 \subsubsection{Realtime scheduling}
 
-Linux does enforce categorical global priority in one dimension: processes that
-run in real time have strict priority over other processes. It does this by
-using \textit{scheduling classes}. Each scheduling class exists completely
-separately: classes maintain their own runqueues and per-entity state; implement
-their own scheduling algorithms to choose from the entities on their runqueue;
-and balance the load across runqueues on different cores.
+Linux enforces the categorical separation of real time tasks by using
+\textit{scheduling classes}. Each scheduling class exists completely separately:
+classes maintain their own runqueues and per-entity state; implement their own
+scheduling algorithms to choose from the entities on their runqueue; and balance
+the load across runqueues on different cores.
 
 Linux isolates strictly between different scheduling classes: it only schedules
 a lower scheduling class if the higher scheduling classes found nothing to run,
@@ -78,35 +80,19 @@ The takeaway is that Linux's current mechanism of scheduling classes can isolate
 workloads effectively, but existing scheduling classes use scheduling
 algorithms that are not a good fit for modern workloads.
 
-\subsubsection{\schedidle}
+\subsubsection{\schedidle}\label{ss:schedidle}
 
 \schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
 classes, but allow for special casing within a scheduling class. The Normal
 scheduling class supports two policies: \schednormal{}, the default, and
 \schedidle{}. Because both policies are in the same class the scheduler for the
 Normal class is in charge of both: it keeps the tasks of both policies on the
-same runqueue, and they are all scheduled using the same algorithm. Thus,
-\schedidle{} is in principle not very different from just being a low-weight
-process: From the scheduler's perspective, \schedidle{} entities are just
-entities with a predefined low weight (currently 3).\footnote{There is,
-confusingly, also an Idle scheduling \textit{class}, but that not accessible to
-userspace and exists solely to manage the core's transition in and out of being
-actually idle (ie running nothing).}
+same runqueue, and they are all scheduled using the same algorithm. 
 
-The main way that the Normal scheduler special-cases \schedidle{} entities from
-\schednormal{} entities is during wakeup: in a 2019 patch~\cite{TODO}, Linux
-added a check where, when a \schednormal{} entity becomes newly runnable, if the
-core where the entity is waking up is already running something in
-\schednormal{}, it will look for other cores that might be currently running a
-\schedidle{} entity, and migrates the new entity there.
-
-In doing so, Linux created a half scheduling class. In order to fully isolate
-two groups of processes the scheduler needs to try synchronize across cores at
-two points: entry and exit. The described patch adds only the entry check.
-
-\schedidle{} is additionally promising because it was extended to have cgroup
-support recently\cite{TODO}: a whole groups' policy can be set to \schedidle{}
-via the \cgroups{} interface.
+As we discussed in \autoref{s:maybe-solution}, \schedidle{} is special cased,
+but only on wakeup. In doing so, Linux created a half scheduling class.
+\schedbe{} effectively turns \schedidle{} into a scheduling class.\hmng{this
+feels like too good of a nugget to be hidden in the eval?}
 
 \begin{figure}[t]
     \centering
@@ -130,15 +116,7 @@ results, for the familiar settings of low and high load. The jump we see in the
 mean latency has decreased from peaks as high as 13ms to around 7ms (even though
 in principle they now have a higher weight).
 
-\subsection{Realistic applications}
-
-
-This work focuses on cpu allocation, and thus will show the strongest gains for
-applications that are cpu bound. 
-
-We test the patch in two different settings: the completely cpu-bound example
-server we have been using for the graphs in this paper so far, and an example
-web application that we run using Kubernetes, that uses a mix of i/o and cpu.
+\subsection{\schedbe}
 
 \begin{figure}[t]
     \centering
@@ -166,20 +144,31 @@ web application that we run using Kubernetes, that uses a mix of i/o and cpu.
     threads.}\label{fig:schedviz-patched}
 \end{figure}
 
-For the experiment we have used throughout the paper, we set the BE workloads to
-be marked as idle via the \cgroups{} api. We can see the resulting performance
-in \autoref{fig:patched-idle}. As desired the latency of the server remains
-stable after the background tasks start. This does not mean that the background
-task never runs: the lower graph still shows iterations of image resizing being
-done. The difference is that now the background tasks will reliably get
-interrupted when the LC server has a request to process. We can see this
-happening in an outtake of the schedviz visualization for one of the runs in
-\autoref{fig:schedviz-patched}. The green BE processes only run in the gaps
+We finally run the same exoeriment, again using the \cgroups{} interface to set
+the BE workloads to be marked as idle via the \cgroups{} api, except that now
+this puts the BE tasks in \schedbe{}. We can see the resulting performance in
+\autoref{fig:patched-idle}. As desired the latency of the server remains stable
+after the background tasks start. This does not mean that the background task
+never runs: the lower graph still shows iterations of image resizing being done.
+The difference is that now the background tasks will reliably get interrupted
+when the LC server has a request to process. We can see this happening in an
+outtake of the schedviz visualization for one of the runs in
+\autoref{fig:schedviz-patched}. The green BE processes run only in the gaps
 where there is no queued LC process, and are immediately preempted when one
 wakes up, on whatever core that may be. The red lines show when the core has
 chosen intially to run a BE process, sometimes followed by an LC process that
 was stolen as a result running next, sometimes by the BE process actually
 running because there was no queued LC thread to steal.
+
+
+\subsubsection{Realistic applications}
+
+This work focuses on cpu allocation, and thus will show the strongest gains for
+applications that are cpu bound. 
+
+We test the patch in two different settings: the completely cpu-bound example
+server we have been using for the graphs in this paper so far, and an example
+web application that we run using Kubernetes, that uses a mix of i/o and cpu.
 
 \begin{figure}[t]
     \centering
@@ -188,12 +177,14 @@ running because there was no queued LC thread to steal.
     starting a request on a BE service}\label{fig:kubernetes-unedited}
 \end{figure}
 
-
-
 For the web application, we build a REST-api on top of FastAPI, and deploy it
 using uvicorn workers. The web application itself is a social application, it
 has a connection to an in-memory sqlite database, which is makes requests to and
 processes data from. \autoref{fig:kubernetes-unedited} shows the results.
+
+\subsection{Occurrence and effects of starvation}
+
+
 
 
 
