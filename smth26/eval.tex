@@ -184,7 +184,57 @@ processes data from. \autoref{fig:kubernetes-unedited} shows the results.
 
 \subsection{Occurrence and effects of starvation}
 
+We begin by looking at how Linux currently avoids starvation, and the effects
+this has, and then explore the downsides of starvation and how/when they occur.
 
+\subsection{Linux's starvation avoidance}
+
+Linux in its current form safeguards heavily against starvation. As we saw
+earlier, real time Fifo applications have strict priority and thus represent a
+possible antagonist that would be able to starve everything else. However, Linux
+has two different safe guards that protect against this. One is that Fifo is as
+a scheduling class rate-limited: there are tuneable parameters at
+\texttt{/proc/sys/kernel/sched\_rt\_runtime\_us} and
+\texttt{/proc/sys/kernel/sched\_rt\_period\_us}, that together define a rate limit
+for the Fifo class as a whole. The failsafes go further than just that though:
+even when set to be equal (ie Fifo gets the full runtime each period if it
+wants), the Normal scheduling class also has a so-called \textit{deadline
+server}, which is basically a process is in the Deadline scheduling class with a
+small amount of runtime per period~\cite{TODO}.
+% https://lore.kernel.org/lkml/20200807095051.385985-5-juri.lelli@redhat.com/ 
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/rt-throttled.png}
+    \caption{We can see the spikes in latency for the server and throughput for
+    the background task as the throttling kicks
+    in}\label{fig:realtime-throttled}
+\end{figure}
+
+
+We can see this in action if we turn up the utilization on the real time
+experiment: if we run it so that the baseline utilization is oversaturated
+(100\%), we see spikes begin to appear when the Fifo server gets throttled in
+favor of running the bg tasks, and parallel spikes where the background tasks
+are allowed to run. This is shown in \autoref{fig:realtime-throttled}. Notice
+also the increase of the slope of response times after starting the background
+tasks: the deadline server mechanism only kicks in if there is load to run, so
+once it does the resulting throttling degrades the servers performance
+signigicantly. If this were taking place during a load spike while waiting for
+new server instances to start, the presence of BE load would significantly
+impact the queue length/performance degradation while the new server starts up.
+
+
+\subsection{Effects of choosing to starve}
+
+We now explore what happens if you do let processes starve, and do this by
+looking at two examples of undesirable behavior: (1) what happens to TCP
+connections of starved processes, and (2) what happens to timer-based code.
+
+
+\hmng{Also are going to need to say something about control mechansisms to stop
+eg an accidental infinite loop needing to be higher priority anyway}
 
 
 

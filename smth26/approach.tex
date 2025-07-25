@@ -41,8 +41,7 @@ because the LC tasks don't use all the available cores.
 
 It is only under high load, where all the cores are running LC tasks all the
 time, that starvation is possible. Starvation has downsides, including
-potentially broken TCP connections, unresponsiveness to timer-based code, and
-external unresponsiveness (eg a starved BE server won't send heartbeats). We
+potentially broken TCP connections and unresponsiveness to timer-based code. We
 explore some of these downsides in our evaluation, and show that they only occur
 at extremely high cpu utilization. In this subsection, we argue that despite
 some of these potential downsides, in a distributed setting starvation is better
