@@ -2,24 +2,25 @@
 
 We imagine an extended \cgroups{} api where weights can still be used to
 differentiate between different LC tasks, but the BE tasks are put in an
-entirely separate category. Creating this categorical split between LC and BE
-enforced by strict priority scheduling solves these problems: it by definition
-ensures cpu isolation, it is more easily enforced, and allows for more
-unfairness during high load.\footnote{here we do not mean priorities in the way
+entirely separate category, the separation of which is enforced by enforced by
+strict priority scheduling.\footnote{here we do not mean priorities in the way
 there are used in nice values, but rather a strict priority where threads of a
 higher priority always run first.}
 
-\subsection{Priority scheduling ensures isolation}
+\subsection{Categorical separation solves the problems}
 
-Strict priority scheduling is global, and means: BE runs only if there is no
-queued but runnable LC thread. Purely on a correctness level, this solves the
-problem we saw that BE would sometimes run even while another core had a queued
-LC thread.
+Creating this categorical split between LC and BE  solves the problems we just
+described: it by definition ensures cpu isolation, and it requires less
+synchronization to be enforced.
 
-\subsection{tick-based vs event-based}
+\textbf{\autoref{ss:mechanistic}} Strict priority scheduling is global, and
+means: BE runs only if there is no queued but runnable LC thread. Purely on a
+correctness level, this solves the problem we saw that BE would sometimes run
+even while another core had a queued LC thread.
 
-As we saw, implementing a policy globally is expensive. However, categorical
-priorities also has fewer synchronization points required to enforce it than
+\textbf{\autoref{ss:cross-core-hard}} Another problem we saw is that
+implementing a weight-based policy globally is expensive. However, enforcing
+categorical priorities requires fewer synchronization points to enforce it than
 weights do. This is because priorities change on the basis of events, whereas
 weights change over time, ie with ticks. Unless the set of runnable tasks
 changes, if the scheduler was running the correct priority class before, it
@@ -28,42 +29,40 @@ running the current thread might have gone over its share. Time sharing within
 each category may still require ticks, but across categories synchronization can
 be triggered by events rather than ticks.
 
-\subsection{Unfairness in a distributed setting}
+\textbf{\autoref{ss:quantum}} This also addresses the final problem we saw,
+which is that weight-based separation meant that the fidelity of the isolation
+depended on the length of the ticks. Because strict priorities are enforced at
+events not ticks, that dependence also goes away.
 
-Much of scheduling has been centered around fairness, and being starvation-free.
+\subsection{Unfairness during high load}
+
+A side effect of the described categorical priority isolation is that the BE
+userspace processes will be starved under extremely high-load settings. This is
+only true of the BE userspace process itself, not the the kernel threads doing
+work on its behalf. For example, even if a userspace process is starved, its TCP
+connections won't die: Incoming messages will be acknowledged, which includes
+keepalive probes, and messages with contents will be buffered (until the machine
+literally runs out of memory? check this). A BE on a machine overloaded with LC
+tasks will however stop sending application level responses, such as heartbeats. 
+
 We argue that the increased unfairness brought on by priority scheduling is not
 only accetable, but desirable.
 
-When the load is low, unfairness is never a problem: even in strict priority
-system, as long as the LC load does not use 100\% of the cputime on all the
-cores, the BE tasks will get time to run, either while LC tasks are blocked, or
-because the LC tasks don't use all the available cores.
-
-It is only under high load, where all the cores are running LC tasks all the
-time, that starvation is possible. Starvation has downsides, including
-potentially broken TCP connections and unresponsiveness to timer-based code. We
-explore some of these downsides in our evaluation, and show that they only occur
-at extremely high cpu utilization. In this subsection, we argue that despite
-some of these potential downsides, in a distributed setting starvation is better
-than the alternative for a couple reasons.
-
 The first reason is that a machine experiencing high load is likely a localized
-problem, both in space and time. On a large time scale (hours), the overall load
-in a datacenter is well-known. On the order of seconds and minutes, individual
-microservices' loads may vary, but because of their statistical independence it
-is well-known that broadly load will stay stable. This means that it is likely
-that load spikes don't last very long.
+problem, both in space (as in, will only effect some small number of machines)
+and time (as in, the high load on the machine won't last long). It is localized
+in space because microservices placed on the same machine are independent from
+one another: on the order of seconds and minutes, individual microservices'
+loads may vary, but broadly load is known to be predictable. It is localized in
+space because of the distributed setting: a distributed scheduler and monitors
+the state of all the machines and, when it sees high cpu utilization, acts by
+migrating load or the autoscaler starts new instances.
 
-And even if they do, because we are in a distributed setting, the machine
-scheduler is only a small part of the picture. A distributed scheduler manages
-the load that each machine receives, and monitors the state of all the machines.
-This means that if a machine is experiencing a much higher than expected load,
-even if the load stays high, the machine just has to stick it out until the
-distributed scheduler acts by migrating load or the autoscaler starts new
-instances.
-
-Finally, we argue that the correct thing for a temporarily overloaded machine to
-do is to just run the LC workloads as best it can, keeping the latencies low,
-and wait for the distributed scheduler to do it's job. The whole reason that BE
-tasks are BE is the fact that they are not latency sensitive, and are robust to
-not making progress for large-but-bounded amounts of time.
+For the brief period in time and space where load is untenably high, to the
+degree that BE userspace processes are becoming starved, the correct thing for
+the machine to do is to just run the LC workloads as best it can, keeping the
+latencies low, and wait for the distributed scheduler to do it's job. The whole
+reason that BE tasks are BE is the fact that they are not latency sensitive, and
+are robust to not making progress for large-but-bounded amounts of time. If a BE
+task has strict requirements about when it needs to send responses and be done,
+then it's not BE.
