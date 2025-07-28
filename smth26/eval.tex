@@ -206,10 +206,18 @@ small amount of runtime per period~\cite{TODO}.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{graphs/rt-throttled.png}
-    \caption{We can see the spikes in latency for the server and throughput for
-    the background task as the throttling kicks
-    in}\label{fig:realtime-throttled}
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/rt-throttled.png}
+    \caption{LC in real time, throttling}\label{fig:realtime-throttled}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/patched-not-throttled.png}
+        \caption{BE in \schedbe{}, no throttling}\label{fig:patched-not-throttled}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{throttling the LC server under extremely high utilization, vs
+    letting it starve the BE userspace processes}
 \end{figure}
 
 
@@ -217,13 +225,21 @@ We can see this in action if we turn up the utilization on the real time
 experiment: if we run it so that the baseline utilization is oversaturated
 (100\%), we see spikes begin to appear when the Fifo server gets throttled in
 favor of running the bg tasks, and parallel spikes where the background tasks
-are allowed to run. This is shown in \autoref{fig:realtime-throttled}. Notice
-also the increase of the slope of response times after starting the background
-tasks: the deadline server mechanism only kicks in if there is load to run, so
-once it does the resulting throttling degrades the servers performance
-signigicantly. If this were taking place during a load spike while waiting for
-new server instances to start, the presence of BE load would significantly
-impact the queue length/performance degradation while the new server starts up.
+are allowed to run. This is shown in \autoref{fig:realtime-throttled}. We can
+see the spikes in latency for the server and throughput for the background task
+as the throttling kicks in. Notice also the increase of the slope of response
+times after starting the background tasks: the deadline server mechanism only
+kicks in if there is load to run, so once it does the resulting throttling
+degrades the servers performance signigicantly. If this were taking place during
+a load spike while waiting for new server instances to start, the presence of BE
+load would significantly impact the queue length/performance degradation while
+the new server starts up.
+
+On the other hand, we see in \autoref{fig:patched-not-throttled} what happens
+if, in that same experiment, you allow the BE userspace process to be starved.
+Notice that the BE does not make progress until the very end, when the server is
+done processing the requests (the experiment stops the client after 30 seconds
+and the server from then finishes the backlog of requests).
 
 
 \subsection{Effects of choosing to starve}
