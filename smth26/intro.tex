@@ -6,7 +6,7 @@
 Many microservices contend with varying load as well as being \textit{latency
 critical} (LC), meaning they have strict SLOs that guarantee uptime and caps on
 latency. However, when developers want to run microservices, scheduling systems
-like AWS ec2 or Kubernetes required them to give a fixed amount of resources the
+like AWS ec2 or Kubernetes require them to give a fixed amount of resources the
 microservice needs, \ie{} a number of CPUs and an amount of memory~\cite{TODO}.
 As a result, developers choose those requirements based on the expected peak
 load, and the resources are rarely fully used~\cite{TODO}. 
@@ -35,19 +35,20 @@ The current standard mechanism for isolating LC from BE processes is Linux's
 \cgroups{}. Most modern containers rely on \cgroups{}; this includes all Open
 Container Initiative (OCI) compliant containers, such as Docker, Kubernetes,
 CRI-O, and containerd, because the OCI specification calls for use of
-\cgroups{}. VMs, including Firecracker, AFaas, and KVM, also rely on \cgroups{}
-to manage VMs when the number of vCPUs is oversubscribed.~\cite{TODO}
+\cgroups{}~\cite{TODO}. VMs, including Firecracker, AFaas, and KVM, also rely on
+\cgroups{} to manage CPU time allocation when the number of vCPUs is
+oversubscribed.~\cite{TODO}
 
-The interface \cgroups{} exposes in order to specify the priority of processes
-is based on weight: each workload is put into its own group, and each group is
-assigned a weight in the range [1, 10000]. \cgroups{} specifies that each group
-gets CPU time proportional to its weight as a share of the sum of weights of
-runnable groups~\cite{TODO}.\footnote{Other operating systems use a similar
-interface, for instance Windows exposes a number of shares.} For instance, if
-two groups $cg1$ and $cg2$ have weights 200 and 300 respectively, when they are
-both active their CPU time ratio should also be $2:3$. However, if $cg1$ has no
-runnable threads, then $cg2$ would represent 100\% of the runnable weight and
-get all the CPU time.
+The part of the \cgroups{} interface that these systems use to specify the
+priority of processes is based on weight: each workload is put into
+its own group, and each group is assigned a weight in the range [1, 10000].
+\cgroups{} specifies that each group gets CPU time proportional to its weight as
+a share of the sum of weights of runnable groups~\cite{TODO}.\footnote{Other
+operating systems use a similar interface, for instance Windows exposes a number
+of shares.} For instance, if two groups $cg1$ and $cg2$ have weights 200 and 300
+respectively, when they are both active their CPU time ratio should also be
+$2:3$. However, if $cg1$ has no runnable threads, then $cg2$ would represent
+100\% of the runnable weight and get all the CPU time.
 
 \begin{figure}[t]
     \centering
@@ -69,15 +70,16 @@ get all the CPU time.
     histogram of completed iterations of the BE tasks}\label{fig:unedited-weight}
 \end{figure}
 
-However, even when using the largest possible split of 1:10000, we find that the
-presence of low weight (ie BE) tasks has a large performance impact on a
-high-weight (ie LC) task. In an experiment, we run a simple cpu-bound server and
-then start two BE workloads doing image resizing, using two \cgroups{} groups,
-with weights 1 and 10000, to isolate the two. \autoref{fig:unedited-weight}
-shows the increase in latencies of the LC server at two different baseline
-utilization levels. We see that even in the lower baseline utilization case,
-where the server alone uses 85\%, mean latencies spike up from steady at around
-6ms to as high as 20ms, and much higher for 99th percentile latencies.
+However, even when using the largest possible weight split of 1 and 10000
+between two tasks, we find that the presence of low weight (ie BE) tasks has a
+large performance impact on a high-weight (ie LC) task. In an experiment, we run
+a simple cpu-bound server and then start two BE workloads doing image resizing,
+using two \cgroups{} groups, with weights 1 and 10000, to isolate the two.
+\autoref{fig:unedited-weight} shows the increase in latencies of the LC server
+at two different baseline utilization levels. We see that even in the lower
+baseline utilization case, where the server alone uses 85\%, mean latencies
+spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
+percentile latencies.
 
 As we explore in \autoref{s:problem}, the main reason that this happens is that
 Linux allows BE processes to run on one core, even while another core has a
@@ -85,12 +87,12 @@ queued and waiting LC process. This is an interface problem, not an
 implementation bug: Linux's scheduler uses per-core runqueues, and as a result
 the weights are only enforced on a runqeueue level.
 
-Because of this, this paper argues that the split between LC and BE should be
-categorical rather than ends of a weight spectrum, and that unfairness should be
-the goal. We show that doing so enables Linux to isolate LC from BE:\ in the
-same experiment, the increase in average latency when starting a BE workload
-goes from $>$2x to 0, and the tail latency from $>$5x to 0. The contributions of
-this paper are thus as follows: 
+This paper argues that the split between LC and BE should be categorical rather
+than ends of a weight spectrum, and that unfairness should be the goal. We show
+that doing so enables Linux to isolate LC from BE:\ in the same experiment, the
+increase in average latency when starting a BE workload goes from $>$2x to 0,
+and the tail latency from $>$5x to 0. The contributions of this paper are thus
+as follows: 
 \begin{enumerate}
     \item the insight that weighted fair share breaks down with large weight
     splits because the weights are not enforced across cores; and that this
@@ -98,6 +100,7 @@ this paper are thus as follows:
     \item showing that categorical priorities are simpler to enforce, and that
     Linux does this well
     \item implement in Linux \schedbe{}, a new class for BE tasks that is
-    categorically separate from LC, which isolates LC workloads get from BE ones
-    and minimizes the amount of cross-core checks required
+    categorically separate from the default class LC tasks run in, which
+    isolates LC workloads from BE ones and minimizes the amount of cross-core
+    checks required
 \end{enumerate}

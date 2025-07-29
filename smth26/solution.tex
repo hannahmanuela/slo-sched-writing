@@ -2,9 +2,9 @@
 
 We implement a new category for processes to be in, which we call \schedbe{},
 which exists in relation to the default scheduling policy, \schednormal{}. The
-goal is that to enforce the maxim that no \schedbe{} userspace thread is ever
-running if a \schednormal{} task is waiting for a core. In order to do so, the
-scheduler needs to enforce the priorities in three different places:
+goal is to enforce the maxim that no \schedbe{} userspace thread is ever running
+if a \schednormal{} task is waiting for a core. In order to do so, the scheduler
+needs to enforce the priorities in three different places:
 \begin{enumerate}
     \item in picking the next entity from the runqueue on each core, it needs to
 ensure that no \schedbe{} entity will be chosen if there is a runnable
@@ -32,7 +32,9 @@ the core where it wakes up will look to interrupt cores running \schedbe{}.
 \subsection{Implementing \schedbe{} in Linux}
 
 We implement \schedbe{} in Linux, as an extension of the existing \schedidle{}
-scheduling policy. We compare against it as a baseline in
+scheduling policy. We use \schedidle{} to refer to the existing implementation,
+and \schedbe{} to the categorically separate priority for BE and its
+implementation as an edited \schedidle{}. We compare against it as a baseline in
 \autoref{ss:schedidle}. 
 
 \schedidle{} is in many ways not too different from a low weight \schednormal{}
@@ -43,23 +45,23 @@ processes, and \schedidle{} just has a predefined low weight of
 the core's transition in and out of being actually idle (ie running nothing).}
 
 However, Linux has over the years added more special-casing to \schedidle{}. In
-2019, they added a check where, when a \schednormal{} entity becomes newly
-runnable, if the core where the entity is waking up already running something in
-\schednormal{}, it will look for other cores that might be currently running a
-\schedidle{} entity, and migrates the new entity there. This represents the
-wakeup or entry check.
+2019, they added a check when a \schednormal{} entity becomes newly runnable on
+a core already running something in \schednormal{}. This new check will look for
+other cores that might be currently running a \schedidle{} entity, and migrates
+the new entity there. This represents the \textit{entry check}.
 
-The other special thing Linux added is that \schedidle{} is that it was extended
-to have cgroup support recently\cite{TODO}: a whole groups' policy can be set to
+The other special thing Linux added is that \schedidle{} was extended to have
+cgroup support recently\cite{TODO}: a whole groups' policy can be set to
 \schedidle{} via the \cgroups{} interface. This also makes it additionally
 promising to be used as a basis for \schedbe{} because it can fit well with the
 existing infrastructure, which uses the \cgroups{} api.
 
 So, the actual patch to Linux that creates \schedbe{} builds on \schedidle{},
-and adds the missing components from the list: the patch adds a synchronization
-point on starting to run \schedidle{}, and ensures that the task chosen to run
-from the local runqueue is only \schedidle{} if everything else on the runqueue
-is as well. In doing so, the patch conceptually creates \schedbe{}.
+and adds the missing components from the list: the patch enforces proper policy
+for \schedbe{} processes locally by ensuring that the task chosen to run from
+the runqueue is only \schedidle{} if everything else on the runqueue is as well,
+and it adds an \textit{exit} synchronization point to complete the global policy
+enforcement. In doing so, the patch creates \schedbe{}.
 
 \subsection{Enforcing the local policy}
 
@@ -91,7 +93,8 @@ next.
 Ensuring the exit and entry path requires interposing on both. The existing code
 already special-cases on the wakeup path, although only checks if the thread
 itself is marked as idle, and not if the group as a whole is, and for \schedbe{}
-we check both.\hmng{this is not exactly true, but in a kinda complicated way}
+we check both.\hmng{this is not exactly true, but in a kinda complicated way. Do
+we even want to say this?}
 
 \schedbe{} also adds a check on the exit: if the thread chosen to run next is
 \schedbe{}, then the patch tries to steal a queued \schednormal{} task from a

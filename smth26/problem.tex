@@ -9,13 +9,11 @@ unaware that an LC process is runnable and waiting on another
 the \cgroups{} weight interface: it is expensive to enforce weights across cores
 (\autoref{ss:problem:cross-core-hard}). However, even if implemented correctly,
 the \cgroups{} weight interface is not well-suited for isolating LC from BE,
-because weights interact with sheduling quanta in bad ways: the scheduler can't
-help but run the BE processes for a whole quantum when it's weight does accrue,
-leaving LC processes interrupted for 4 ms at a time
+because weights are enforced at the granularity of scheduling quanta
 (\autoref{ss:problem:quantum}). We conclude that the weight-based interface is
 not well-suited to isolate LC from BE.
 
-\subsection{The mechanistic problem}\label{ss:problem:mechanistic}
+\subsection{Weights are only enforced locally}\label{ss:problem:mechanistic}
 
 \begin{figure}[t]
     \centering
@@ -38,7 +36,7 @@ threads, shown in varying shades of blue, are queued on the other cores.
 The reason this happens is that Linux maintains a separate runqueue on each
 core, in order to avoid the synchronization overheads of accessing global state
 for every scheduling decision. Within each runqueue, Linux's scheduler works to
-maintain the correct ratio of received cputime at each scheduling; but Linux
+maintain the correct ratio of received CPU time at each scheduling; but Linux
 does not enforce the weight ratios across cores. This leads to the above failure
 mode, where one core has no runnable high weight processes and thus runs a low
 weight one, whereas another core has queued high weight processes. This problem
@@ -49,19 +47,15 @@ going idle.
 expensive}\label{ss:problem:cross-core-hard}
 
 The root of the problem goes deeper than just a poor implementation: a
-weight-based interface is at odds with machine-wide policy enforcement. In
-increasingly multi-core and multi-NUMA machines, synchronization is expensive.
-This means that the overheads of maintaining global invariants can quickly
-become prohibitive.
-
-In order to strictly and globally enforce a processes weight, the scheduler
-would need to synchronize at every scheduling decision: calculating whether a
-given process is owed time globally requires knowing the total weight across all
-cores as well as the sum of time that all the processes in the group have
-gotten. At the same time, servers now have up to 8 NUMA nodes, and hundreds up
-CPUs across them~\cite{TODO}. Synchronizing across them is expensive: other work
-has also found that kernel lock contention is a bottleneck to performance at
-scale~\cite{TODO}
+weight-based interface is at odds with machine-wide policy enforcement. In order
+to strictly and globally enforce a processes weight, the scheduler would need to
+synchronize at every scheduling decision: calculating whether a given process is
+owed time globally requires knowing the total weight across all cores as well as
+the sum of time that all the processes in the group have gotten. In increasingly
+multi-core and multi-NUMA machines, synchronization is expensive; other work has
+found that kernel lock contention is a bottleneck to performance at
+scale.~\cite{TODO} This means that the overheads of maintaining global invariants
+can quickly become prohibitive.
 % cite the AFaaS cgroups pool thing
 
 
