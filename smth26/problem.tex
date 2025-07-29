@@ -13,7 +13,7 @@ run the BE processes for a whole quantum when it's weight does accrue, leaving
 LC processes interrupted for 4 ms at a time (\autoref{ss:quantum}). We conclude
 that the weight-based interface is not well-suited to isolate LC from BE.
 
-\subsection{The mechanistic problem}\label{ss:mechanistic}
+\subsection{The mechanistic problem}\label{ss:problem:mechanistic}
 
 \begin{figure}[t]
     \centering
@@ -43,7 +43,8 @@ whereas another core has queued high weight processes. This problem goes away
 when there are no BE processes, because cores try to steal work before going
 idle.
 
-\subsection{Enforcing weights across cores is expensive}\label{ss:cross-core-hard}
+\subsection{Enforcing weights across cores is
+expensive}\label{ss:problem:cross-core-hard}
 
 The root of the problem goes deeper than just a poor implementation: a
 weight-based interface is at odds with machine-wide policy enforcement. In
@@ -64,7 +65,8 @@ contention is a bottleneck to performance at scale~\cite{TODO}
 % \hmng{the AFaaS cgroups pool thing}
 
 
-\subsection{Weights interact poorly with tick-based scheduling}\label{ss:quantum}
+\subsection{Weights interact poorly with tick-based
+scheduling}\label{ss:problem:quantum}
 
 Even on a single runqueue, using very large weight differentials as an interface
 to isolate LC and BE doesn't work well because preemption is tick-based. In a

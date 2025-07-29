@@ -5,20 +5,26 @@ differentiate between different LC tasks, but the BE tasks are put in an
 entirely separate category, the separation of which is enforced by enforced by
 strict priority scheduling.\footnote{here we do not mean priorities in the way
 there are used in nice values, but rather a strict priority where threads of a
-higher priority always run first.}
+higher priority always run first.} As we show in
+\autoref{ss:approach:solves-problems}, doing so solves the problems laid out in
+\autoref{s:problem}. But such categorical priorities also require the existence
+of a state that BEs can go into during high load that allows the LCs to use all
+the available resources. We discuss the requirements of such a state in
+\autoref{ss:approach:parking}.
 
-\subsection{Categorical separation solves the problems}
+\subsection{Categorical separation solves the
+problems}\label{ss:approach:solves-problems}
 
 Creating this categorical split between LC and BE  solves the problems we just
 described: it by definition ensures cpu isolation, and it requires less
 synchronization to be enforced.
 
-\textbf{\autoref{ss:mechanistic}} Strict priority scheduling is global, and
-means: BE runs only if there is no queued but runnable LC thread. Purely on a
-correctness level, this solves the problem we saw that BE would sometimes run
+\textbf{\autoref{ss:problem:mechanistic}} Strict priority scheduling is global,
+and means: BE runs only if there is no queued but runnable LC thread. Purely on
+a correctness level, this solves the problem we saw that BE would sometimes run
 even while another core had a queued LC thread.
 
-\textbf{\autoref{ss:cross-core-hard}} Another problem we saw is that
+\textbf{\autoref{ss:problem:cross-core-hard}} Another problem we saw is that
 implementing a weight-based policy globally is expensive. However, enforcing
 categorical priorities requires fewer synchronization points to enforce it than
 weights do. This is because priorities change on the basis of events, whereas
@@ -29,40 +35,41 @@ running the current thread might have gone over its share. Time sharing within
 each category may still require ticks, but across categories synchronization can
 be triggered by events rather than ticks.
 
-\textbf{\autoref{ss:quantum}} This also addresses the final problem we saw,
-which is that weight-based separation meant that the fidelity of the isolation
-depended on the length of the ticks. Because strict priorities are enforced at
-events not ticks, that dependence also goes away.
+\textbf{\autoref{ss:problem:quantum}} This also addresses the final problem we
+saw, which is that weight-based separation meant that the fidelity of the
+isolation depended on the length of the ticks. Because strict priorities are
+enforced at events not ticks, that dependence also goes away.
 
-\subsection{Unfairness during high load}
+\subsection{Parking during high load}\label{ss:approach:parking}
 
-A side effect of the described categorical priority isolation is that the BE
-userspace processes will be starved under extremely high-load settings. This is
-only true of the BE userspace process itself, not the the kernel threads doing
-work on its behalf. For example, even if a userspace process is starved, its TCP
-connections won't die: Incoming messages will be acknowledged, which includes
-keepalive probes, and messages with contents will be buffered (until the machine
-literally runs out of memory? check this). A BE on a machine overloaded with LC
-tasks will however stop sending application level responses, such as heartbeats. 
+A scheduler needs to be able to maintain this categorical isolation even under
+very high system load, where cpu utilization is 100\% (assuming that memory
+utilization does not require the BE tasks to be killed\hmng{see this is where an
+actual separate state would be useful, where `parked' means kernel state is
+still there and managed and stuff, but as much of the actual memory as necessary
+is swapped out}). In order to do so, the scheduler needs allows for the LC tasks
+to use all of the resources, without having to kill the BEs completely.
 
-We argue that the increased unfairness brought on by priority scheduling is not
-only accetable, but desirable.
+This intermediate state we call `parked', where the BEs are using the minimal
+amount of resources required to not die, falls out quite naturally from the
+division that standard kernels make between userspace and kernelspace. Critical
+pieces like TCP connections \hmng{and?\dots} are already managed by the kernel,
+and userspace code just makes progress on the actual application logic. We make
+use of this during high load by having the kernel continue to run and maintain
+the infrastructure it holds for the BE threads, while the userspace get no CPU
+time. This means that BE's TCP connections won't die, because incoming messages
+will be acknowledged and the contents buffered. However, any and all application
+logic will be put on hold, for instance a BE on a machine overloaded with LC
+tasks will stop sending heartbeats, even though the connection stays alive and
+keepalive messages continue to be acknowledged.
 
-The first reason is that a machine experiencing high load is likely a localized
-problem, both in space (as in, will only effect some small number of machines)
-and time (as in, the high load on the machine won't last long). It is localized
-in space because microservices placed on the same machine are independent from
-one another: on the order of seconds and minutes, individual microservices'
-loads may vary, but broadly load is known to be predictable. It is localized in
-space because of the distributed setting: a distributed scheduler and monitors
+Part of why this makes sense to do is because a machine experiencing high load
+is likely a localized problem, both in space (as in, will only effect some small
+number of machines) and time (as in, the high load on the machine won't last
+long). It is localized in space because microservices' loads are independent
+from one another: on the order of seconds and minutes, individual microservices'
+loads may vary, but broadly load is known to be predictable, so even if one
+machine is experiencing high load other machines won't be. It is localized in
+time because of the distributed setting: a distributed scheduler and monitors
 the state of all the machines and, when it sees high cpu utilization, acts by
 migrating load or the autoscaler starts new instances.
-
-For the brief period in time and space where load is untenably high, to the
-degree that BE userspace processes are becoming starved, the correct thing for
-the machine to do is to just run the LC workloads as best it can, keeping the
-latencies low, and wait for the distributed scheduler to do it's job. The whole
-reason that BE tasks are BE is the fact that they are not latency sensitive, and
-are robust to not making progress for large-but-bounded amounts of time. If a BE
-task has strict requirements about when it needs to send responses and be done,
-then it's not BE.
