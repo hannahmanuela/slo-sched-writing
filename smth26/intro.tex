@@ -25,18 +25,18 @@ oversubscribing their machines without compromising any guarantees: Under high
 load, microservice workloads run without impediment, but in low load BE tasks
 run opportunistically and the servers maintain high utilization.
 
-However, realizing high utilization and while enforcing strict isolation is
+However, realizing high utilization while enforcing strict isolation is
 challenging. The scheduler needs to dynamically reallocate CPUs as the load
 changes: it needs to maintain low latencies for LC requests by ensuring that
 when the LC processes need resources they appear uncontended, while at the same
 time using idle resources to run BE processes.
 
 The current standard mechanism for isolating LC from BE processes is Linux's
-\cgroups{}. Most modern containers rely on \cgroups{}; this includes all
-Open Container Initiative (OCI) compliant containers, such as Docker,
-Kubernetes, CRI-O, and containerd, because the OCI specification calls for use
-of \cgroups{}. VMs, including Firecracker, AFaas, and KVM, also rely on
-\cgroups{} to manage VMs when the number of vCPUs is oversubscribed.
+\cgroups{}. Most modern containers rely on \cgroups{}; this includes all Open
+Container Initiative (OCI) compliant containers, such as Docker, Kubernetes,
+CRI-O, and containerd, because the OCI specification calls for use of
+\cgroups{}. VMs, including Firecracker, AFaas, and KVM, also rely on \cgroups{}
+to manage VMs when the number of vCPUs is oversubscribed.~\cite{TODO}
 
 The interface \cgroups{} exposes in order to specify the priority of processes
 is based on weight: each workload is put into its own group, and each group is
@@ -95,10 +95,9 @@ this paper are thus as follows:
     \item the insight that weighted fair share breaks down with large weight
     splits because the weights are not enforced across cores; and that this
     dramatically affects end-to-end latencies
-    \item showing that enforcing weights across core is prohibitively expensive,
-    but categorical priorities are simpler to enforce, and that Linux does this
-    well
-    \item implement in Linux a categorical separation, which isolates LC
-    workloads get from BE ones and minimizes the amount of cross-core checks
-    required
+    \item showing that categorical priorities are simpler to enforce, and that
+    Linux does this well
+    \item implement in Linux \schedbe{}, a new class for BE tasks that is
+    categorically separate from LC, which isolates LC workloads get from BE ones
+    and minimizes the amount of cross-core checks required
 \end{enumerate}

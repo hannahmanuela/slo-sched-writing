@@ -2,16 +2,18 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
-The problem that leads to the spike in latencies is that Linux will run a BE
-process on one core, unaware that an LC process is runnable and waiting on
-another (\autoref{ss:mechanistic}). This observation points to a problem with
+The problem that leads to the increased latencies observed in
+\autoref{fig:unedited-weight} is that Linux will run a BE process on one core,
+unaware that an LC process is runnable and waiting on another
+(\autoref{ss:problem:mechanistic}). This observation points to a problem with
 the \cgroups{} weight interface: it is expensive to enforce weights across cores
-(\autoref{ss:cross-core-hard}). However, even if implemented correctly, the
-\cgroups{} weight interface is not well-suited for isolating LC from BE, because
-weights interact with sheduling quanta in bad ways: the scheduler can't help but
-run the BE processes for a whole quantum when it's weight does accrue, leaving
-LC processes interrupted for 4 ms at a time (\autoref{ss:quantum}). We conclude
-that the weight-based interface is not well-suited to isolate LC from BE.
+(\autoref{ss:problem:cross-core-hard}). However, even if implemented correctly,
+the \cgroups{} weight interface is not well-suited for isolating LC from BE,
+because weights interact with sheduling quanta in bad ways: the scheduler can't
+help but run the BE processes for a whole quantum when it's weight does accrue,
+leaving LC processes interrupted for 4 ms at a time
+(\autoref{ss:problem:quantum}). We conclude that the weight-based interface is
+not well-suited to isolate LC from BE.
 
 \subsection{The mechanistic problem}\label{ss:problem:mechanistic}
 
@@ -35,13 +37,13 @@ threads, shown in varying shades of blue, are queued on the other cores.
 
 The reason this happens is that Linux maintains a separate runqueue on each
 core, in order to avoid the synchronization overheads of accessing global state
-for every scheduling decision. Within each runqueue, Linux's scheduler works to maintain the
-correct ratio of received cputime at each scheduling; but Linux does not enforce
-the weight ratios across cores. This leads to the above failure mode, where one
-core has no runnable high weight processes and thus runs a low weight one,
-whereas another core has queued high weight processes. This problem goes away
-when there are no BE processes, because cores try to steal work before going
-idle.
+for every scheduling decision. Within each runqueue, Linux's scheduler works to
+maintain the correct ratio of received cputime at each scheduling; but Linux
+does not enforce the weight ratios across cores. This leads to the above failure
+mode, where one core has no runnable high weight processes and thus runs a low
+weight one, whereas another core has queued high weight processes. This problem
+goes away when there are no BE processes, because cores try to steal work before
+going idle.
 
 \subsection{Enforcing weights across cores is
 expensive}\label{ss:problem:cross-core-hard}
@@ -57,12 +59,10 @@ would need to synchronize at every scheduling decision: calculating whether a
 given process is owed time globally requires knowing the total weight across all
 cores as well as the sum of time that all the processes in the group have
 gotten. At the same time, servers now have up to 8 NUMA nodes, and hundreds up
-CPUs across them~\cite{TODO}. Synchronizing across them is expensive: in a
-microbenchmark we found that even on a single NUMA node if each core takes a
-lock to read the state of the rq on the other cores at every scheduling, this
-can take between 10 and 20 $\mu$s. Other work has also found that kernel lock
-contention is a bottleneck to performance at scale~\cite{TODO}
-% \hmng{the AFaaS cgroups pool thing}
+CPUs across them~\cite{TODO}. Synchronizing across them is expensive: other work
+has also found that kernel lock contention is a bottleneck to performance at
+scale~\cite{TODO}
+% cite the AFaaS cgroups pool thing
 
 
 \subsection{Weights interact poorly with tick-based
@@ -74,8 +74,8 @@ weight based scheme, BE processes also get a fair share of the CPU. The problem
 is that, when this happens, the BE process will interrupt any running LC process
 for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
 thread processing a request may be interrupted for up to 4ms, provided the BE
-process runs for that long before blocking. 4ms can be a large amount of for
-microservice workloads, whose SLOs are often in the low double digit or even
+process runs for that long before blocking. 4ms can be a large amount of time
+for microservice workloads, whose SLOs are often in the low double digit or even
 single digit ms realm.~\cite{TODO}
 
 
