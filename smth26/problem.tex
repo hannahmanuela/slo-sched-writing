@@ -26,12 +26,13 @@ not well-suited to isolate LC from BE.
 
 The failure mode we observe is that \textit{one core is running a BE process,
 while an LC process is waiting on another}. We analyze perf traces of the
-scheduling decisions, and visualize the trace using schedviz~\cite{TODO}.
-\autoref{fig:schedviz-problem} shows a 10ms outtake of the resulting image. The
-process running on each core is shown as a an oval, and queued processes are
-shown as rectangles below. The root of the undesirable behavior is: on core 6,
-the red process that is running the whole time is a BE process, whereas LC
-threads, shown in varying shades of blue, are queued on the other cores.
+scheduling decisions, and visualize the trace using
+schedviz~\cite{schedviz-tool}. \autoref{fig:schedviz-problem} shows a 10ms
+outtake of the resulting image. The process running on each core is shown as a
+an oval, and queued processes are shown as rectangles below. The root of the
+undesirable behavior is: on core 6, the red process that is running the whole
+time is a BE process, whereas LC threads, shown in varying shades of blue, are
+queued on the other cores.
 
 The reason this happens is that Linux maintains a separate runqueue on each
 core, in order to avoid the synchronization overheads of accessing global state

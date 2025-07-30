@@ -188,10 +188,10 @@ limit for the Fifo class as a whole. The failsafes go further than just that
 though: even when set to be equal (ie Fifo gets the full runtime each period if
 it wants), the Normal scheduling class also has a so-called \textit{deadline
 server}, which is basically a process is in the Deadline scheduling class with a
-small amount of runtime per period~\cite{TODO}. This deadline server is in
-essence a representative of the Normal scheduling class, and when the Deadline
-scheduler runs the server, that hands control over to the Normal scheduler,
-which picks a thread to run.
+small amount of runtime per period~\cite{lkml-deadline-srv}. This deadline
+server is in essence a representative of the Normal scheduling class, and when
+the Deadline scheduler runs the server, that hands control over to the Normal
+scheduler, which picks a thread to run.
 % https://lore.kernel.org/lkml/20200807095051.385985-5-juri.lelli@redhat.com/ 
 
 
