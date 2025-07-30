@@ -7,9 +7,10 @@ Many microservices contend with varying load as well as being \textit{latency
 critical} (LC), meaning they have strict SLOs that guarantee uptime and caps on
 latency. However, when developers want to run microservices, scheduling systems
 like AWS ec2 or Kubernetes require them to give a fixed amount of resources the
-microservice needs, \ie{} a number of CPUs and an amount of memory~\cite{TODO}.
-As a result, developers choose those requirements based on the expected peak
-load, and the resources are rarely fully used~\cite{TODO}. 
+microservice needs, \ie{} a number of CPUs and an amount of
+memory~\cite{aws-ec2-resources, kubernetes-resources}. As a result, developers
+choose those requirements based on the expected peak load, and the resources are
+rarely fully used~\cite{borg, nu, overprovision}.
 
 Other tasks do not fall into this category: \textit{best effort} (BE) tasks such
 as long-running map reduce jobs or background data analytics do not have an SLO.
@@ -17,8 +18,8 @@ as long-running map reduce jobs or background data analytics do not have an SLO.
 Indeed, many modern scheduling systems separate the work they run into classes,
 that include one class for LC tasks, which have resource requirements, and one
 class for BE tasks, which don't. This includes distributed schedulers, \eg{}
-Borg\cite{TODO} or Kubernetes\cite{TODO}, and single machine schedulers, \eg{}
-Caladan\cite{TODO}. 
+Borg\cite{borg} or Kubernetes\cite{kubernetes-resources}, and single machine
+schedulers, \eg{} Caladan\cite{caladan}.
 
 In an ideal world, BE tasks allows providers to get high utilization by
 oversubscribing their machines without compromising any guarantees: Under high
@@ -35,15 +36,16 @@ The current standard mechanism for isolating LC from BE processes is Linux's
 \cgroups{}. Most modern containers rely on \cgroups{}; this includes all Open
 Container Initiative (OCI) compliant containers, such as Docker, Kubernetes,
 CRI-O, and containerd, because the OCI specification calls for use of
-\cgroups{}~\cite{TODO}. VMs, including Firecracker, AFaas, and KVM, also rely on
-\cgroups{} to manage CPU time allocation when the number of vCPUs is
-oversubscribed.~\cite{TODO}
+\cgroups{}~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
+VMs, including Firecracker, AFaas, and KVM, also rely on \cgroups{} to manage
+CPU time allocation when the number of vCPUs is
+oversubscribed.~\cite{kvm-cgroups, firecracker-cgroups,afaas}
 
 The part of the \cgroups{} interface that these systems use to specify the
-priority of processes is based on weight: each workload is put into
-its own group, and each group is assigned a weight in the range [1, 10000].
-\cgroups{} specifies that each group gets CPU time proportional to its weight as
-a share of the sum of weights of runnable groups~\cite{TODO}.\footnote{Other
+priority of processes is based on weight: each workload is put into its own
+group, and each group is assigned a weight in the range [1, 10000]. \cgroups{}
+specifies that each group gets CPU time proportional to its weight as a share of
+the sum of weights of runnable groups~\cite{cgroups-kerneldocs}.\footnote{Other
 operating systems use a similar interface, for instance Windows exposes a number
 of shares.} For instance, if two groups $cg1$ and $cg2$ have weights 200 and 300
 respectively, when they are both active their CPU time ratio should also be

@@ -40,21 +40,22 @@ implementation as an edited \schedidle{}. We compare against it as a baseline in
 \schedidle{} is in many ways not too different from a low weight \schednormal{}
 process: both are kept on the same runqueues as all the other \schednormal{}
 processes, and \schedidle{} just has a predefined low weight of
-3~\cite{TODO}.\footnote{There is, confusingly, also an Idle scheduling
+3~\cite{weight-idleprio}.\footnote{There is, confusingly, also an Idle scheduling
 \textit{class}, but that not accessible to userspace and exists solely to manage
 the core's transition in and out of being actually idle (ie running nothing).}
 
 However, Linux has over the years added more special-casing to \schedidle{}. In
 2019, they added a check when a \schednormal{} entity becomes newly runnable on
-a core already running something in \schednormal{}. This new check will look for
-other cores that might be currently running a \schedidle{} entity, and migrates
-the new entity there. This represents the \textit{entry check}.
+a core already running something in \schednormal{}~\cite{fixing-idle-article}.
+This new check will look for other cores that might be currently running a
+\schedidle{} entity, and migrates the new entity there. This represents the
+\textit{entry check}.
 
 The other special thing Linux added is that \schedidle{} was extended to have
-cgroup support recently\cite{TODO}: a whole groups' policy can be set to
-\schedidle{} via the \cgroups{} interface. This also makes it additionally
-promising to be used as a basis for \schedbe{} because it can fit well with the
-existing infrastructure, which uses the \cgroups{} api.
+cgroup support recently~\cite{lkml-idle-cgroup}: a whole groups' policy can be
+set to \schedidle{} via the \cgroups{} interface. This also makes it
+additionally promising to be used as a basis for \schedbe{} because it can fit
+well with the existing infrastructure, which uses the \cgroups{} api.
 
 So, the actual patch to Linux that creates \schedbe{} builds on \schedidle{},
 and adds the missing components from the list: the patch enforces proper policy

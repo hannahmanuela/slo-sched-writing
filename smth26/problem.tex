@@ -54,8 +54,8 @@ owed time globally requires knowing the total weight across all cores as well as
 the sum of time that all the processes in the group have gotten. In increasingly
 multi-core and multi-NUMA machines, synchronization is expensive; other work has
 found that kernel lock contention is a bottleneck to performance at
-scale.~\cite{TODO} This means that the overheads of maintaining global invariants
-can quickly become prohibitive.
+scale.~\cite{afaas} This means that the overheads of maintaining global
+invariants can quickly become prohibitive.
 % cite the AFaaS cgroups pool thing
 
 
@@ -70,7 +70,7 @@ for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
 thread processing a request may be interrupted for up to 4ms, provided the BE
 process runs for that long before blocking. 4ms can be a large amount of time
 for microservice workloads, whose SLOs are often in the low double digit or even
-single digit ms realm.~\cite{TODO}
+single digit ms realm.~\cite{sigmaos}
 
 
 

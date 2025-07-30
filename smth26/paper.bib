@@ -17,3 +17,142 @@
     month = nov
 }
 
+@misc{aws-ec2-resources,
+  author = {AWS},
+  howpublished = {online},
+  url = {https://aws.amazon.com/ec2/instance-types/},
+  title = {Amazon EC2 Instance types}
+}
+
+@misc{kubernetes-resources,
+  author = {Kubernetes},
+  howpublished = {online},
+  url = {https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/},
+  title = {Resource Management for Pods and Containers}
+}
+
+@inproceedings{borg,
+    title	= {Borg: the Next Generation},
+    author	= {Muhammad Tirmazi and Adam Barker and Nan Deng and Md Ehtesam Haque and Zhijing Gene Qin and Steven Hand and Mor Harchol-Balter and John Wilkes},
+    year	= {2020},
+    booktitle	= {EuroSys'20},
+    address	= {Heraklion, Crete}
+}
+
+@inproceedings {nu,
+    author = {Zhenyuan Ruan and Seo Jin Park and Marcos K. Aguilera and Adam Belay and Malte Schwarzkopf},
+    title = {Nu: Achieving {Microsecond-Scale} Resource Fungibility with Logical Processes},
+    booktitle = {20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)},
+    year = {2023},
+    isbn = {978-1-939133-33-5},
+    address = {Boston, MA},
+    pages = {1409--1427},
+    url = {https://www.usenix.org/conference/nsdi23/presentation/ruan},
+    publisher = {USENIX Association},
+    month = apr
+}
+
+@misc{oci-cgroups,
+  author = {opencontainers},
+  howpublished = {github},
+  url = {https://github.com/opencontainers/runtime-spec/blob/main/config-linux.md},
+  title = {config-linux.md: Linux Container Configuration}
+}
+
+@misc{docker-docs-cgroups,
+  author = {Docker},
+  howpublished = {online},
+  url = {https://docs.docker.com/engine/containers/resource_constraints/},
+  title = {dockerdocs: Resource constraints},
+}
+
+@misc{container-isolation-article,
+  author = {Rory McClune},
+  howpublished = {online},
+  url = {https://www.aquasec.com/blog/container-isolation-techniques/},
+  title = {How Do Containers Contain? Container Isolation Techniques},
+  year = {2021}
+}
+
+@inproceedings {afaas,
+    author = {Xiaohu Chai and Tianyu Zhou and Keyang Hu and Jianfeng Tan and Tiwei Bie and Anqi Shen and Dawei Shen and Qi Xing and Shun Song and Tongkai Yang and Le Gao and Feng Yu and Zhengyu He and Dong Du and Yubin Xia and Kang Chen and Yu Chen},
+    title = {Fork in the Road: Reflections and Optimizations for Cold Start Latency in Production Serverless Systems},
+    booktitle = {20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)},
+    year = {2025},
+    address = {Boston, MA},
+    url = {https://www.usenix.org/system/files/osdi25-chai-xiaohu.pdf},
+    publisher = {USENIX Association},
+}
+
+@misc{kvm-cgroups,
+  author = {Red Hat Documentation},
+  howpublished = {online},
+  url = {https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-overcommitting_with_kvm-overcommitting_virtualized_cpus},
+  title = {Overcommitting Virtualized CPUs}
+}
+
+@misc{firecracker-cgroups,
+  author = {firecracker},
+  howpublished = {github},
+  url = {https://github.com/firecracker-microvm/firecracker/blob/main/docs/prod-host-setup.md},
+  title = {config-linux.md: Production Host Setup Recommendations}
+}
+
+@misc{cgroups-kerneldocs,
+  author = {Tejun Heo},
+  howpublished = {online},
+  url = {https://docs.kernel.org/admin-guide/cgroup-v2.html#weights},
+  title = {docs.kernel.org: Control Group v2},
+  year = {2015}
+}
+
+@inproceedings{sigmaos,
+    author = {Szekely, Ariel and Belay, Adam and Morris, Robert and Kaashoek, M. Frans},
+    title = {Unifying serverless and microservice workloads with SigmaOS},
+    year = {2024},
+    isbn = {9798400712517},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3694715.3695947},
+    doi = {10.1145/3694715.3695947},
+    abstract = {Many cloud applications use both serverless functions, for bursts of stateless parallel computation, and container orchestration, for long-running microservices and tasks that need to interact. Ideally a single platform would offer the union of these systems' capabilities, but neither is sufficient to act as that single platform: serverless functions are lightweight but cannot act as servers with long-term state, while container orchestration offers general-purpose computation but instance start-up takes too long to support burst parallelism.σOS is a new multi-tenant cloud operating system that combines the best of container orchestration and serverless in one platform with one API. σOS computations, called procs, can be long-running, stateful, and interact with each other, making them a good match for both serverless and microservice tasks. A key aspect of the σOS design is its cloud-centric API, which provides flexible management of computation, a novel abstraction for communication endpoints, σEPs---which allow procs of a tenant to communicate efficiently but prohibits procs from sending packets to other tenants---and a flexible naming system to name, for example, σEPs.Quick proc start-up is important for serverless uses. A key enabling observation is that both serverless and microservice applications rely on cloud services for much of the work traditionally done by the local OS (e.g., access to durable storage and additional compute resources). σOS exploits this observation by providing only a small and generic local operating system image to each proc, which can be created much more quickly than a container orchestration instance since σOS need not install application-specific filesystem content or (due to σOS's σEPs) configure an isolated overlay network.Microbenchmarks show that σOS can cold start a proc in 7.7 msec and can create 36,650 procs per second, distributing them over a 24-machine cluster. An evaluation of σOS with two microservice applications from DeathStarBench, a MapReduce application, and an image processing benchmark, shows that the σOS API supports both microservices and lambda-style computations, and provides better performance than corresponding versions on AWS Lambda and Kubernetes.},
+    booktitle = {Proceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles},
+    pages = {385–402},
+    numpages = {18},
+    location = {Austin, TX, USA},
+    series = {SOSP '24}
+}
+
+@misc{fixing-idle-article,
+  author = {Viresh Kumar},
+  howpublished = {online},
+  url = {https://lwn.net/Articles/805317/},
+  title = {Fixing SCHED\_IDLE},
+  year = {2019}
+}
+
+
+@misc{weight-idleprio,
+  author = {Linux source code},
+  howpublished = {source code},
+  url = {https://elixir.bootlin.com/linux/v6.14.2/source/kernel/sched/sched.h#L2346},
+  title = {sched.h}
+}
+
+@misc{overprovision,
+  title = {Overprovisioning in AWS? Cost-control tools and strategies can help},
+  author = {Will Kelly},
+  howpublished = {online},
+  url = {https://www.techtarget.com/searchaws/news/2240209793/Overprovisioning-in-AWS-Cost-control-tools-and-strategies-can-help},
+  year = {2013}
+}
+
+@misc{lkml-idle-cgroup,
+  author = {Josh Don},
+  howpublished = {online},
+  url = {https://lore.kernel.org/all/162971078674.25758.15464079371945307825.tip-bot2@tip-bot2/},
+  title = {sched: Cgroup SCHED\_IDLE support},
+  year = {2021}
+}
+
+
