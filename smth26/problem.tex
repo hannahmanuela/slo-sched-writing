@@ -2,18 +2,39 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
-The problem that leads to the increased latencies observed in
-\autoref{fig:srv-bg-unedited} is that Linux will run a BE process on one core,
-unaware that an LC process is runnable and waiting on another
-(\autoref{ss:problem:mechanistic}). This observation points to a problem with
-the \cgroups{} weight interface: it is expensive to enforce weights across cores
-(\autoref{ss:problem:cross-core-hard}). However, even if implemented correctly,
-the \cgroups{} weight interface is not well-suited for isolating LC from BE,
-because weights are enforced at the granularity of scheduling quanta
-(\autoref{ss:problem:quantum}). We conclude that the weight-based interface is
-not well-suited to isolate LC from BE.
 
-\subsection{Weights are only enforced locally}\label{ss:problem:mechanistic}
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[b]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-low.png}
+        \caption{Low load stetting, utilization before starting the BE tasks is
+        around 85\%}\label{fig:srv-bg-unedited-low}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[b]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-high.png}
+        \caption{High load setting, utilization before starting the BE tasks is
+        around 95\%}\label{fig:srv-bg-unedited-high}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{Latencies of the server and iteration counts of the background
+    tasks in different load scenarios. Note the different y axis limits. The
+    upper graphs show end-to-end request latencies, and the bottom graph is a
+    histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
+\end{figure}
+
+In order to understand more concretely where the isolation between the LC web
+application and the BE image resize is failing in
+\autoref{fig:kubernetes-unedited}, we reproduce the jump in latency we saw in
+the application running on Kubernetes in a simpler benchmark. We run a simple
+cpu-bound server with a pool of worker threads that we hit with an open-loop
+remote client, and then start two BE workloads doing image resizing. We put the
+LC server and the BE resize job each in their own \cgroups{} group, with weights
+1 and 10000. \autoref{fig:srv-bg-unedited} shows the increase in latencies of
+the LC server at two different baseline utilization levels. We see that even in
+the lower baseline utilization case, where the server alone uses 85\%, mean
+latencies spike up from steady at around 6ms to as high as 20ms, and much higher
+for 99th percentile latencies.
 
 \begin{figure}[t]
     \centering
@@ -24,15 +45,21 @@ not well-suited to isolate LC from BE.
     }\label{fig:schedviz-problem}
 \end{figure}
 
-The failure mode we observe is that \textit{one core is running a BE process,
-while an LC process is waiting on another}. We analyze perf traces of the
-scheduling decisions, and visualize the trace using
-schedviz~\cite{schedviz-tool}. \autoref{fig:schedviz-problem} shows a 10ms
-outtake of the resulting image. The process running on each core is shown as a
-an oval, and queued processes are shown as rectangles below. The root of the
-undesirable behavior is: on core 6, the red process that is running the whole
-time is a BE process, whereas LC threads, shown in varying shades of blue, are
-queued on the other cores.
+Using this simplified experiment, we analyze perf traces of the scheduling
+decisions, and visualize the trace using schedviz~\cite{schedviz-tool}, in order
+to understand where the latency impact comes from.
+\autoref{fig:schedviz-problem} shows a 10ms outtake of the resulting image. The
+process running on each core is shown as a an oval, and queued processes are
+shown as rectangles below. The root of the undesirable behavior is: on core 6,
+the red process that is running the whole time is a BE process, whereas LC
+threads, shown in varying shades of blue, are queued on the other cores. The
+takeaway here is that the failure mode we observe is that \textit{one core is
+running a BE process, while an LC process is waiting on another}.
+
+Based on this observation, we explore more deeply the root of the issue that is
+causing the poor behavior we see.
+
+\subsection{Weights are only enforced locally}\label{ss:problem:mechanistic}
 
 The reason this happens is that Linux maintains a separate runqueue on each
 core, in order to avoid the synchronization overheads of accessing global state
@@ -57,7 +84,6 @@ multi-core and multi-NUMA machines, synchronization is expensive; other work has
 found that kernel lock contention is a bottleneck to performance at
 scale.~\cite{afaas} This means that the overheads of maintaining global
 invariants can quickly become prohibitive.
-% cite the AFaaS cgroups pool thing
 
 
 \subsection{Weights interact poorly with tick-based

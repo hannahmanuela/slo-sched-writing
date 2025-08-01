@@ -3,9 +3,7 @@
 \label{s:eval}
 %-------------------------------------------------------------------------------
 
-We begin by evaluating the existing alternatives to \cgroups{} that currently
-exist in Linux in \autoref{ss:eval:existing}. We then explore the performance of
-\schedbe{} in relation to the following questions:
+We explore the performance of \schedbe{} in relation to the following questions:
 \begin{enumerate}
     \item Does the new \schedbe{} isolate LC from BE workloads?
     \item Is parking necessary?
@@ -13,101 +11,8 @@ exist in Linux in \autoref{ss:eval:existing}. We then explore the performance of
 \end{enumerate}
 
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
-that our patch builds on.
-
-\subsection{Existing approaches}\label{ss:eval:existing}
-
-To show the benefits of \schedbe{}, we compare with existing alternatives within
-Linux. The first is real time scheduling, because this is a place where Linux
-already enforces categorical global priorities: processes that run in real time
-have strict priority over other processes. The second is the existing mechansism
-of \schedidle{}, which \schedbe{} is based on.
-
-\subsubsection{Realtime scheduling}
-
-Linux enforces the categorical separation of real time tasks by using
-\textit{scheduling classes}. Each scheduling class exists completely separately:
-classes maintain their own runqueues and per-entity state; implement their own
-scheduling algorithms to choose from the entities on their runqueue; and balance
-the load across runqueues on different cores.
-
-Linux isolates strictly between different scheduling classes: it only schedules
-a lower scheduling class if the higher scheduling classes found nothing to run,
-and each scheduling class tries to steal work from other cores before returning
-that it has nothing to run --- these two checks represent the entry and exit
-synchronization points. It is thereby true that if something in the Normal
-scheduling class is running, it means there are no Fifo tasks waiting to run
-anywhere on the machine.
-
-This points to a possible alternative: run LC in the Fifo scheduling class and BE
-in Normal.\footnote{The Deadline scheduling class is not a good fit, since it
-requires accurate knowledge of a processes runtime (processing time per request)
-and period (when requests come in)} Fifo runs a priority scheduler: it has 99
-priorities, each takes strict precedent over the one lower; within priorities
-the scheduler enforces a global first-in-first-out (hence the Fifo class name),
-based on when processes become runnable.
-
-\begin{figure}[t]
-    \centering
-    \begin{subfigure}[t]{0.48\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
-        \caption{Low load}\label{fig:srv-bg-rt-low}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{0.48\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
-        \caption{High load}\label{fig:srv-bg-rt-high}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{Results of the same experiment, with LC running as a real time process}\label{fig:srv-bg-rt}
-\end{figure}
-
-We run the same experiment as in \autoref{s:intro}, but put the LC task in the
-Fifo scheduling class, and leave BE tasks with the default process weight.
-\autoref{fig:srv-bg-rt} shows the resulting measured latencies in the same low
-and high load setting as previously. As expected, we see that Linux is able to
-isolate the two very well. 
-
-However, this is an untenable solution because of Fifo's run-to-completion
-scheduling, which is known to have a failure mode of head-of-line (HoL) blocking
-under varied request processing times, where long-running requests monopolize
-the CPU while short requests wait in the queue. The Fifo scheduler also enforces
-not only cross-core isolation between different priorities, but also a global
-ordering within the same priority.
-
-The takeaway is that Linux's current mechanism of scheduling classes can isolate
-workloads effectively, but existing scheduling classes use scheduling
-algorithms that are not a good fit for modern workloads.
-
-\subsubsection{\schedidle}\label{ss:schedidle}
-
-\schedidle{} is a scheduling \textit{policy}. Policies are not full scheduling
-classes, but allow for special casing within a scheduling class. As we discussed
-in \autoref{s:maybe-solution}, \schedidle{} is special cased, but only on
-wakeup.\hmng{I took out the insight/connection that \schedidle{} is half a
-scheduling class and \schedbe{} is/makes it a whole one because I didn't feel
-like it fit here, but now I'm not sure where it does}
-
-\begin{figure}[t]
-    \centering
-    \begin{subfigure}[t]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
-        \caption{Low load}\label{fig:srv-bg-idle-low}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
-        \caption{High load}\label{fig:srv-bg-idle-high}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{using \schedidle{}}\label{fig:srv-bg-idle}
-\end{figure}
-
-And indeed, we find that when we use cgroups' new cpu.idle interface feature,
-the latency impact of the BE tasks decreases, although it does not entirely drop
-to what we saw with the Fifo class.\ \autoref{fig:srv-bg-idle} shows the
-results, for the familiar settings of low and high load. The jump we see in the
-mean latency has decreased from peaks as high as 20ms to around 8ms.
+that our patch builds on. \hmng{TODO put in specs of ..? zg machines? I didn't
+always use all of the cores, but ig I can say that on a per-experiment basis}
 
 \subsection{Does \schedbe{} isolate?}
 
@@ -244,3 +149,82 @@ seconds and the server from then finishes the backlog of requests).
 
 We evaluate the cost of the additional checks required by \schedbe{} by looking
 at how long the code takes to run, and how much lock contention it creates.
+
+
+
+
+\subsection{Existing approaches}\label{ss:eval:existing}
+
+To show the benefits of \schedbe{}, we compare with existing alternatives to
+\cgroups{} within Linux.
+
+\subsubsection{Realtime scheduling}
+
+As we discussed in \autoref{s:solution}, Linux enforces the categorical
+separation of tasks in different scheduling classes. 
+
+This points to a possible alternative to using \cgroups{}: run LC in the Fifo
+scheduling class and BE in Normal.\footnote{The Deadline scheduling class is not
+a good fit, since it requires accurate knowledge of a processes runtime
+(processing time per request) and period (when requests come in)} Fifo runs a
+priority scheduler: it has 99 priorities, each takes strict precedent over the
+one lower; within priorities the scheduler enforces a global first-in-first-out
+(hence the Fifo class name), based on when processes become runnable.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.48\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
+        \caption{Low load}\label{fig:srv-bg-rt-low}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.48\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
+        \caption{High load}\label{fig:srv-bg-rt-high}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{Results of the same experiment, with LC running as a real time process}\label{fig:srv-bg-rt}
+\end{figure}
+
+We run the same experiment as in \autoref{s:intro}, but put the LC task in the
+Fifo scheduling class, and leave BE tasks with the default process weight.
+\autoref{fig:srv-bg-rt} shows the resulting measured latencies in the same low
+and high load setting as previously. As expected, we see that Linux is able to
+isolate the two very well. 
+
+However, this is an untenable solution because of Fifo's run-to-completion
+scheduling, which is known to have a failure mode of head-of-line (HoL) blocking
+under varied request processing times, where long-running requests monopolize
+the CPU while short requests wait in the queue. The Fifo scheduler also enforces
+not only cross-core isolation between different priorities, but also a global
+ordering within the same priority.
+
+The takeaway is that Linux's current mechanism of scheduling classes can isolate
+workloads effectively, but existing scheduling classes use scheduling
+algorithms that are not a good fit for modern workloads.
+
+\subsubsection{\schedidle}\label{ss:schedidle}
+
+As we discussed in \autoref{s:implementation}, \schedidle{} implements some but
+not all of the isolation required of \beclass{}.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
+        \caption{Low load}\label{fig:srv-bg-idle-low}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
+        \caption{High load}\label{fig:srv-bg-idle-high}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{using \schedidle{}}\label{fig:srv-bg-idle}
+\end{figure}
+
+And indeed, we find that when we use cgroups' new cpu.idle interface feature,
+the latency impact of the BE tasks decreases, although it does not entirely drop
+to what we saw with the Fifo class.\ \autoref{fig:srv-bg-idle} shows the
+results, for the familiar settings of low and high load. The jump we see in the
+mean latency has decreased from peaks as high as 20ms to around 8ms.

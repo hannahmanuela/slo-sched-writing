@@ -1,11 +1,11 @@
 \section{Approach}\label{s:approach}
 
-We imagine an extended \cgroups{} api where weights can still be used to
-differentiate between different LC tasks, but the BE tasks are put in an
-entirely separate category, the separation of which is enforced by enforced by
-strict priority scheduling.\footnote{here we do not mean priorities in the way
-there are used in nice values, but rather a strict priority where threads of a
-higher priority always run first.} As we show in
+We propose an extended \cgroups{} API where weights can still be used to
+differentiate between different LC tasks but the BE tasks are put in an entirely
+separate category, and a scheduler where the separation of these two categories
+is enforced by strict priority scheduling.\footnote{here we do not mean
+priorities in the way there are used in nice values, but rather a strict
+priority where threads of a higher priority always run first.} As we show in
 \autoref{ss:approach:solves-problems}, doing so solves the problems laid out in
 \autoref{s:problem}. But such categorical priorities also require a state that
 BEs can go into during high load that allows the LCs to use all the available
@@ -14,25 +14,26 @@ resources, which we discuss in \autoref{ss:approach:parking}.
 \subsection{Categorical separation solves the
 problems}\label{ss:approach:solves-problems}
 
-Creating this categorical split between LC and BE  solves the problems we just
-described: it by definition ensures cpu isolation, and it requires less
-synchronization to be enforced.
+Creating this categorical split between LC and BE  solves the problems
+identified in \autoref{s:problem}.
 
-\textbf{\autoref{ss:problem:mechanistic}} The initial concrete problem we saw
-was that BE would sometimes run even while another core had a queued LC thread.
-Strict priority scheduling solves this problem because it is by definition
-global.
+\textbf{\autoref{ss:problem:mechanistic}} The initial concrete problem we
+observed was that BE would sometimes run even while another core had a queued LC
+thread. Strict priority scheduling solves this problem because it is by
+definition global.
 
-\textbf{\autoref{ss:problem:cross-core-hard}} Another problem we saw is that
-implementing a weight-based policy globally is expensive. However, enforcing
-categorical priorities requires fewer synchronization points to enforce it than
-weights do. This is because priorities change on the basis of events, whereas
-weights change over time, ie with ticks. Unless the set of runnable tasks
-changes, if the scheduler was running the correct priority class before, it
-still will be. This is not true for fair-share scheduling, where while it was
-running the current thread might have gone over its share. Time sharing within
-each category may still require ticks, but across categories synchronization can
-be triggered by events rather than ticks.
+\textbf{\autoref{ss:problem:cross-core-hard}} Another problem we observed is
+that implementing a weight-based policy globally is expensive. This is because,
+in a weight-based system, the definition of what process should be running
+changes over time. If a core has one high-weight and one low-weight process,
+before running the low-weight process it needs to know if any other cores have
+recently run a different thread within that process, because that would affect
+how much time it is owed on this core. However, if the scheduler is enforcing
+categorical priorities, then unless the set of runnable tasks changes, if the
+scheduler was running the correct priority class before, it still will be. Thus
+the scheduler only needs to synchronize across cores on \textit{events}, ie when
+the set of runnable tasks changes in a way relevant to cross-category boundaries
+(starting to run a lower class process, or enqueueing a higher class one).
 
 \textbf{\autoref{ss:problem:quantum}} This also addresses the final problem we
 saw, which is that weight-based separation meant that the fidelity of the
@@ -41,35 +42,29 @@ enforced at events not ticks, that dependence also goes away.
 
 \subsection{Parking during high load}\label{ss:approach:parking}
 
-A scheduler needs to be able to maintain this categorical isolation even under
-very high system load, where CPU utilization is 100\% (assuming that memory
-utilization does not require the BE tasks to be killed\hmng{see this is where an
-actual separate state would be useful, where `parked' means kernel state is
-still there and managed and stuff, but as much of the actual memory as necessary
-is swapped out}). In order to do so, the scheduler needs allows for the LC tasks
-to use all of the resources, without having to kill the BEs completely.
+Our scheduler needs to be able to maintain this categorical isolation even under
+very high system load, where CPU utilization is 100\%, meaning that the LC tasks
+need to be allowed to use all of the resources. The goal, then, is to do so
+without forcing the scheduler to kill BE tasks. Ideally BEs would be able to
+simply resume computation immediately once the load goes down enough that LC
+processes are not using all the of the CPU time.
 
 We call this intermediate state `parked', where the BEs are using the minimal
-amount of resources required to not die. It falls out quite naturally from the
-division that standard kernels make between userspace and kernelspace. Critical
-pieces like TCP connections \hmng{and? timers?} are already managed by the
-kernel, and userspace code just makes progress on the actual application logic.
-When a BE is `parked' during high load, that means the kernel continues to run
-and maintain the infrastructure it holds for the BE threads, but the userspace
-will get no CPU time, as long as it is all needed by the LC processes. This
-means that BE's TCP connections won't die, because incoming messages will be
-acknowledged and the contents buffered. However, any and all application logic
-will be put on hold, for instance a BE on a machine overloaded with LC tasks
-will stop sending heartbeats, even though the connection stays alive and
-keepalive messages continue to be acknowledged.
+amount of resources required to not die. Critical pieces like keeping TCP
+connections alive by acknowledging messages should be handled, but their
+application-level processing shoud be deferred. This means that TCP connections
+won't die, but any and all application logic will be put on hold. For instance, a
+BE on a machine overloaded with LC tasks will stop sending application-level
+heartbeats, even though the connection stays alive and keepalive messages
+continue to be acknowledged.
 
-Part of why this makes sense to do is because a machine experiencing high load
-is likely a localized problem, both in space (as in, will only effect some small
-number of machines) and time (as in, the high load on the machine won't last
-long). It is localized in space because microservices' loads are independent
-from one another: on the order of seconds and minutes, individual microservices'
-loads may vary, but broadly load is known to be predictable, so even if one
-machine is experiencing high load other machines won't be~\cite{TODO}. It is
-localized in time because of the distributed setting: a distributed scheduler
-monitors the state of all the machines and migrates load when it sees high cpu
-utilization, or an autoscaler starts new instances.
+Parking makes sense because a machine experiencing high load is likely a
+localized problem, both in space (as in, will only effect some small number of
+machines) and time (as in, the high load on the machine won't last long). It is
+localized in space because microservices' loads are independent from one
+another: on the order of seconds and minutes, individual microservices' loads
+may vary, but broadly load is known to be predictable, so even if one machine is
+experiencing high load other machines won't be~\cite{TODO}. It is localized in
+time because of the distributed setting: a distributed scheduler monitors the
+state of all the machines and migrates load when it sees high cpu utilization,
+or an autoscaler starts new instances.
