@@ -3,7 +3,7 @@
 %-------------------------------------------------------------------------------
 
 The problem that leads to the increased latencies observed in
-\autoref{fig:unedited-weight} is that Linux will run a BE process on one core,
+\autoref{fig:srv-bg-unedited} is that Linux will run a BE process on one core,
 unaware that an LC process is runnable and waiting on another
 (\autoref{ss:problem:mechanistic}). This observation points to a problem with
 the \cgroups{} weight interface: it is expensive to enforce weights across cores

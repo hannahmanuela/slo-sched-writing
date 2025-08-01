@@ -32,11 +32,31 @@ changes: it needs to maintain low latencies for LC requests by ensuring that
 when the LC processes need resources they appear uncontended, while at the same
 time using idle resources to run BE processes.
 
-The current standard mechanism for isolating LC from BE processes is Linux's
-\cgroups{}. Most modern containers rely on \cgroups{}; this includes all Open
-Container Initiative (OCI) compliant containers, such as Docker, Kubernetes,
-CRI-O, and containerd, because the OCI specification calls for use of
-\cgroups{}~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
+    \caption{E2E repsonse times for a simple social network web application,
+    before and after starting load on a BE
+    service}\label{fig:kubernetes-unedited}
+\end{figure}
+
+Current popular systems fail to properly isolate latency critical from best
+effort workloads. When running a small but realistic social network web
+application on Kubernetes, we observe significant impacts on its latency when
+starting a best effort workload, doing image resizing, on the same machine.
+\autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
+that gets a users feed on the top graph; the bottom graph shows the throughput
+of the BE workload. The mean response latency jumps from $\sim$7ms to
+$\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$23ms. 
+
+Understanding where the isolation fails requires understanding the underlying
+mechanism that is enforcing the cpu isolation: The current standard mechanism
+for isolating LC from BE processes is Linux's \cgroups{}.\hmng{I kinda snuck in
+the jump from "isolation" to "cpu isolation". Probably should at some point just
+state and then move on that we focus on cpu} Most modern containers rely on
+\cgroups{}; this includes all Open Container Initiative (OCI) compliant
+containers, including Kubernetes but also Docker, CRI-O, and
+containerd~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
 VMs, including Firecracker, AFaas, and KVM, also rely on \cgroups{} to manage
 CPU time allocation when the number of vCPUs is
 oversubscribed.~\cite{kvm-cgroups, firecracker-cgroups,afaas}
@@ -55,37 +75,39 @@ $2:3$. However, if $cg1$ has no runnable threads, then $cg2$ would represent
 \begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/unedited-weight-low-two.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-low.png}
         \caption{Low load stetting, utilization before starting the BE tasks is
-        around 85\%}\label{fig:unedited-weight-low-two}
+        around 85\%}\label{fig:srv-bg-unedited-low}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[b]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/unedited-weight-high-two.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-high.png}
         \caption{High load setting, utilization before starting the BE tasks is
-        around 95\%}\label{fig:unedited-weight-high-two}
+        around 95\%}\label{fig:srv-bg-unedited-high}
     \end{subfigure}
     \vspace{4pt}
     \caption{Latencies of the server and iteration counts of the background
     tasks in different load scenarios. Note the different y axis limits. The
     upper graphs show end-to-end request latencies, and the bottom graph is a
-    histogram of completed iterations of the BE tasks}\label{fig:unedited-weight}
+    histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
 \end{figure}
 
-However, even when using the largest possible weight split of 1 and 10000
-between two tasks, we find that the presence of low weight (ie BE) tasks has a
-large performance impact on a high-weight (ie LC) task. In an experiment, we run
-a simple cpu-bound server and then start two BE workloads doing image resizing,
-using two \cgroups{} groups, with weights 1 and 10000, to isolate the two.
-\autoref{fig:unedited-weight} shows the increase in latencies of the LC server
-at two different baseline utilization levels. We see that even in the lower
-baseline utilization case, where the server alone uses 85\%, mean latencies
-spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
-percentile latencies.
+We reproduce the jump in latency we saw in the application running on Kubernetes
+in a simpler benchmark. We run a simple cpu-bound server and then start two BE
+workloads doing image resizing, using two \cgroups{} groups, with weights 1 and
+10000, to isolate the two. \autoref{fig:srv-bg-unedited} shows the increase in
+latencies of the LC server at two different baseline utilization levels. We see
+that even in the lower baseline utilization case, where the server alone uses
+85\%, mean latencies spike up from steady at around 6ms to as high as 20ms, and
+much higher for 99th percentile latencies.
 
-As we explore in \autoref{s:problem}, the main reason that this happens is that
-Linux allows BE processes to run on one core, even while another core has a
-queued and waiting LC process. This is an interface problem, not an
+This shows that the failure to isolate LC workloads from BE ones will show up in
+any system that uses \cgroups{}, which includes basically all the most popular
+containers and VMs.
+
+As we explore in \autoref{s:problem}, the main place \cgroups{} isolation fails
+is that Linux allows BE processes to run on one core, even while another core
+has a queued and waiting LC process. This is an interface problem, not an
 implementation bug: Linux's scheduler uses per-core runqueues, and as a result
 the weights are only enforced on a runqeueue level.
 
@@ -94,7 +116,8 @@ than ends of a weight spectrum, and that unfairness should be the goal. We show
 that doing so enables Linux to isolate LC from BE:\ in the same experiment, the
 increase in average latency when starting a BE workload goes from $>$2x to 0,
 and the tail latency from $>$5x to 0. The contributions of this paper are thus
-as follows: 
+as follows: \hmng{given this new intro flow the contributions feel a bit too
+Linux-specific?}
 \begin{enumerate}
     \item the insight that weighted fair share breaks down with large weight
     splits because the weights are not enforced across cores; and that this

@@ -39,13 +39,13 @@ to run uncontended.
 \begin{figure*}[t]
     \centering
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{graphs/unedited-weight-low-two.png}
-        \caption{Low load stetting}\label{fig:unedited-weight-low-two}
+        \includegraphics[width=\textwidth]{graphs/srv-bg-unedited-low.png}
+        \caption{Low load stetting}\label{fig:srv-bg-unedited-low}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{graphs/unedited-weight-high-two.png}
-        \caption{High load setting}\label{fig:unedited-weight-high-two}
+        \includegraphics[width=\textwidth]{graphs/srv-bg-unedited-high.png}
+        \caption{High load setting}\label{fig:srv-bg-unedited-high}
     \end{subfigure}
     \caption{Latencies of the server and iteration counts of the background
     tasks in different load scenarios. Note the different y axis limits. The
@@ -72,12 +72,12 @@ around 85\%. After $\sim$10 seconds, we start two background tasks on the same
 four cores, each performing an image resize job. Each background task is in its
 own cgroup, which both have the lowest possible weight, 1. We then measure the
 latencies experienced by the LC server, before and after starting the background
-tasks. Figure~\ref{fig:unedited-weight-low-two} shows the results. We see that
+tasks. Figure~\ref{fig:srv-bg-unedited-low} shows the results. We see that
 mean latencies spike up from steady at just under 6ms to as high as 13ms, and
 much higher for 99th percentile latencies.
 
 With a higher baseline load for the LC server the spikes are higher,
-figure~\ref{fig:unedited-weight-high-two} shows the latencies when the
+figure~\ref{fig:srv-bg-unedited-high} shows the latencies when the
 utilization of the uncontended server load is around 95\%.
 
 
