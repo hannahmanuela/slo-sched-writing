@@ -171,13 +171,15 @@ running because there was no queued LC thread to steal.
 \end{figure}
 
 We also run the Kubernetes application from \autoref{fig:kubernetes-unedited}
-using \schedidle{} as well as \schedbe{}. The results are in
-\autoref{fig:kubernetes-other}, we can see that, as above, \schedidle{} regains
-some of the performance in comparison to the default weight-based isolation, but
-still shows an influence on the LC web application by the BE image resize job.
-\schedbe{} completely gets rid of the gap, and we can see that the latency
-profile os the web application is exactly the same before and after starting the
-image resize job.
+using \schedidle{} as well as \schedbe{}.\hmng{is it clear that this required no
+changes? like that I just set the schedluing policy to be sched\_idle for the
+first one, and then switched out the kernel version for subgraph b}. The results
+are in \autoref{fig:kubernetes-other}, we can see that, as above, \schedidle{}
+regains some of the performance in comparison to the default weight-based
+isolation, but still shows an influence on the LC web application by the BE
+image resize job. \schedbe{} completely gets rid of the gap, and we can see that
+the latency profile os the web application is exactly the same before and after
+starting the image resize job.
 
 
 \subsection{Is parking necessary?}
