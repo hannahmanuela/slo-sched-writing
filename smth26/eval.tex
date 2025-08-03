@@ -69,11 +69,11 @@ meaning that it succesfully found and stole a queued and waiting LC thread.
 We also run the Kubernetes application from \autoref{fig:kubernetes-unedited}
 using \schedbe{}. We do this by explicitly setting the scheduling policy in the
 BE code, rather than editing Kubernetes to change how it uses the \cgroups{}
-API. The results are in \autoref{fig:kubernetes-schedbe}, we can see that, as
-desired above, \schedbe{} completely gets rid of the latency jump, and the
-latency profile of the web application is the same before and after starting the
-image resize job.
-
+API. The results are in \autoref{fig:kubernetes-schedbe}. We can see that, just
+as in the microbenchmark, the latency profile of the web application looks
+largely the same before and after starting the image resize job. It is not
+entirely without spikes, but the spikes are the same before and after starting
+the BE tasks and the baseline median latency stays stable. 
 
 \subsection{Is parking necessary?}\label{ss:eval:parking}
 
