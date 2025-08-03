@@ -91,9 +91,8 @@ core starts running a BE process, and every time it queues an LC task.
 
 A challenge that emerges from such categorical separation is that, when the LC
 is under high load, the BE processes need somewhere to go. Killing them should
-only be a last resort, but running them, even for small amounts of time,
-requires expensive accounting and can impact LC server performance sustantially
-\hmng{TODO add a cite to section ?? once I have the throttling stuff in there}. 
+only be a last resort, but as we show in \autoref{ss:eval:parking}, running them
+even for small amounts of time can impact LC server performance.
 
 We address this challenge by making the split between LC and BE as strict as
 possible without crashing the BE processes. When the CPU utilization is high

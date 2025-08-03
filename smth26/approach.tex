@@ -45,10 +45,12 @@ enforced at events not ticks, that dependence also goes away.
 
 Our scheduler needs to be able to maintain this categorical isolation even under
 very high system load, where CPU utilization is 100\%, meaning that the LC tasks
-need to be allowed to use all of the resources. The goal, then, is to do so
-without forcing the scheduler to kill BE tasks. Ideally BEs would be able to
-simply resume computation immediately once the load goes down enough that LC
-processes are not using all the of the CPU time.
+need to be allowed to use all of the resources.\hmng{can we take this for
+granted? I put a forward ref to the eval in the intro b/c we don't prove this
+here, although we could} The goal, then, is to do so without forcing the
+scheduler to kill BE tasks. Ideally BEs would be able to simply resume
+computation immediately once the load goes down enough that LC processes are not
+using all the of the CPU time.
 
 We call this intermediate state `parked', where the BEs are using the minimal
 amount of resources required to not die. Critical pieces like keeping TCP
