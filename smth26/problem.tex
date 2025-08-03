@@ -23,18 +23,18 @@
     histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
 \end{figure}
 
-In order to understand more concretely where the isolation between the LC web
-application and the BE image resize is failing in
-\autoref{fig:kubernetes-unedited}, we reproduce the jump in latency we saw in
-the application running on Kubernetes in a simpler benchmark. We run a simple
-cpu-bound server with a pool of worker threads that we hit with an open-loop
-remote client, and then start two BE workloads doing image resizing. We put the
-LC server and the BE resize job each in their own \cgroups{} group, with weights
-1 and 10000. \autoref{fig:srv-bg-unedited} shows the increase in latencies of
-the LC server at two different baseline utilization levels. We see that even in
-the lower baseline utilization case, where the server alone uses 85\%, mean
-latencies spike up from steady at around 6ms to as high as 20ms, and much higher
-for 99th percentile latencies.
+In order to understand more concretely why in \autoref{fig:kubernetes-unedited}
+the isolation is failing between the LC web application and the BE image resize,
+we reproduce the jump in latency we saw in a simpler benchmark. We run a simple
+cpu-bound spin server with a pool of worker threads that we hit with an
+open-loop remote client, and then start two BE workloads doing image resizing.
+We put the LC server and the BE resize job each in their own \cgroups{} group
+with weights 10000 and 1 respectively, and pin them to the same set of cores.
+\autoref{fig:srv-bg-unedited} shows the increase in latencies of the LC server
+at two different baseline utilization levels. We see that even in the lower
+baseline utilization case, where the server alone uses 85\%, mean latencies
+spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
+percentile latencies.
 
 \begin{figure}[t]
     \centering
@@ -50,9 +50,10 @@ decisions, and visualize the trace using schedviz~\cite{schedviz-tool}, in order
 to understand where the latency impact comes from.
 \autoref{fig:schedviz-problem} shows a 10ms outtake of the resulting image. The
 process running on each core is shown as a an oval, and queued processes are
-shown as rectangles below. The root of the undesirable behavior is: on core 6,
-the red process that is running the whole time is a BE process, whereas LC
-threads, shown in varying shades of blue, are queued on the other cores. The
+shown as rectangles below; the x `axis' is time and the y `axis' shows the 4
+cores the experiment is running on. The root of the undesirable behavior is: on
+core 6, the red process that is running the whole time is a BE process, whereas
+LC threads, shown in varying shades of blue, are queued on the other cores. The
 takeaway here is that the failure mode we observe is that \textit{one core is
 running a BE process, while an LC process is waiting on another}.
 
@@ -79,11 +80,13 @@ weight-based interface is at odds with machine-wide policy enforcement. In order
 to strictly and globally enforce a processes weight, the scheduler would need to
 synchronize at every scheduling decision: calculating whether a given process is
 owed time globally requires knowing the total weight across all cores as well as
-the sum of time that all the processes in the group have gotten. In increasingly
+the sum of time that all the processes in the group have gotten. This
+effectively removes the benefit of not using global scheduling, since the
+scheduler needs to synchronize at every decision it makes. In increasingly
 multi-core and multi-NUMA machines, synchronization is expensive; other work has
 found that kernel lock contention is a bottleneck to performance at
-scale.~\cite{afaas} This means that the overheads of maintaining global
-invariants can quickly become prohibitive.
+scale.~\cite{afaas} This means that the overheads of maintaining a weight split
+as a global invariant can quickly become prohibitive.
 
 
 \subsection{Weights interact poorly with tick-based
@@ -97,7 +100,7 @@ for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
 thread processing a request may be interrupted for up to 4ms, provided the BE
 process runs for that long before blocking. 4ms can be a large amount of time
 for microservice workloads, whose SLOs are often in the low double digit or even
-single digit ms realm.~\cite{sigmaos}
+single digit ms realm.~\cite{in-the-plex, sigmaos}
 
 
 

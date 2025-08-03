@@ -1,3 +1,42 @@
 \section{Related Work}
 
+Many other systems focus on improving the isolation of latency critical
+workloads from other tasks in the system.
+
+\textbf{Linux-related work} Some exisitng work focuses on better isolation in
+Linux. 
+
+Many focus on real-time applications~\cite{rt-in-linux, state-rt-linux}, which have
+stricter latency requirements than the microservice applications targeted in
+this paper, and have more predictable execution behavior. Because of this, they
+build on the real time scheduling classes.\hmng{cld use better cites}
+
+A Decade of Wasted Cores~\cite{wasted-cores} focuses on the idle behavior of the
+Linux scheduler. It does not find fault with the scheduling interface but rather
+focuses on the internal migration and stealing behavior of cores in order to
+improve performance and utilization, whereas this work focuses on isolation and
+improves it by changing the way developers express what is LC and what is BE to
+the kernel.
+
+\textbf{Other machine schedulers} Other systems work around or minimally with
+the kernel scheduler to implement the desired isolation.
+
+Systems like PerfIso~\cite{perfiso} do so by reactively adjusting the amount of
+cores that are allocated to different workloads, but still using kernel
+mechanisms to enforce the split. Unlike \cgroups{} weights, these splits are are
+at the fidelity of whole CPUs, and require unused `buffer' cores for the LC
+tasks in case their load spikes.
+
+Caladan~\cite{caladan} also reactively adjusts core assignment, and does so to
+mitigate I/O as well as CPU interference. Unlike this work, Caladan replaces the
+kernel scheduler with a userspace centralized scheduler, and targets a
+preemption granularity at the micro-second scale. Skyloft~\cite{skyloft}
+similarly uses a userspace scheduler to achieve micro-second scale preemption,
+and supports LC as well as BE workloads.
+
+Other systems like Syrup~\cite{syrup} or ghOSt~\cite{ghost} allow users to
+create their own scheduling policies, whereas this work focuses on an existing
+popular scheduling approach and implements it more efficiently in the kernel. 
+
+
 

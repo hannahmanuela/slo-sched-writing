@@ -4,12 +4,12 @@ We implement the above approach by extending Linux with a new category for
 processes to be in, which we call \beclass{}.
 
 To do so, we mirror the behavior Linux implements in its \textit{scheduling
-classes}. Linux has three scheduling classes that are accessible to users,
-listed in descending order of priority: \texttt{Deadline}, \fifoclass{}, and
+classes}. Linux has three scheduling classes that are accessible to users, which
+are (in descending order of priority): \deadlineclass{}, \fifoclass{}, and
 \normalclass{}. Generally speaking most load is expected to fall into the
 \normalclass{} scheduling class (hence the name). It is the default scheduling
-class, and it is only within the \normalclass{} scheduling class that the cgroup
-cpu.weight interface is relevant.
+class, and it is only within the \normalclass{} scheduling class that the
+\cgroups{} cpu.weight interface is relevant.
 
 Each scheduling class exists completely separately: classes maintain their own
 runqueues and per-entity state; implement their own scheduling algorithms to
@@ -40,15 +40,20 @@ globally: given the local priority, the scheduler needs to sychronize at two
 points in order to enforce it globally. Once on \textit{entry}, when a new
 high-priority thread wakes up on a core already running something high-priority,
 and once on \textit{exit}, when starting to run a low priority thread. This way,
-if a core is currently running a \beclass{} thread $t$, the scheduler knows that
-there are no queued and waiting \normalclass{} threads, because if there were
-ones before it started running $t$ the scheduler would have stolen it, and if a
-new \normalclass{} thread wakes up while $t$ is running, before enqueueing it
-the core where it wakes up will look to interrupt cores running \beclass{}.
+if a core is currently running a \beclass{} process $p$, the scheduler knows
+that there are no queued and waiting \normalclass{} threads, because if there
+were ones \textit{before} it started running $p$ the scheduler would have stolen
+it, and if a new \normalclass{} thread wakes up \textit{while} $p$ is running,
+the core where it wakes up will look to interrupt cores running \beclass{}
+before enqueueing it.
 
-In enforcing this strict and global priority, parking becomes an emergent
-behavior rather than an explicit state that the scheduler has to put BE
-processes into. Linux already manages i/o interrupts, including acknowledging
+In enforcing this strict and global priority in Linux, parking becomes an
+emergent behavior rather than an explicit state that the scheduler has to put BE
+processes into. Linux already manages I/O interrupts, including acknowledging
 network packets, in kernelspace interrupt handlers. These run irrespective of
 whether and when the userspace process is scheduled, and simply write the
-relevant message buffers to the processes' memory.
+relevant message buffers to the processes' memory. This means that the dividing
+line between what is application logic (userspace) and what is necessary for the
+BE to not crash (kernelspace) overlaps with what the scheduler is able to
+enforce vs not: the scheduler cannot preempt a kernelspace process handling an
+interrupt unless it is explicitly marked as preemptible.

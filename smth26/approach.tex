@@ -25,15 +25,16 @@ definition global.
 \textbf{\autoref{ss:problem:cross-core-hard}} Another problem we observed is
 that implementing a weight-based policy globally is expensive. This is because,
 in a weight-based system, the definition of what process should be running
-changes over time. If a core has one high-weight and one low-weight process,
-before running the low-weight process it needs to know if any other cores have
-recently run a different thread within that process, because that would affect
+changes over time. If a core has one high-weight and one low-weight group,
+before running the low-weight group it needs to know if any other cores have
+recently run a different process within that group, because that would affect
 how much time it is owed on this core. However, if the scheduler is enforcing
 categorical priorities, then unless the set of runnable tasks changes, if the
 scheduler was running the correct priority class before, it still will be. Thus
 the scheduler only needs to synchronize across cores on \textit{events}, ie when
 the set of runnable tasks changes in a way relevant to cross-category boundaries
-(starting to run a lower class process, or enqueueing a higher class one).
+(when a core starts running a lower class process, or when a core enqueues a
+higher class one).
 
 \textbf{\autoref{ss:problem:quantum}} This also addresses the final problem we
 saw, which is that weight-based separation meant that the fidelity of the
@@ -58,13 +59,13 @@ BE on a machine overloaded with LC tasks will stop sending application-level
 heartbeats, even though the connection stays alive and keepalive messages
 continue to be acknowledged.
 
-Parking makes sense because a machine experiencing high load is likely a
-localized problem, both in space (as in, will only effect some small number of
-machines) and time (as in, the high load on the machine won't last long). It is
-localized in space because microservices' loads are independent from one
-another: on the order of seconds and minutes, individual microservices' loads
-may vary, but broadly load is known to be predictable, so even if one machine is
-experiencing high load other machines won't be~\cite{TODO}. It is localized in
-time because of the distributed setting: a distributed scheduler monitors the
-state of all the machines and migrates load when it sees high cpu utilization,
-or an autoscaler starts new instances.
+Parking makes sense because a machine experiencing high load in a datacenter is
+likely a localized problem, both in space (as in, will only effect some small
+number of machines) and time (as in, the high load on the machine won't last
+long). It is localized in space because microservices' loads are independent
+from one another: on the order of seconds and minutes, individual microservices'
+loads may vary, but broadly load is known to be predictable, so even if one
+machine is experiencing high load other machines won't be~\cite{TODO}. It is
+localized in time because of the distributed setting: a distributed scheduler
+monitors the state of all the machines and migrates load when it sees high CPU
+utilization, or an autoscaler starts new instances.

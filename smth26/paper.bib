@@ -84,11 +84,11 @@
     publisher = {USENIX Association},
 }
 
-@misc{kvm-cgroups,
-  author = {Red Hat Documentation},
+@misc{libvirt-cgroups,
+  author = {libvirt Documentation},
   howpublished = {online},
-  url = {https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-overcommitting_with_kvm-overcommitting_virtualized_cpus},
-  title = {Overcommitting Virtualized CPUs}
+  url = {https://libvirt.org/formatdomain.html#cpu-allocation},
+  title = {CPU Allocation}
 }
 
 @misc{firecracker-cgroups,
@@ -171,3 +171,114 @@
   year = {2019}
 }
 
+@book{in-the-plex,
+  author = { Steven Levy },
+  publisher = { Simon \& Schuster },
+  title = {In the Plex: How Google Thinks, Works, and Shapes Our Lives},
+  year = {2011},
+  pages = {186+},
+}
+
+@inproceedings{wasted-cores,
+author = {Lozi, Jean-Pierre and Lepers, Baptiste and Funston, Justin and Gaud, Fabien and Qu\'{e}ma, Vivien and Fedorova, Alexandra},
+title = {The Linux scheduler: a decade of wasted cores},
+year = {2016},
+isbn = {9781450342407},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2901318.2901326},
+doi = {10.1145/2901318.2901326},
+abstract = {As a central part of resource management, the OS thread scheduler must maintain the following, simple, invariant: make sure that ready threads are scheduled on available cores. As simple as it may seem, we found that this invariant is often broken in Linux. Cores may stay idle for seconds while ready threads are waiting in runqueues. In our experiments, these performance bugs caused many-fold performance degradation for synchronization-heavy scientific applications, 13\% higher latency for kernel make, and a 14-23\% decrease in TPC-H throughput for a widely used commercial database. The main contribution of this work is the discovery and analysis of these bugs and providing the fixes. Conventional testing techniques and debugging tools are ineffective at confirming or understanding this kind of bugs, because their symptoms are often evasive. To drive our investigation, we built new tools that check for violation of the invariant online and visualize scheduling activity. They are simple, easily portable across kernel versions, and run with a negligible overhead. We believe that making these tools part of the kernel developers' tool belt can help keep this type of bug at bay.},
+booktitle = {Proceedings of the Eleventh European Conference on Computer Systems},
+articleno = {1},
+numpages = {16},
+location = {London, United Kingdom},
+series = {EuroSys '16}
+}
+
+
+
+@inproceedings{ghost,
+author = {Humphries, Jack Tigar and Natu, Neel and Chaugule, Ashwin and Weisse, Ofir and Rhoden, Barret and Don, Josh and Rizzo, Luigi and Rombakh, Oleg and Turner, Paul and Kozyrakis, Christos},
+title = {ghOSt: Fast \& Flexible User-Space Delegation of Linux Scheduling},
+year = {2021},
+isbn = {9781450387095},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3477132.3483542},
+doi = {10.1145/3477132.3483542},
+abstract = {We present ghOSt, our infrastructure for delegating kernel scheduling decisions to userspace code. ghOSt is designed to support the rapidly evolving needs of our data center workloads and platforms.Improving scheduling decisions can drastically improve the throughput, tail latency, scalability, and security of important workloads. However, kernel schedulers are difficult to implement, test, and deploy efficiently across a large fleet. Recent research suggests bespoke scheduling policies, within custom data plane operating systems, can provide compelling performance results in a data center setting. However, these gains have proved difficult to realize as it is impractical to deploy a custom OS image(s) at an application granularity, particularly in a multi-tenant environment, limiting the practical applications of these new techniques.ghOSt provides general-purpose delegation of scheduling policies to userspace processes in a Linux environment. ghOSt provides state encapsulation, communication, and action mechanisms that allow complex expression of scheduling policies within a userspace agent, while assisting in synchronization. Programmers use any language to develop and optimize policies, which are modified without a host reboot. ghOSt supports a wide range of scheduling models, from per-CPU to centralized, run-to-completion to preemptive, and incurs low overheads for scheduling actions. We demonstrate ghOSt's performance on both academic and real-world workloads, including Google Snap and Google Search. We show that by using ghOSt instead of the kernel scheduler, we can quickly achieve comparable throughput and latency while enabling policy optimization, non-disruptive upgrades, and fault isolation for our data center workloads. We open-source our implementation to enable future research and development based on ghOSt.},
+booktitle = {Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles},
+pages = {588–604},
+numpages = {17},
+keywords = {thread scheduling, Operating systems},
+location = {Virtual Event, Germany},
+series = {SOSP '21}
+}
+
+@inproceedings{syrup,
+author = {Kaffes, Kostis and Humphries, Jack Tigar and Mazi\`{e}res, David and Kozyrakis, Christos},
+title = {Syrup: User-Defined Scheduling Across the Stack},
+year = {2021},
+isbn = {9781450387095},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3477132.3483548},
+doi = {10.1145/3477132.3483548},
+abstract = {Suboptimal scheduling decisions in operating systems, networking stacks, and application runtimes are often responsible for poor application performance, including higher latency and lower throughput. These poor decisions stem from a lack of insight into the applications and requests the scheduler is handling and a lack of coherence and coordination between the various layers of the stack, including NICs, kernels, and applications.We propose Syrup, a framework for user-defined scheduling. Syrup enables untrusted application developers to express application-specific scheduling policies across these system layers without being burdened with the low-level system mechanisms that implement them. Application developers write a scheduling policy with Syrup as a set of matching functions between inputs (threads, network packets, network connections) and executors (cores, network sockets, NIC queues) and then deploy it across system layers without modifying their code. Syrup supports multi-tenancy as multiple co-located applications can each safely and securely specify a custom policy. We present several examples of uses of Syrup to define application and workload-specific scheduling policies in a few lines of code, deploy them across the stack, and improve performance up to 8x compared with default policies.},
+booktitle = {Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles},
+pages = {605–620},
+numpages = {16},
+keywords = {scheduling, programmability, kernel},
+location = {Virtual Event, Germany},
+series = {SOSP '21}
+}
+
+
+
+@inproceedings {perfiso,
+  author = {Calin Iorgulescu and Reza Azimi and Youngjin Kwon and Sameh Elnikety and Manoj Syamala and Vivek Narasayya and Herodotos Herodotou and Paulo Tomita and Alex Chen and Jack Zhang and Junhua Wang},
+  title = {PerfIso: Performance Isolation for Commercial Latency-Sensitive Services},
+  booktitle = {2018 USENIX Annual Technical Conference (USENIX ATC 18)},
+  year = {2018},
+  isbn = {978-1-939133-01-4},
+  address = {Boston, MA},
+  pages = {519--532},
+  url = {https://www.usenix.org/conference/atc18/presentation/iorgulescu},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+@inproceedings{skyloft,
+  author = {Jia, Yuekai and Tian, Kaifu and You, Yuyang and Chen, Yu and Chen, Kang},
+  title = {Skyloft: A General High-Efficient Scheduling Framework in User Space},
+  year = {2024},
+  isbn = {9798400712517},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/3694715.3695973},
+  doi = {10.1145/3694715.3695973},
+  abstract = {Skyloft is a general and highly efficient user-space scheduling framework. It leverages user-mode interrupt to deliver and process hardware timers directly in user space. This capability enables Skyloft to achieve μs-scale preemption. Skyloft offers a set of scheduling interfaces that supports different scheduling policies, including both preemptive and nonpreemptive ones. Operating as a user-space scheduling framework, Skyloft is compatible with Linux and integrates seamlessly with high-performance I/O frameworks like DPDK.Evaluation results show that optimizations in per-CPU scheduling with user-space timer interrupts allow Skyloft's Completely Fair Scheduler (CFS) and Round Robin (RR) to significantly reduce wake-up latency compared to their Linux counterparts (100μs vs. 10000μs). In comparison to the general scheduling framework ghOSt, Skyloft achieves a 1.2\texttimes{} increase in maximum throughput for Latency Critical (LC) applications. Additionally, unlike the specialized scheduling framework Shinjuku, Skyloft not only supports LC applications but also efficiently allocates CPU resources to Best Effort (BE) applications under low load conditions. By incorporating a 5μs preemption mechanism into the Work-Stealing strategy, a RocksDB Server running on Skyloft exhibits a performance improvement of 1.9\texttimes{} compared to Shenango.},
+  booktitle = {Proceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles},
+  pages = {265-279},
+  numpages = {15},
+  keywords = {operating systems, scheduling, user interrupts},
+  location = {Austin, TX, USA},
+  series = {SOSP '24}
+}
+
+@misc{state-rt-linux,
+  author = {Jonathan Corbet},
+  howpublished = {online},
+  url = {https://lwn.net/Articles/970555/},
+  title = {The state of realtime and embedded Linux},
+  year = {2024}
+}
+
+@misc{rt-in-linux,
+  author = {Kevin Purdy},
+  howpublished = {online},
+  url = {https://arstechnica.com/gadgets/2024/09/real-time-linux-is-officially-part-of-the-kernel-after-decades-of-debate/},
+  title = { Real-time Linux is officially part of the kernel after decades of debate },
+  year = {2024}
+}

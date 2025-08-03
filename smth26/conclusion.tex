@@ -1,3 +1,25 @@
 %-------------------------------------------------------------------------------
 \section{Conclusion}
 %-------------------------------------------------------------------------------
+
+This work shows that current isolation systems like Kubernetes are unable to
+effectively performance isolate between LC and BE workloads for workloads that
+are CPU-intensive. We trace this problem down to Linux's \cgroups{}, and show
+that because Linux uses per-core runqueues, its weight-based interface for
+isolation is not enforced across cores. Using a weight-based interface for
+isolating LC and BE has other problems as well: it makes it hard to enforce a
+split across cores, and it interacts poorly with the large scheduling quantum
+that Linux uses.
+
+Instead, we propose an API that categorically separates BEs from LCs, and argue
+that the scheduler should implement a strict and categorical isolation between
+the two. This requires less synchronization than a weight-based isolation
+approach, and ensures that no BE is ever running when an LC is queued. During
+high load this requires `parking', which enforces that BEs are immediately
+runnable once the load goes down, with minimal interference for LCs in the
+meantime while the load is high.
+
+We implement this categorical split in Linu, and show that these changes allow
+\cgroups{} itself as well as higher level applications that build on \cgroups{},
+like Kubernetes, to do a better job of isolating LC from BE workloads.
+

@@ -3,7 +3,7 @@
 
 In order to actually implement \beclass{} in Linux, we build on \schedidle{}, an
 existing scheduling \textit{policy} in Linux. This is because \schedidle{}
-already has some of the features we wanted fro \beclass{}.
+already has some of the features we want from \beclass{}.
 
 \subsection{\schedidle{} lends itself well to our goal}
 
@@ -18,19 +18,19 @@ the same runqueues as all the other \schednormal{} processes, and \schedidle{}
 just has a predefined low weight of 3~\cite{weight-idleprio}.
 
 One way that \schedidle{} is promising as a foundation for our implementation of
-\beclass{} is that \schedidle{} was extended to have cgroup support
-recently~\cite{lkml-idle-cgroup}: a whole groups' policy can be set to
+\beclass{} is that \schedidle{} was extended to be accessible via the \cgroups{}
+API recently~\cite{lkml-idle-cgroup}: a whole groups' policy can be set to
 \schedidle{} via the \cgroups{} interface. This means that, if we modify
 \schedidle{} to behave in the way we laid out \beclass{} should, we would get
 for free the abillity to use the \cgroups{} API to mark groups as BE.
 
 An additional benefit to using \schedidle{} as the foundation for our
 implementation is that, after a push by Facebook, Linux developers already added
-what is in effect part (3) of our solution. In 2019, Linux added a check when a
-\schednormal{} entity becomes newly runnable on a core already running something
-in \schednormal{}~\cite{fixing-idle-article}. This new check will look for other
-cores that might be currently running a \schedidle{} entity, and migrates the
-new entity there.
+what is in effect part (3) of our solution~\cite{fixing-idle-article}. In 2019,
+Linux added a check when a \schednormal{} entity becomes newly runnable on a
+core already running something in \schednormal{}. This new check will look for
+other cores that might be currently running a \schedidle{} entity, and migrates
+the new entity there.
 
 \subsection{\schedbe{} as an implementation of \beclass{}}
 
@@ -53,23 +53,24 @@ In order to enforce that ruqueues only run \schedbe{} threads when there are no
 runnable \schednormal{} ones, the patch interferes in two places. 
 
 Because in existing Linux \schedidle{} and \schednormal{} share a runqueue, so
-will the new \schedbe{} and \schednormal{}. This means that the actual function
-that chooses the next task from the runqeueue will be potentially looking at a
-mix of both. For \schedbe{}, we add an initial check that establishes whether
-there are any \schednormal{} threads on the runqueue, and skips all \schedbe{}
-ones if that is the case. 
+will the new \schedbe{} and \schednormal{}. This means that the function that
+chooses the next task from the runqeueue will be potentially looking at a mix of
+both. We add an initial check that establishes whether there are any
+\schednormal{} threads on the runqueue, and skips all \schedbe{} ones if that is
+the case. 
 
 The second change is necessary because the first throws the fair share
 eligibility mechanism out of whack. In order to maintain fairness, Linux
 currently accounts for the difference between the fair share processes should
-have gotten and the time they actually got, and stores that `lag'. Even low
-weight processes accrue lag over time, albeit more slowly. Since \schedbe{}
+have gotten and the time they actually got, and stores that `lag'. Processes
+that have gotten more time than they should, ie have negative lag, are marked as
+ineligible and not considered when choosing what to run next. Since \schedbe{}
 threads are now potentially not being run for a long time, there is a potential
 for deadlock: a \schednormal{} task has been running for a while and accrued
 enough time that its lag is negative and it is ineligible. However, if the only
-other thread is \schedbe{} then we won't run that either. In order to avoid this
-situation, the patch removes the eligibility criterion in choosing what to run
-next.
+other thread is \schedbe{} then we won't run that either because there is a
+runnable \schednormal{} task on the runqueue. In order to avoid this situation,
+the patch removes the eligibility criterion in choosing what to run next.
 
 
 \subsection{Enforcing the global policy}
@@ -80,7 +81,7 @@ itself is marked as idle, and not if the group as a whole is, and for \schedbe{}
 we check both.\hmng{this is not exactly true, but in a kinda complicated way. Do
 we even want to say this?}
 
-\schedbe{} also adds a check on the exit: if the thread chosen to run next is
+\schedbe{} adds a check on the exit: if the thread chosen to run next is
 \schedbe{}, then the patch tries to steal a queued \schednormal{} task from a
 different core. Specifically, it picks the core with the max number of queued
 but runnable \schednormal{} threads, but only steals one. This is in order to
