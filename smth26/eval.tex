@@ -220,8 +220,16 @@ not all of the isolation required of \beclass{}.
     \caption{using \schedidle{}}\label{fig:srv-bg-idle}
 \end{figure}
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-idle.png}
+    \caption{The same experiment as in \autoref{fig:kubernetes-unedited}, but
+    running the BE as a \schedidle{} task}\label{fig:kubernetes-idle}
+\end{figure}
+
 And indeed, we find that when we use \cgroups{}' new cpu.idle interface feature,
 the latency impact of the BE tasks decreases, although it does not entirely drop
 to what we saw with the \fifoclass{} class, or with our \schedbe{} solution.\
-\autoref{fig:srv-bg-idle} shows the results, for the familiar settings of low
-and high load.
+\autoref{fig:srv-bg-idle} shows the results for the microbenchmark for the
+familiar settings of low and high load, and \autoref{fig:kubernetes-schedidle}
+for the Kubernetes experiment.
