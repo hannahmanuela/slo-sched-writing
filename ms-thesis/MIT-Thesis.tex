@@ -225,19 +225,18 @@
 
 % note on names: most of the following names are made up; Silas Holman was a physics professor at MIT in the 19th century.
 
-\Author{Hannah Manuela Nelle Gross}{Department of Electrical Engineering and Computer Science}
+\Author{Hannah Manuela Nelle Gross}{Department of Electrical Engineering and Computer Science}[Sc.B., Brown University, 2023]
 
 % Use once for each degree fulfilled by thesis
 % For two degrees from one department, leave the department argument blank for the second degree {}.
 \Degree{Master of Science}{Department of Electrical Engineering and Computer Science}
-%\Degree{Bachelor of Science in Mechanical Engineering}{Department of Mechanical Engineering}
 
 % If there is more than one supervisor, use the \Supervisor command for each.
-\Supervisor{M. Frans Kasshoek}{Professor of Computer Science}
+\Supervisor{M. Frans Kaashoek}{Professor of Electrical Engineering and Computer Science}
 
 % Professor who formally accepts theses for your department (e.g., the Graduate Officer, Professor Sméagol,...)
 % If more than one department, use more than once
-\Acceptor{TODO TBD}{Professor of Probably Something}{Graduate Officer, Department of Research} % \\ \> Third title}
+\Acceptor{Leslie A. Kolodziejski}{Professor of Electrical Engineering and Computer Science}{Chair, Department Committee on Graduate Students} % \\ \> Third title}
 % \Acceptor{Quarta Castor}{Professor of Lodge Building}{Graduate Officer, Department of Mechanical Engineering}
 %%%  If you need to reduce vertical space, put the acceptor title in the second argument and leave the third blank, {}.
 % \Acceptor{Primus Castor}{Professor and Undergraduate Officer, Department of Physics}{}
@@ -306,44 +305,44 @@
 
 % The abstract environment creates all the required headings and footers. 
 % You only need to the text of the abstract in the file abstract.tex
-\begin{abstract}
-	\input{abstract.tex}% use \input rather than \include because we're inside an environment
-\end{abstract}
+% \begin{abstract}
+% 	\input{abstract.tex}% use \input rather than \include because we're inside an environment
+% \end{abstract}
 
-\include{acknowledgments}% acknowledgments.tex (.tex extension is presumed by \include) 
+% \include{acknowledgments}% acknowledgments.tex (.tex extension is presumed by \include) 
 
-% \include{biography}% biography.tex (optional, see https://libraries.mit.edu/distinctive-collections/thesis-specs/#format)
+% % \include{biography}% biography.tex (optional, see https://libraries.mit.edu/distinctive-collections/thesis-specs/#format)
 
-%%% Table of contents and lists of stuff (delete unused lists, i.e., if no tables or figures) %%%%%
+% %%% Table of contents and lists of stuff (delete unused lists, i.e., if no tables or figures) %%%%%
 
-% \tableofcontents
-% \listoffigures
-% \listoftables
+% % \tableofcontents
+% % \listoffigures
+% % \listoftables
 
-%%% Chapters of thesis  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% Chapters of thesis  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% If you want to use "double spacing", you should start here...
+% %% If you want to use "double spacing", you should start here...
 
-\include{chapter1}% .tex extension is presumed
-\include{chapter2}
-\include{chapter3}
-\include{chapter4}
-\include{chapter5}
-
-
-%%% Appendicies of thesis  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\appendix
-\include{appendixa}% listings example
+% \include{chapter1}% .tex extension is presumed
+% \include{chapter2}
+% \include{chapter3}
+% \include{chapter4}
+% \include{chapter5}
 
 
-%%% Bibliography (biblatex)  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% Appendicies of thesis  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\defbibheading{bibintoc}{\chapter*{#1}\addcontentsline{toc}{backmatter}{\refname}} 
-% this sets the title of contents name for bibliography to \refname (= References)
-% change "backmatter" to "chapter" if you prefer a bold face entry in the table of contents
+% \appendix
+% \include{appendixa}% listings example
 
-\printbibliography[title={\refname},heading=bibintoc]
+
+% %%% Bibliography (biblatex)  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \defbibheading{bibintoc}{\chapter*{#1}\addcontentsline{toc}{backmatter}{\refname}} 
+% % this sets the title of contents name for bibliography to \refname (= References)
+% % change "backmatter" to "chapter" if you prefer a bold face entry in the table of contents
+
+% \printbibliography[title={\refname},heading=bibintoc]
 
 % biblatex also supports chapter-by-chapter bibliography, https://tex.stackexchange.com/a/296502/119566
 % see the biblatex manual, section 3.14.3

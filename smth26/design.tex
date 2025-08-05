@@ -1,0 +1,60 @@
+\section{\beclass{} Design}\label{s:design}
+
+We implement the above approach by extending Linux with the \beclass{}.
+
+Linux already has multiple scheduling classes that are accessible to users,
+which are (in descending order of priority): \deadlineclass{}, \fifoclass{}, and
+\normalclass{}. Generally speaking most load is expected to fall into the
+\normalclass{} scheduling class (hence the name). It is the default scheduling
+class, and it is only within the \normalclass{} scheduling class that the
+\cgroups{} cpu.weight interface is relevant.
+
+Each scheduling class exists completely separately: classes maintain their own
+runqueues and per-entity state; implement their own scheduling algorithms to
+choose from the entities on their runqueue; and balance the load across
+runqueues on different cores.
+
+Linux isolates strictly between different scheduling classes: it only schedules
+a lower scheduling class if the higher scheduling classes found nothing to run,
+and each scheduling class tries to steal work from other cores before returning
+that it has nothing to run. We emulate the same behavior in the design of
+\beclass{}. The goal is to enforce the maxim that no \beclass{} userspace
+process is ever running if a \normalclass{} task is waiting for a core. In order
+to do so, the scheduler must enforce the priorities in three different places:
+\begin{enumerate}
+    \item \local: in picking the next entity from the runqueue on each core, it
+        must ensure that no \beclass{} entity will be chosen if there is a
+        runnable \normalclass{} entity,
+    \item \entry: when waking up a \normalclass{} entity on a core already
+        running a \normalclass{} entity, it must look for other cores running
+        \beclass{} entities to go interrupt,
+    \item \exit: it must try to steal queued \normalclass{} entities from other
+        cores before running a \beclass{} entity, if one was chosen.
+\end{enumerate}
+
+These three pieces together create the desired strict and global priority.
+\local{} ensures the property locally on each core. The second and third enforce
+it globally, by interposing on boundary crossings of the \normalclass{} class.
+\textit{entry} runs when a new \normalclass{} thread wakes up on a core already
+running something \normalclass{}, and checks whether the newly awoken thread can
+go interrupt a \beclass{} thread on a different core. \textit{exit} interposes
+when a core starts to run a \beclass{} thread because it has no more runnable
+\normalclass{} ones, and tries to steal a queued \normalclass{} thread. 
+
+If a core is currently running a \beclass{} thread $t$, the scheduler knows that
+there are no queued and waiting \normalclass{} threads anywhere, because if
+there were ones \textit{before} it started running $t$ the scheduler would have
+stolen it, and if a new \normalclass{} thread wakes up \textit{while} $t$ is
+running, the core where it wakes up will look to interrupt cores running
+\beclass{} before enqueueing it.
+
+In enforcing this priority in Linux, parking becomes an emergent behavior rather
+than an explicit state that the scheduler has to put BE processes into. Linux
+already manages I/O interrupts, including acknowledging network packets, in
+kernelspace interrupt handlers. These run irrespective of whether and when the
+userspace process is scheduled, and simply write the relevant message buffers to
+the processes' memory. This means that the dividing line between what is
+application logic (user space) and what is necessary for the BE to not crash
+(kernel space) overlaps with what the scheduler is able to enforce vs not: the
+scheduler cannot preempt a kernel space process handling an interrupt unless it
+is explicitly marked as preemptible.

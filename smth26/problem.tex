@@ -2,6 +2,14 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
+The observed failure to isolate between the LC web application and the BE image
+resize happens because BEs sometimes run uncontended on one core while another
+has queued and waiting LC threads (\autoref{ss:problem:bes-run}). This is
+because weights are only strictly enforced within runqueues, which are per-cpu
+(\autoref{ss:problem:weights-local}).
+
+
+\subsection{Weights don't isolate}\label{ss:problem:bes-run}
 
 \begin{figure}[t]
     \centering
@@ -23,18 +31,21 @@
     histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
 \end{figure}
 
-In order to understand more concretely why in \autoref{fig:kubernetes-unedited}
-the isolation is failing between the LC web application and the BE image resize,
-we reproduce the jump in latency we saw in a simpler benchmark. We run a simple
-cpu-bound spin server with a pool of worker threads that we hit with an
-open-loop remote client, and then start two BE workloads doing image resizing.
-We put the LC server and the BE resize job each in their own \cgroups{} group
-with weights 10000 and 1 respectively, and pin them to the same set of cores.
-\autoref{fig:srv-bg-unedited} shows the increase in latencies of the LC server
-at two different baseline utilization levels. We see that even in the lower
-baseline utilization case, where the server alone uses 85\%, mean latencies
-spike up from steady at around 6ms to as high as 20ms, and much higher for 99th
-percentile latencies.
+\autoref{fig:kubernetes-unedited} includes a complicated software stack of
+Kubernetes, Python, and the libraries used to expose the service's API and
+manage worker threads. All of this has performance implications, and we can see
+that even before the workers start there are large latency spikes of up to 30ms.
+In order to isolate why the jump in latency is happening when the BEs run from
+the many incidentals of this experiment, we reproduce the effects in a simpler
+benchmark. We run a simple cpu-bound spin server with a pool of worker threads
+that we hit with an open-loop remote client, and then start two BE workloads
+doing image resizing. We put the LC server and the BE resize job each in their
+own \cgroups{} group with weights 10000 and 1 respectively, and pin them to the
+same set of cores. \autoref{fig:srv-bg-unedited} shows the increase in latencies
+of the LC server at two different baseline utilization levels. We see that even
+in the lower baseline utilization case, where the server alone uses 85\%, mean
+latencies spike up from steady at around 6ms to as high as 20ms, and much higher
+for 99th percentile latencies.
 
 \begin{figure}[t]
     \centering
@@ -57,20 +68,16 @@ LC threads, shown in varying shades of blue, are queued on the other cores. The
 takeaway here is that the failure mode we observe is that \textit{one core is
 running a BE process, while an LC process is waiting on another}.
 
-Based on this observation, we explore more deeply the root of the issue that is
-causing the poor behavior we see.
+\subsection{Weights are enforced only locally}\label{ss:problem:weights-local}
 
-\subsection{Weights are only enforced locally}\label{ss:problem:mechanistic}
-
-The reason this happens is that Linux maintains a separate runqueue on each
-core, in order to avoid the synchronization overheads of accessing global state
-for every scheduling decision. Within each runqueue, Linux's scheduler works to
-maintain the correct ratio of received CPU time at each scheduling; but Linux
-does not enforce the weight ratios across cores. This leads to the above failure
-mode, where one core has no runnable high weight processes and thus runs a low
-weight one, whereas another core has queued high weight processes. This problem
-goes away when there are no BE processes, because cores try to steal work before
-going idle.
+The reason this undesirable behavior happens is that Linux maintains a separate
+runqueue on each core, in order to avoid the synchronization overheads of
+accessing global state for every scheduling decision. Within each runqueue,
+Linux's scheduler works to maintain the correct ratio of received CPU time at
+each scheduling; but Linux does not enforce the weight ratios across cores. This
+leads to the above failure mode, where one core has no runnable high weight
+processes and thus runs a low weight one, whereas another core has queued high
+weight processes.
 
 \subsection{Enforcing weights across cores is
 expensive}\label{ss:problem:cross-core-hard}
@@ -81,12 +88,12 @@ to strictly and globally enforce a processes weight, the scheduler would need to
 synchronize at every scheduling decision: calculating whether a given process is
 owed time globally requires knowing the total weight across all cores as well as
 the sum of time that all the processes in the group have gotten. This
-effectively removes the benefit of not using global scheduling, since the
-scheduler needs to synchronize at every decision it makes. In increasingly
-multi-core and multi-NUMA machines, synchronization is expensive; other work has
-found that kernel lock contention is a bottleneck to performance at
-scale.~\cite{afaas} This means that the overheads of maintaining a weight split
-as a global invariant can quickly become prohibitive.
+effectively removes the benefit of local runqueues, since the scheduler needs to
+synchronize at every decision it makes. In increasingly multi-core and
+multi-NUMA machines, synchronization is expensive; other work has found that
+kernel lock contention is a bottleneck to performance at scale~\cite{afaas}.
+This means that the overheads of maintaining a weight split as a global
+invariant can quickly become prohibitive.
 
 
 \subsection{Weights interact poorly with tick-based

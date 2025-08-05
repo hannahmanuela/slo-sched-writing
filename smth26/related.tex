@@ -1,15 +1,13 @@
 \section{Related Work}
 
-Many other systems focus on improving the isolation of latency critical
-workloads from other tasks in the system.
+Much previous has targeted improving the isolation of latency critical workloads
+from other tasks in the system.
 
 \textbf{Linux-related work} Some exisitng work focuses on better isolation in
-Linux. 
-
-Many focus on real-time applications~\cite{rt-in-linux, state-rt-linux}, which have
-stricter latency requirements than the microservice applications targeted in
-this paper, and have more predictable execution behavior. Because of this, they
-build on the real time scheduling classes.\hmng{cld use better cites}
+Linux. Many focus on real-time applications~\cite{rt-in-linux, state-rt-linux},
+which have stricter latency requirements than the microservice applications
+targeted in this paper, and have more predictable execution behavior. Because of
+this, they build on the real time scheduling classes.\hmng{cld use better cites}
 
 A Decade of Wasted Cores~\cite{wasted-cores} focuses on the idle behavior of the
 Linux scheduler. It does not find fault with the scheduling interface but rather
@@ -18,8 +16,9 @@ improve performance and utilization, whereas this work focuses on isolation and
 improves it by changing the way developers express what is LC and what is BE to
 the kernel.
 
-\textbf{Other machine schedulers} Other systems work around or minimally with
-the kernel scheduler to implement the desired isolation.
+\textbf{Other machine schedulers} Other systems work around the kernel scheduler
+to implement the desired isolation, by making policy decisions, handling
+cross-core communication, and enforcing interrupts, in userspace.
 
 Systems like PerfIso~\cite{perfiso} do so by reactively adjusting the amount of
 cores that are allocated to different workloads, but still using kernel

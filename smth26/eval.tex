@@ -3,11 +3,11 @@
 \label{s:eval}
 %-------------------------------------------------------------------------------
 
-We explore the performance of \schedbe{} in relation to the following questions:
+This section answers the following questions:
 \begin{enumerate}
     \item Does the new \schedbe{} isolate LC from BE workloads?
-    \item Is parking necessary?
-    \item How much does the patch cost?
+    \item Can parked processes resume correctly?
+    \item How much does \schedbe{} cost?
 \end{enumerate}
 
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
@@ -42,17 +42,16 @@ always use all of the cores, but ig I can say that on a per-experiment basis}
     threads.}\label{fig:schedviz-schedbe}
 \end{figure}
 
-We start by running the microbenchmark experiment using \schedbe{}. We use the
-\cgroups{} interface to set the BE workloads to be marked as idle via the
-\cgroups{} API, except that with the modified kernel that now puts the BE tasks
-in \schedbe{}. We can see the resulting performance in
-\autoref{fig:srv-bg-schedbe}. As desired the latency of the server remains
+We run the microbenchmark experiment from \autoref{fig:srv-bg-unedited} using
+\schedbe{}. We can see the resulting performance in
+\autoref{fig:srv-bg-schedbe}. As desired, the latency of the server remains
 stable after the background tasks start. This does not mean that the background
 task never runs: the lower graph still shows iterations of image resizing being
 done. The difference is that now the background tasks will reliably get
-interrupted when the LC server has a request to process. We can see this
-happening in an outtake of the schedviz visualization in
-\autoref{fig:schedviz-schedbe}. The green BE processes run only in the gaps
+interrupted when the LC server has a request to process. 
+
+\autoref{fig:schedviz-schedbe} shows the desired behavior happening in an
+outtake of a schedviz visualization. The green BE processes run only in the gaps
 where there is no queued LC process, and are immediately preempted when one
 wakes up, on whatever core that may be. The vertical red lines show when the
 core has chosen intially to run a BE process. As we can see, this is sometimes
@@ -67,73 +66,34 @@ meaning that it succesfully found and stole a queued and waiting LC thread.
 \end{figure}
 
 We also run the Kubernetes application from \autoref{fig:kubernetes-unedited}
-using \schedbe{}. We do this by explicitly setting the scheduling policy in the
-BE code, rather than editing Kubernetes to change how it uses the \cgroups{}
-API. The results are in \autoref{fig:kubernetes-schedbe}. We can see that, just
-as in the microbenchmark, the latency profile of the web application looks
-largely the same before and after starting the image resize job. It is not
-entirely without spikes, but the spikes are the same before and after starting
-the BE tasks and the baseline median latency stays stable. 
+using \schedbe{}. The results are in \autoref{fig:kubernetes-schedbe}. We can
+see that, just as in the microbenchmark, the latency profile of the web
+application looks largely the same before and after starting the image resize
+job. It is not entirely without spikes, but the spikes come from interference
+with Python runtimes and Kubernetes controllers, and are the same before and
+after starting the BE tasks. Importantly, the baseline median latency of the LC
+web application stays stable after starting the the BE image resizing. 
 
-\subsection{Is parking necessary?}\label{ss:eval:parking}
-
-Linux in its current form puts a high premium on ensuring every process in
-guaranteed some amount of CPU time. As we saw earlier, real time applications
-have strict priority in existing Linux and thus represent a possible antagonist
-that would be able to starve everything else. However, Linux has two different
-safeguards that protect against this. One is that \fifoclass{} is as a
-scheduling class rate-limited: there are tuneable parameters at
-\texttt{/proc/sys/kernel/sched\_rt\_runtime\_us} and
-\texttt{/proc/sys/kernel/sched\_rt\_period\_us}, that together define a rate
-limit for the \fifoclass{} class as a whole. The failsafes go further than just
-that though: even when set to be equal (ie \fifoclass{} gets the full runtime
-each period if it wants), the \normalclass{} scheduling class also has a
-so-called \textit{deadline server}, which is basically a process is in the
-\deadlineclass{} scheduling class with a small amount of runtime per
-period~\cite{lkml-deadline-srv}. This deadline server is in essence a
-representative of the \normalclass{} scheduling class, and when the
-\deadlineclass{} scheduler runs the server, that hands control over to the
-\normalclass{} scheduler, which picks a thread to run.
+\subsection{Can parked processes resume correctly?}\label{ss:eval:parking}
 
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/overload-rt.png}
-        \caption{LC in real time, throttling}\label{fig:overload-rt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{0.49\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/overload-schedbe.png}
-        \caption{BE in \schedbe{}, no throttling}\label{fig:overload-schedbe}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{throttling the LC server under extremely high utilization, vs
-    letting it starve the BE userspace processes}
+    \includegraphics[width=\columnwidth]{graphs/parked-kubernetes.png}
+    \caption{A \beclass{} process in a Kubernetes pod, parked while the
+    antagonist runs and then resuming}\label{fig:parked-kubernetes}
 \end{figure}
 
-
-We can see this in action if we run the same microbenchmark experiment, but
-instead of putting the LC server and BE resize jobs in different groups, we run
-the LC in \fifoclass{} and the BE in \normalclass{}. To see the effects of the
-throttling kicking in, we turn up the utilization: we run it so that the
-baseline utilization is oversaturated (100\%). The results are in
-\autoref{fig:overload-rt}. We see spikes begin to appear after starting the BE
-task, because the \fifoclass{} server gets throttled in favor of running the BE
-tasks; we see parallel spikes in the BE's throughpu in the bottom graph. Notice
-also the increase of the slope of response times after starting the background
-tasks: the deadline server mechanism only kicks in if there is load to run, so
-once it does the resulting throttling degrades the servers performance
-signigicantly. If this were taking place during a load spike while waiting for
-new server instances to start, the presence of BE load would significantly
-impact the queue length/performance degradation while the new server starts
-up.\hmng{seems like a good experiment to do}
-
-On the other hand, we see in \autoref{fig:overload-schedbe} what happens
-if, in that same experiment, \schedbe{} allows the BE userspace process to be
-parked. Notice that the BE does not make progress until the very end, when the
-server is done processing the requests (the experiment stops the client after 30
-seconds and the server from then finishes the backlog of requests).
+After being parked for multiple minutes in the middle of processing a request, a
+BE image resize job running in Kubernetes is able to resume and return the final
+result to the client. \autoref{fig:parked-kubernetes} shows the throughput over
+time of the image resize job. A couple seconds after sending a request to the
+image resize pod, we start an entirely cpu-bound antagonist on the same set of
+cores as the BE is running. We can see that the image resize job is completely
+paused for about two and a half minutes, until the antagonist is done running.
+The job then continues and completes. The client connection did not experience
+any issues, even when setting the TCP keepalive timeout to be less than a
+minute.
 
 
 
@@ -153,7 +113,7 @@ To show the benefits of \schedbe{}, we compare with existing alternatives to
 
 \subsubsection{Realtime scheduling}
 
-As we discussed in \autoref{s:solution}, Linux enforces the categorical
+As we discussed in \autoref{s:design}, Linux enforces the categorical
 separation of tasks in different scheduling classes. 
 
 This points to a possible alternative to using \cgroups{}: run LC in the
@@ -196,6 +156,42 @@ The \fifoclass{} scheduler also enforces not only cross-core isolation between
 different priorities, but also a global ordering within the same priority. This
 requires more synchronization, and is a stricter policy than we need.
 
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/overload-rt.png}
+        \caption{LC in real time, throttling}\label{fig:overload-rt}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{0.49\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/overload-schedbe.png}
+        \caption{BE in \schedbe{}, no throttling}\label{fig:overload-schedbe}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{throttling the LC server under extremely high utilization, versus
+    letting it park the BE userspace processes}
+\end{figure}
+
+In addition, under high utilization of real time processes, Linux does not park
+BEs or do something equivalent, but instead throttles the \fifoclass{} LC
+processes~\cite{lkml-deadline-srv}. We can see this happening when we run the
+same microbenchmark experiment from \autoref{fig:srv-bg-unedited}, with the LC
+in \fifoclass{} and the BE in \normalclass{}, and a much higher baseline
+utilization ($\sim$ 100\%). The results are in \autoref{fig:overload-rt}. We see
+spikes begin to appear after starting the BE task, as the \fifoclass{} server
+gets throttled in favor of running the BE tasks; we see parallel spikes in the
+BE's throughpu in the bottom graph. Notice also the increase of the slope of
+response times after starting the background tasks: the deadline server
+mechanism only kicks in if there is load to run, so once it does the resulting
+throttling degrades the servers performance signigicantly.
+
+By comparison, \autoref{fig:overload-schedbe} shows what happens if, in that
+same experiment, \schedbe{} allows the BE userspace process to be parked. Notice
+that the BE does not make progress until the very end, when the server is done
+processing the requests (the experiment stops the client after 30 seconds and
+the server from then finishes the backlog of requests).
+
 The takeaway is that Linux's current mechanism of scheduling classes can isolate
 workloads effectively, but existing scheduling classes use scheduling
 algorithms that are not a good fit for modern workloads.
@@ -227,9 +223,12 @@ not all of the isolation required of \beclass{}.
     running the BE as a \schedidle{} task}\label{fig:kubernetes-idle}
 \end{figure}
 
-And indeed, we find that when we use \cgroups{}' new cpu.idle interface feature,
-the latency impact of the BE tasks decreases, although it does not entirely drop
-to what we saw with the \fifoclass{} class, or with our \schedbe{} solution.\
-\autoref{fig:srv-bg-idle} shows the results for the microbenchmark for the
-familiar settings of low and high load, and \autoref{fig:kubernetes-schedidle}
-for the Kubernetes experiment.
+\autoref{fig:srv-bg-idle} shows the result of running the BE jobs in the
+microbenchmark from \autoref{fig:srv-bg-unedited} in \schedidle{}. Average
+latency still increases from $\sim$6ms to $\sim$8ms. Although this increase is
+smaller than the original increase to $\sim$15ms using the standard weight
+interface, it is still high compared to the 0ms increase that \schedbe{}
+achieves.
+
+\autoref{fig:kubernetes-idle} shows similar results for the Kubernetes
+experiment from \autoref{fig:kubernetes-unedited}.

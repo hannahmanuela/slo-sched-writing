@@ -19,7 +19,7 @@ high load this requires `parking', which enforces that BEs are immediately
 runnable once the load goes down, with minimal interference for LCs in the
 meantime while the load is high.
 
-We implement this categorical split in Linu, and show that these changes allow
-\cgroups{} itself as well as higher level applications that build on \cgroups{},
+We implement this categorical split in Linux, and show that these changes allow
+\cgroups{} itself, as well as higher level applications that build on \cgroups{}
 like Kubernetes, to do a better job of isolating LC from BE workloads.
 
