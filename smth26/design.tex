@@ -1,4 +1,4 @@
-\section{\beclass{} Design}\label{s:design}
+\section{\beclass{} Design in Linux}\label{s:design}
 
 We design the \beclass{} class to implement our approach while fitting into
 Linux existing scheduler design.
@@ -10,13 +10,13 @@ which are (in descending order of priority): \deadlineclass{}, \fifoclass{}, and
 class, and it is only within the \normalclass{} scheduling class that the
 \cgroups{} cpu.weight interface is relevant.
 
-\hmng{do we need this? --}Each scheduling class exists completely separately:
-classes maintain their own runqueues and per-entity state; implement their own
-scheduling algorithms to choose from the entities on their runqueue; and balance
-the load across runqueues on different cores. Linux isolates strictly between
-different scheduling classes: it only schedules a lower scheduling class if the
-higher scheduling classes found nothing to run, and each scheduling class tries
-to steal work from other cores before returning that it has nothing to run. 
+Each scheduling class exists completely separately: classes maintain their own
+runqueues and per-entity state; implement their own scheduling algorithms to
+choose from the entities on their runqueue; and balance the load across
+runqueues on different cores. Linux isolates strictly between different
+scheduling classes: it only schedules a lower scheduling class if the higher
+scheduling classes found nothing to run, and each scheduling class tries to
+steal work from other cores before returning that it has nothing to run. 
 
 We emulate the same behavior in the design of \beclass{}. The goal is to enforce
 the maxim that no \beclass{} userspace process is ever running if a
@@ -42,13 +42,13 @@ ones before it started running $t$, the \exit{} check would have stolen it, and
 if a new \normalclass{} thread wakes up while $t$ is running, the \entry{} check
 ensures that the core where it wakes up will interrupt $t$.
 
-In enforcing this priority in Linux, parking becomes an emergent behavior rather
-than an explicit state that the scheduler has to put BE processes into. Linux
-already manages I/O interrupts, including acknowledging network packets, in
-kernelspace interrupt handlers. These run irrespective of whether and when the
-userspace process is scheduled, and simply write the relevant message buffers to
-the processes' memory. This means that the dividing line between what is
-application logic (user space) and what is necessary for the BE to not crash
-(kernel space) overlaps with what the scheduler is able to enforce vs not: the
-scheduler cannot preempt a kernel space process handling an interrupt unless it
-is explicitly marked as preemptible.
+% In enforcing this priority in Linux, parking becomes an emergent behavior rather
+% than an explicit state that the scheduler has to put BE processes into. Linux
+% already manages I/O interrupts, including acknowledging network packets, in
+% kernelspace interrupt handlers. These run irrespective of whether and when the
+% userspace process is scheduled, and simply write the relevant message buffers to
+% the processes' memory. This means that the dividing line between what is
+% application logic (user space) and what is necessary for the BE to not crash
+% (kernel space) overlaps with what the scheduler is able to enforce vs not: the
+% scheduler cannot preempt a kernel space process handling an interrupt unless it
+% is explicitly marked as preemptible.

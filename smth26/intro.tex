@@ -17,18 +17,17 @@ the resources are rarely fully used~\cite{borg, nu, overprovision}.
 Other tasks do not fall into this category: \textit{best effort} (BE) tasks such
 as long-running map reduce jobs or background data analytics do not have an SLO.
 
-Indeed, many cloud scheduling systems separate the work they run into classes,
-that include one class for LC tasks, which have resource requirements, and one
-class for BE tasks, which don't. This includes distributed schedulers, \eg{}
+Splitting workloads into LC and BE is popular because it allows providers to run
+BE tasks on machines reserved for LC tasks that are currently experiencing low
+load and thus have idle resources~\cite{perfiso}. Indeed, many cloud scheduling
+systems support LC and BE tasks. This includes distributed schedulers, \eg{}
 Borg\cite{borg} or Kubernetes\cite{kubernetes-resources}, and single machine
 schedulers, for example Caladan\cite{caladan}.
 
-Splitting workloads into LC and BE is popular because it allows providers to run
-BE tasks on machines reserved for LC tasks that are currently experiencing low
-load and thus have idle resources~\cite{perfiso}. However, enforcing strict
-isolation is challenging: Should an LC service experience a spike in load, it
-needs to be able to immediately have access to all the resources it had
-reserved. Any delay likely leads to violations of the services SLOs.
+However, enforcing strict isolation is challenging: Should an LC service
+experience a spike in load, it needs to be able to immediately have access to
+all the resources it had reserved. Any delay likely leads to violations of the
+services SLOs.
 
 \begin{figure}[t]
     \centering
@@ -76,20 +75,19 @@ with $1/10000$th of the LCs weight. As we show in more detail in
 \autoref{s:problem}, the problem that leads to the increased latencies observed
 is that Linux will run a BE process on one core, unaware that an LC process is
 runnable and waiting on another. This happens because Linux uses per-CPU
-runqueues, which avoids the synchronization overhead of having a global
-runqueue. A key challenge this work addresses is how to manage this tension
-between expensive synchronization and affecting strict isolation across
-cores.
+runqueues, which avoids the overheads of having a global runqueue. A key
+challenge this work addresses is how to manage this tension between expensive
+cross-core checks and affecting strict isolation across cores.
 
 Our approach addresses this challenge by exposing in the API and enforcing in
-the scheduler a new class for BE to run in, \beclass{}. As we show in
+the scheduler a new priority class for BE to run in, \beclass{}. As we show in
 \autoref{ss:approach:solves-problems}, putting BE in a separate class from LC
 makes it viable to enforce the isolation across cores, because it reduces the
-number of times the scheduler is required to synchronize. Enforcing weights
-across cores requires the scheduler to synchronize every scheduling tick, but
-with a separate class it only has to do so on \textit{class boundary crossings}
-- every time a core starts running a BE process, and every time it queues an LC
-task.
+number of times the scheduler is required to look at other runqueues. Enforcing
+weights across cores requires the scheduler to do so every scheduling tick, but
+with a separate class it only has to look at other cores on \textit{class
+boundary crossings}: every time a core starts running a BE process, and every
+time it queues an LC task.
 
 A challenge that emerges from creating a separate priority class is that, when
 the LC is under high load, the BE processes need somewhere to go. The goal is to
@@ -100,7 +98,7 @@ couple minutes.
 We address this challenge by enabling BEs to exist in an ephemeral state called
 \textit{parked}, which BEs are put in when the CPU utilization is high enough
 that any amount of running a BE would interfere with an LC. While load remains
-high, the scheduler ensures that the user-space process doens't run and consume
+high, the scheduler ensures that the user-space process doesn't run and consume
 resources, but continues to run the kernel-space handlers that manage critical
 state such as TCP connections and timers on behalf of the BE processes. 
 
@@ -113,12 +111,9 @@ follows:
     \item identifying that the reason isolation of LC from BE often fails is that
     \cgroups{} does a poor job of enforcing the weights of different groups
     across cores; and that this dramatically affects end-to-end latencies
-    \item showing that BEs can get no user space CPU time for extended periods
-    and be able to resume execution normally after,\hmng{are we introducing the
-    parked state? is this what we are showing about it? that it works, maybe
-    also that it is desirable?}
-    \item implement in Linux \beclass{}, a new class for BE tasks that separates
+    \item the design of \beclass{}, a new class for BE tasks that separates
     them from the default class LC tasks run in, and isolates LC workloads from
     BE ones while minimizing the amount of cross-core checks required, as well as
     naturally enforcing the parked state
+    \item an implementation of \beclass{} in Linux
 \end{enumerate}

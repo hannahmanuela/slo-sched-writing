@@ -5,27 +5,26 @@
 
 This section answers the following questions:
 \begin{enumerate}
-    \item Does the new \schedbe{} isolate LC from BE workloads?
+    \item Does \schedbe{} isolate LC from BE workloads?
     \item Can parked processes resume correctly?
     \item How much does \schedbe{} cost?
 \end{enumerate}
 
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
-that our patch builds on. \hmng{TODO put in specs of ..? zg machines? I didn't
-always use all of the cores, but ig I can say that on a per-experiment basis}
+that our implementation builds on.
 
 \subsection{Does \schedbe{} isolate?}
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-schedbe-low.png}
-        \caption{Low load}\label{fig:srv-bg-schedbe-low}
+        \caption{Low load (85\%)}\label{fig:srv-bg-schedbe-low}
+        \vspace{12pt}
     \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-schedbe-high.png}
-        \caption{High load}\label{fig:srv-bg-schedbe-high}
+        \caption{High load (95\%)}\label{fig:srv-bg-schedbe-high}
     \end{subfigure}
     \vspace{4pt}
     \caption{same expiriment as in \autoref{fig:srv-bg-unedited}, but with the
@@ -102,11 +101,27 @@ keepalive timeout to expire within duration the BE spend in being parked.
 
 \subsection{Cost of \schedbe{}}
 
-We evaluate the cost of the additional checks required by \schedbe{} by looking
-at how long the code takes to run, and how much lock contention it
-creates.\hmng{This is a pretty big todo}
+The cost of \schedbe{} is can be broken down into the three checks that make up
+the priority enforcement:
 
+\begin{enumerate}
+    \item \local{} adds a small amount of compute overhead on each scheduling
+    decision, and removes some as well because it gets rid of the eligiblity
+    check. This is a small amount of code we do not expect to impact latency
+    \item \entry{} adds no new latency to Linux, which already implements
+    \entry{} for \schedidle{}
+    \item \exit{} adds overheads in two places: one is the cross-core check that
+    each happens at each class boundary crossing, and the other is the overhead
+    of the migration should it decide to steal a \schednormal{} process
+\end{enumerate}
 
+We measure the amount of time that the \exit{} check takes, and look at how
+often it happens as well as how often it chooses to steal. The overhead of
+stealing the LC job is known, and is a complicated function of the CPU
+architecture and which cores it is moving between (\eg{} how much memory
+hierarchy do the two cores share).
+
+\hmng{todo the measurements}
 
 
 \subsection{Existing approaches}\label{ss:eval:existing}
@@ -130,12 +145,13 @@ on when processes become runnable.
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.48\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
         \caption{Low load}\label{fig:srv-bg-rt-low}
+        \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
-    \begin{subfigure}[t]{0.48\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
         \caption{High load}\label{fig:srv-bg-rt-high}
     \end{subfigure}
@@ -156,17 +172,18 @@ mode of head-of-line (HoL) blocking under varied request processing times, where
 long-running requests monopolize the CPU while short requests wait in the queue.
 The \fifoclass{} scheduler also enforces not only cross-core isolation between
 different priorities, but also a global ordering within the same priority. This
-requires more synchronization, and is a stricter policy than \beclass{} needs.
+requires more cross-core checks, and is a stricter policy than \beclass{} needs.
 
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/overload-rt.png}
         \caption{LC in real time, throttling}\label{fig:overload-rt}
+        \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/overload-schedbe.png}
         \caption{BE in \schedbe{}, no throttling}\label{fig:overload-schedbe}
     \end{subfigure}
@@ -195,8 +212,6 @@ The takeaway is that Linux's current mechanism of scheduling classes can isolate
 workloads effectively, but existing scheduling classes use scheduling
 algorithms that are not a good fit for modern workloads.
 
-\hmng{The parking stuff still feels like an awkward insert}
-
 \subsubsection{\schedidle}\label{ss:schedidle}
 
 As discussed in \autoref{s:implementation}, \schedidle{} implements some but not
@@ -205,17 +220,25 @@ but not the \exit{} check or strict local priorities.
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
-        \caption{Low load}\label{fig:srv-bg-idle-low}
+        \caption{\schedidle{} in low load (85\%)}\label{fig:srv-bg-idle-low}
+        \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
-    \begin{subfigure}[t]{0.49\columnwidth}
+    \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
-        \caption{High load}\label{fig:srv-bg-idle-high}
+        \caption{\schedidle{} in high load (95\%)}\label{fig:srv-bg-idle-high}
+        \vspace{12pt}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp.png}
+        \caption{Comparison of mean latency of the low load setting for weights,
+        \schedidle{}, and \schedbe{}}\label{fig:srv-bg-cmp}
     \end{subfigure}
     \vspace{4pt}
-    \caption{using \schedidle{}}\label{fig:srv-bg-idle}
+    \caption{}\label{fig:srv-bg-idle}
 \end{figure}
 
 \begin{figure}[t]
@@ -226,8 +249,10 @@ but not the \exit{} check or strict local priorities.
 \end{figure}
 
 \autoref{fig:srv-bg-idle} shows the result of running the BE jobs in the
-microbenchmark in \schedidle{}. Average latency still increases from $\sim$6ms
-to $\sim$8ms. Although this increase is smaller than the original increase to
-$\sim$15ms using the standard weight interface, it is still high compared to the
-0ms increase that \schedbe{} achieves. \autoref{fig:kubernetes-idle} shows
-similar results for the Kubernetes experiment.
+microbenchmark in \schedidle{}, as well as a graph that compares the low load
+setting of the standard \cgroups{} weight, \schedbe{}, and \schedidle{}. Average
+latency still increases from $\sim$6ms to $\sim$8ms. Although this increase is
+smaller than the original increase to $\sim$15ms using the standard weight
+interface, it is still high compared to the 0ms increase that \schedbe{}
+achieves. \autoref{fig:kubernetes-idle} shows similar results for the Kubernetes
+experiment.
