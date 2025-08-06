@@ -6,44 +6,72 @@ LC class is enforced by strict priority scheduling.\footnote{here we do not mean
 priorities in the way there are used in nice values, but rather a strict
 priority where threads of a higher priority always run first.} As we show in
 \autoref{ss:approach:solves-problems}, doing so solves the problems laid out in
-\autoref{s:problem}. Strict priority scheduling runs the risk of starving the
-lower class, which we avoid by separating critical services from application logic,
-which we discuss in \autoref{ss:approach:parking}.
+\autoref{s:problem}. Strict priority scheduling runs the risk of starving and
+thus crashing the lower class, which we avoid by separating critical
+services\hmng{don't like `services'} from application logic
+(\autoref{ss:approach:parking}).
 
 \subsection{\beclass{} solves the problems}\label{ss:approach:solves-problems}
 
 \beclass{}, and the categorical split it create between LC and BE, solves the
 problems identified in \autoref{s:problem}.
 
-\textbf{\autoref{ss:problem:weights-local}} Strict priority scheduling solves
-this problem because it is by definition global.
+\textbf{\autoref{ss:problem:weights-local}} Strict priority scheduling is by
+definition global.
 
-\textbf{\autoref{ss:problem:cross-core-hard}} If the scheduler is enforcing
-priorities, then unless the set of runnable tasks changes, if the scheduler was
-running the correct priority class before, it still will be. Thus the scheduler
-only needs to synchronize across cores on \textit{class boundary crossings}, ie
-when a core starts running a lower class process, or when a core enqueues a
-higher class one. 
+\textbf{\autoref{ss:problem:cross-core-hard}} Enforcing isolation of two
+priorities is simpler and requires less synchronization than enforcing a weight
+split. It is simple because priorities are: a core does not need to do complex
+accounting to figure out whether it is a low-weight processes turn to run, it
+just needs to know the set of runnable priorities. Enforcing isolation is as
+simple as choosing only from the highest priority.
+
+Isolating priorities also requires less synchronization: unless the set of
+runnable tasks changes, if the scheduler was running the correct priority class
+before, it still will be. Thus the scheduler only needs to synchronize across
+cores on \textit{class boundary crossings}, ie when a core starts running a
+lower class process, or when a core enqueues a higher class one. 
 
 \textbf{\autoref{ss:problem:quantum}} Strict priorities being enforced at class
-boundary crossings rather than ticks also addresses the final problem we saw. It
-stops the fidelity of the isolation from being dependent on the length of the
-tick, because the kernel is already involved in the events that cause the class
-boundary crossings.
+boundary crossings rather than ticks also addresses the final problem we saw.
+The kernel already runs and can choose to reschedule in the process wakeup and
+exit paths that cause class boundary crossings. This means that the fidelity of
+the isolation is now dependent on how quickly the handler for the process wakeup
+or exit event runs, not on the length of a scheduling tick.
 
 \subsection{Parking during high load}\label{ss:approach:parking}
 
 The goal of parking is to maintain the strict priority isolation between LC and
-BE under extremely high load, while preserving the current progress of the BE
+BE when the CPU load is >100\%, while preserving the current progress of the BE
 application. We do this by separating BE processes' logic into application-level
-and kernel-level; and ensure that during high load BE processes only get to run
-on the kernel-level. This means that, in the parked state, a BE makes no
-application-level progress, but remains runnable until the load has come
-down.\hmng{should I break this down into subsections? I'm basically already
-introducing the claims and then going through them step by step}
+and kernel-level; and ensure that, while parked, BE processes only get to run on
+the kernel-level. This means that, while in the parked state, BEs make no
+application-level progress, but remain runnable until the load has come down.
 
+\subsubsection{Parking happens only in extreme load}
+As LC load approaches 100\%, a BE application runs proportionally less, since it
+only runs in the times where LC is not utilizing the core. But even if LC load
+is at 99\%, the BE can still run for 1\% of the time, which is in principle more
+than the 0.01\% it would have been allowed to with a weight of 1/10000. Once LC
+load reaches $\geq$100\% for longer periods of time however, priority scheduling
+does not run the BE at all anymore. If not done carefully, this will cause
+applications to crash.
+
+\subsubsection{Parking doesn't crash the BE}
+Parking keeps the runnable without actually running the user space application.
+It does by continuining to run the kernel services that manage critical state on
+behalf of the BE processes. This includes TCP connections, timers, and i/o
+completions. All of these are handled, for instance the incoming TCP packets
+acknowleged, and then buffered for when the load goes down and the parked
+process can run again. Application-level logic is paused while the process is
+parked, which is fine because the logic remains internally consistent; code
+without side effects can be paused arbitrarily, and the side effects are managed
+by the kernel to ensure that they don't cause the application to
+crash.\hmng{clunky}
+
+\subsubsection{Parking doesn't crash things around the BE}
 Because BEs are best effort, pausing application-level progress is not a
-problem: coordinators and other processes they interact with expect them to make
+problem: coordinators and other services they interact with expect them to make
 slow progress or even be killed. For example, suppose a mapper has a heartbeat
 with a coordinator, that includes the mapper's progress. In the parked state,
 handling application-level heartbeats is paused until after the load goes down
@@ -51,23 +79,17 @@ and CPU time is available again to run the BE. If the mapper does not respond
 for a while, without the connection dying, the coordinator can choose to kill
 that instance and restart the job, or it can choose to wait. This leaves the
 decision of how to handle the BE being stuck on a machine with high LC load up
-to the application.
+to the application, where it should be.
 
-They key thing in order for the mapper to be able to resume after being parked
-is that the connection between the mapper and manager not die. This is why
-critical things like keeping TCP connections alive are handled on the kernel
-level. The kernel is responsible for acknowledging the packages coming in, and
-buffering the contents for the parked process. It does the same for other
-intermediate events like timers firing and i/o completions.
-
-Parking makes sense because a machine experiencing high load in a datacenter is
-likely a localized problem, both in space (as in, will only effect some small
-number of machines) and time (as in, the high load on the machine won't last
-long). It is localized in space because microservices' loads are independent
-from one another: on the order of seconds and minutes, individual microservices'
-loads may vary, but broadly load is known to be predictable, so even if one
-machine is experiencing high load other machines won't be~\cite{TODO}. It is
-localized in time because of the distributed setting: a distributed scheduler
-monitors the state of all the machines and migrates load when it sees high CPU
-utilization, or an autoscaler starts new instances, shifting the excess LC load
-to remote machines and thereby allowing BEs to run again on the local machine.
+\subsubsection{Parking is short-lived}
+A machine in a datacenter experiencing that high of a load is likely a localized
+problem, both in space (as in, will only effect some small number of machines)
+and time (as in, the high load on the machine won't last long). It is localized
+in space because microservices' loads are independent from one another: on the
+order of seconds and minutes, individual microservices' loads may vary, but
+broadly load is known to be predictable, so even if one machine is experiencing
+high load other machines won't be~\cite{TODO}. It is localized in time because
+of the distributed setting: a distributed scheduler monitors the state of all
+the machines and migrates load when it sees high CPU utilization, or an
+autoscaler starts new instances, shifting the excess LC load to remote machines
+and thereby allowing BEs to run again on the local machine.
