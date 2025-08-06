@@ -42,7 +42,7 @@ or exit event runs, not on the length of a scheduling tick.
 \subsection{Parking during high load}\label{ss:approach:parking}
 
 The goal of parking is to maintain the strict priority isolation between LC and
-BE when the CPU load is >100\%, while preserving the current progress of the BE
+BE when the CPU load is 100\%, while preserving the current progress of the BE
 application. We do this by separating BE processes' logic into application-level
 and kernel-level; and ensure that, while parked, BE processes only get to run on
 the kernel-level. This means that, while in the parked state, BEs make no
@@ -61,13 +61,14 @@ applications to crash.
 Parking keeps the runnable without actually running the user space application.
 It does by continuining to run the kernel services that manage critical state on
 behalf of the BE processes. This includes TCP connections, timers, and i/o
-completions. All of these are handled, for instance the incoming TCP packets
-acknowleged, and then buffered for when the load goes down and the parked
-process can run again. Application-level logic is paused while the process is
-parked, which is fine because the logic remains internally consistent; code
-without side effects can be paused arbitrarily, and the side effects are managed
-by the kernel to ensure that they don't cause the application to
-crash.\hmng{clunky}
+completions. All of these are handled within the kernel, for instance the
+incoming TCP packets acknowleged and their contents buffered. This means that
+when the load goes down and the parked process can run again, the read will
+return all the intermediate messages at once. Application-level logic is paused
+while the process is parked, which is fine because the logic remains internally
+consistent; code without side effects can be paused arbitrarily, and the side
+effects are managed by the kernel to ensure that they don't cause the
+application to crash.\hmng{clunky}
 
 \subsubsection{Parking doesn't crash things around the BE}
 Because BEs are best effort, pausing application-level progress is not a
@@ -79,7 +80,7 @@ and CPU time is available again to run the BE. If the mapper does not respond
 for a while, without the connection dying, the coordinator can choose to kill
 that instance and restart the job, or it can choose to wait. This leaves the
 decision of how to handle the BE being stuck on a machine with high LC load up
-to the application, where it should be.
+to the application.
 
 \subsubsection{Parking is short-lived}
 A machine in a datacenter experiencing that high of a load is likely a localized
