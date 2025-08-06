@@ -1,42 +1,35 @@
 \section{Approach}\label{s:approach}
 
-We propose an extended \cgroups{} API where weights can still be used to
-differentiate between different LC tasks but BE tasks are put in a separate
-class \beclass{}, and a scheduler where the separation of these two is enforced
-by strict priority scheduling.\footnote{here we do not mean priorities in the
-way there are used in nice values, but rather a strict priority where threads of
-a higher priority always run first.} As we show in
+We propose an extended \cgroups{} API where BE tasks are put in a separate class
+\beclass{}, and a scheduler where the separation of \beclass{} from the default
+LC class is enforced by strict priority scheduling.\footnote{here we do not mean
+priorities in the way there are used in nice values, but rather a strict
+priority where threads of a higher priority always run first.} As we show in
 \autoref{ss:approach:solves-problems}, doing so solves the problems laid out in
-\autoref{s:problem}. But priority scheduling also requires a state that BEs can
-go into during high load, that allows the LCs to use all the available
-resources, which we discuss in \autoref{ss:approach:parking}.
+\autoref{s:problem}. Strict priority scheduling runs the risk of starving the
+lower class, which we avoid by separating critical services from application logic,
+which we discuss in \autoref{ss:approach:parking}.
 
-\subsection{Categorical separation solves the
-problems}\label{ss:approach:solves-problems}
+\subsection{\beclass{} solves the problems}\label{ss:approach:solves-problems}
 
-Creating this categorical split between LC and BE  solves the problems
-identified in \autoref{s:problem}.
+\beclass{}, and the categorical split it create between LC and BE, solves the
+problems identified in \autoref{s:problem}.
 
 \textbf{\autoref{ss:problem:weights-local}} Strict priority scheduling solves
 this problem because it is by definition global.
 
-\textbf{\autoref{ss:problem:cross-core-hard}} Another problem we observed is
-that implementing a weight-based policy globally is expensive. This is because,
-in a weight-based system, the definition of what process should be running
-changes over time. If a core has one high-weight and one low-weight group,
-before running the low-weight group it needs to know if any other cores have
-recently run a different process within that group, because that would affect
-how much time it is owed on this core. However, if the scheduler is enforcing
-categorical priorities, then unless the set of runnable tasks changes, if the
-scheduler was running the correct priority class before, it still will be. Thus
-the scheduler only needs to synchronize across cores on \textit{class boundary
-crossings}, ie when a core starts running a lower class process, or when a core
-enqueues a higher class one.
+\textbf{\autoref{ss:problem:cross-core-hard}} If the scheduler is enforcing
+priorities, then unless the set of runnable tasks changes, if the scheduler was
+running the correct priority class before, it still will be. Thus the scheduler
+only needs to synchronize across cores on \textit{class boundary crossings}, ie
+when a core starts running a lower class process, or when a core enqueues a
+higher class one. 
 
-\textbf{\autoref{ss:problem:quantum}} This also addresses the final problem we
-saw: strict priorities are enforced at class boundary crossings rather than
-ticks, which removes the dependence of the fidelity of the isolation on the
-length of the tick.
+\textbf{\autoref{ss:problem:quantum}} Strict priorities being enforced at class
+boundary crossings rather than ticks also addresses the final problem we saw. It
+stops the fidelity of the isolation from being dependent on the length of the
+tick, because the kernel is already involved in the events that cause the class
+boundary crossings.
 
 \subsection{Parking during high load}\label{ss:approach:parking}
 
@@ -45,7 +38,9 @@ BE under extremely high load, while preserving the current progress of the BE
 application. We do this by separating BE processes' logic into application-level
 and kernel-level; and ensure that during high load BE processes only get to run
 on the kernel-level. This means that, in the parked state, a BE makes no
-application-level progress, but remains runnable until the load has come down.
+application-level progress, but remains runnable until the load has come
+down.\hmng{should I break this down into subsections? I'm basically already
+introducing the claims and then going through them step by step}
 
 Because BEs are best effort, pausing application-level progress is not a
 problem: coordinators and other processes they interact with expect them to make
@@ -54,7 +49,9 @@ with a coordinator, that includes the mapper's progress. In the parked state,
 handling application-level heartbeats is paused until after the load goes down
 and CPU time is available again to run the BE. If the mapper does not respond
 for a while, without the connection dying, the coordinator can choose to kill
-that instance and restart the job, or it can choose to wait.
+that instance and restart the job, or it can choose to wait. This leaves the
+decision of how to handle the BE being stuck on a machine with high LC load up
+to the application.
 
 They key thing in order for the mapper to be able to resume after being parked
 is that the connection between the mapper and manager not die. This is why

@@ -3,16 +3,16 @@
 \label{s:intro}
 %-------------------------------------------------------------------------------
 
-Many microservices are \textit{latency critical}, meaning they must meet strict
-Service Level Objectives (SLOs) that guarantee uptime and caps on the response
-latency of the service. In order to meet these guarantees, developers reserve
-resources on cloud systems like AWS ec2 or Kubernetes, where the reservation
-interface requires them to give a fixed amount of resources the service will
-need, \ie{} a number of CPUs and an amount of memory~\cite{aws-ec2-resources,
-kubernetes-resources}. However, the load on the service may be variable and
-unpredictable. As a result, developers choose those requirements based on the
-expected peak load, and the resources are rarely fully used~\cite{borg, nu,
-overprovision}.
+Many microservices are \textit{latency critical} (LC), meaning they are required
+to meet strict Service Level Objectives (SLOs), that guarantee uptime and caps
+on the response latency of the service. In order to meet these guarantees,
+developers reserve resources on cloud systems like AWS ec2 or Kubernetes, where
+the reservation interface consists of a fixed amount of resources the service
+will get, \ie{} a number of CPUs and an amount of
+memory~\cite{aws-ec2-resources, kubernetes-resources}. However, the load on the
+microservices is usually variable and unpredictable. Developers choose the
+amount of resources to reserve based on the expected peak load, and as a result
+the resources are rarely fully used~\cite{borg, nu, overprovision}.
 
 Other tasks do not fall into this category: \textit{best effort} (BE) tasks such
 as long-running map reduce jobs or background data analytics do not have an SLO.
@@ -41,17 +41,17 @@ reserved. Any delay likely leads to violations of the services SLOs.
 Current popular systems fail to properly isolate latency critical from best
 effort workloads. When running a small but realistic social network web
 application on Kubernetes, we observe significant impacts on its latency when
-starting a best effort workload, doing image resizing, on the same machine.
-\autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
-that gets a users feed on the top graph; the bottom graph shows the throughput
-of the BE workload. The mean response latency jumps from $\sim$7ms to
-$\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$23ms after
-the BEs start running. 
+starting a best effort workload, doing image resizing, on the same machine. The
+top graph of \autoref{fig:kubernetes-unedited} plots the end-to-end latency of
+an endpoint that gets a users feed and applies a moderation; the bottom graph
+shows the throughput of the BE workload. After the BEs start running, the mean
+response latency of the web application jumps from $\sim$7ms to $\sim$15ms, and
+the 99th percentile latency from $\sim$10ms to $\sim$23ms . 
 
-Understanding where the isolation fails requires understanding the underlying
+Understanding where the isolation fails requires looking at the underlying
 mechanism that is enforcing it: Linux's \cgroups{}. \cgroups{} offers an API to
-enforce isolation of multiple resources including memory and CPU, but this work
-will focus on CPU isolation. Most modern containers rely on \cgroups{} for CPU
+enforce isolation of multiple resources including memory and CPU; this work
+focuses on CPU isolation. Most modern containers rely on \cgroups{} for CPU
 isolation; this includes all Open Container Initiative (OCI) compliant
 containers, including Kubernetes but also Docker, CRI-O, and
 containerd~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
@@ -70,55 +70,53 @@ when they are both active their CPU time ratio should also be $2:3$, but if
 $cg1$ has no runnable threads, then $cg2$ would represent 100\% of the runnable
 weight and get all the CPU time.
 
-However, as \autoref{fig:kubernetes-unedited} showed, something is going wrong:
-the effect the BE has on the latency of the LC server is much higher than
-expected for something with $1/10000$th of its weight. As we show in more detail
-in \autoref{s:problem}, the problem that leads to the increased latencies
-observed is that Linux will run a BE process on one core, unaware that an LC
-process is runnable and waiting on another. This happens because Linux uses
-per-CPU runqueues. Doing so avoids the synchronization overhead of having a
-global runqueue, but also means that enforcing weights across the runqueues
-properly requires expensive synchronization. A key challenge this work addresses
-is how to manage this tension between expensive synchronization and affecting
-strict isolation across cores.\hmng{I don't really talk about 2.3 here}
+However, in \autoref{fig:kubernetes-unedited} the effect the BE has on the
+latency of the LC server is much higher than expected for starting a process
+with $1/10000$th of the LCs weight. As we show in more detail in
+\autoref{s:problem}, the problem that leads to the increased latencies observed
+is that Linux will run a BE process on one core, unaware that an LC process is
+runnable and waiting on another. This happens because Linux uses per-CPU
+runqueues, which avoids the synchronization overhead of having a global
+runqueue. A key challenge this work addresses is how to manage this tension
+between expensive synchronization and affecting strict isolation across
+cores.
 
 Our approach addresses this challenge by exposing in the API and enforcing in
 the scheduler a new class for BE to run in, \beclass{}. As we show in
 \autoref{ss:approach:solves-problems}, putting BE in a separate class from LC
 makes it viable to enforce the isolation across cores, because it reduces the
-number of times the scheduler is required to synchronize across cores. Enforcing
-weights across cores requires the scheduler to synchronize every scheduling
-tick, but with a separate class it only has to do so on \textit{class boundary
-crossings} - every time a core starts running a BE process, and every time it
-queues an LC task.
+number of times the scheduler is required to synchronize. Enforcing weights
+across cores requires the scheduler to synchronize every scheduling tick, but
+with a separate class it only has to do so on \textit{class boundary crossings}
+- every time a core starts running a BE process, and every time it queues an LC
+task.
 
-A challenge that emerges from this separation is that, when the LC is under high
-load, the BE processes need somewhere to go. Killing them should only be a last
-resort, but as we show in \autoref{ss:eval:parking}, running them even for small
-amounts of time can impact LC server performance.
+A challenge that emerges from creating a separate priority class is that, when
+the LC is under high load, the BE processes need somewhere to go. The goal is to
+make the priority of LC over BE as strict as possible, while allowing the BE
+processes to resume execution once the load has gone down, even if that takes a
+couple minutes.
 
-We address this challenge by making the split between LC and BE as strict as
-possible without crashing the BE processes. When the CPU utilization is high
-enough that any amount of running a BE would interfere with an LC, we enable BEs
-to exist in an ephemeral state called \textit{parked}, which does the minimal
-amount of work required to keep the BEs from crashing. In order to do this, the
-scheduler ensures that the userspace process doens't run and consume resources,
-but the kernelspace handlers that manage TCP connections and timers on behalf of
-the BE processes still run. The goal of the parked state is to allow a BE
-process to correctly resume even if it hasn't run for minutes.
+We address this challenge by enabling BEs to exist in an ephemeral state called
+\textit{parked}, which BEs are put in when the CPU utilization is high enough
+that any amount of running a BE would interfere with an LC. While load remains
+high, the scheduler ensures that the user-space process doens't run and consume
+resources, but continues to run the kernel-space handlers that manage critical
+state such as TCP connections and timers on behalf of the BE processes. 
 
-We implement the \beclass{} class in Liinux, and show that it is able to
+We implement the \beclass{} class in Linux, and show that it is able to
 significiantly improve Linux's ability to isolate LC from BE workloads: in the
 same Kubernetes experiment, the increase in average latency when starting a BE
 workload goes from $>$2x to 0. The contributions of this paper are thus as
 follows: 
 \begin{enumerate}
-    \item identifying the reason isolation of LC from BE often fails is that
+    \item identifying that the reason isolation of LC from BE often fails is that
     \cgroups{} does a poor job of enforcing the weights of different groups
     across cores; and that this dramatically affects end-to-end latencies
-    \item showing that BEs can get no userpace CPU time for extended periods of
-    time and stay alive and keep running after; and that doing so enables LC
-    workloads to perform much better under high load than if they are throttled,
+    \item showing that BEs can get no user space CPU time for extended periods
+    and be able to resume execution normally after,\hmng{are we introducing the
+    parked state? is this what we are showing about it? that it works, maybe
+    also that it is desirable?}
     \item implement in Linux \beclass{}, a new class for BE tasks that separates
     them from the default class LC tasks run in, and isolates LC workloads from
     BE ones while minimizing the amount of cross-core checks required, as well as

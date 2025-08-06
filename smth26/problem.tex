@@ -3,10 +3,14 @@
 %-------------------------------------------------------------------------------
 
 The observed failure to isolate between the LC web application and the BE image
-resize happens because BEs sometimes run uncontended on one core while another
-has queued and waiting LC threads (\autoref{ss:problem:bes-run}). This is
-because weights are only strictly enforced within runqueues, which are per-cpu
-(\autoref{ss:problem:weights-local}).
+resize happens because BEs sometimes run uncontended on one core, even while
+another has queued and waiting LC threads (\autoref{ss:problem:bes-run}). This
+is because weights are only strictly enforced within runqueues, which are
+per-CPU (\autoref{ss:problem:weights-local}). Weights are complicated and
+expensive to enforce across cores (\autoref{ss:problem:cross-core-hard}), as
+well as interacting poorly with Linux's large scheduling quantum
+(\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
+to use if the goal is to isolate LC services from BE ones.
 
 
 \subsection{Weights don't isolate}\label{ss:problem:bes-run}
@@ -31,19 +35,20 @@ because weights are only strictly enforced within runqueues, which are per-cpu
     histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
 \end{figure}
 
+In order to isolate why the jump in latency is happening when the BEs run, we
+reproduce the effects in a simpler benchmark. The experiment shown in
 \autoref{fig:kubernetes-unedited} includes a complicated software stack of
-Kubernetes, Python, and the libraries used to expose the service's API and
-manage worker threads. All of this has performance implications, and we can see
-that even before the workers start there are large latency spikes of up to 30ms.
-In order to isolate why the jump in latency is happening when the BEs run from
-the many incidentals of this experiment, we reproduce the effects in a simpler
-benchmark. We run a simple cpu-bound spin server with a pool of worker threads
-that we hit with an open-loop remote client, and then start two BE workloads
-doing image resizing. We put the LC server and the BE resize job each in their
-own \cgroups{} group with weights 10000 and 1 respectively, and pin them to the
-same set of cores. \autoref{fig:srv-bg-unedited} shows the increase in latencies
-of the LC server at two different baseline utilization levels. We see that even
-in the lower baseline utilization case, where the server alone uses 85\%, mean
+Kubernetes, uvicorn, FastAPI, and Python. All of this has performance
+implications, and we can see that even before the BE load starts there are large
+latency spikes up to 30ms.
+
+For the simplified experiment, we run a simple CPU-bound spin server with a pool
+of worker threads. We run an open-loop client on a remote machine, and then
+start two BE workloads doing image resizing. We put the LC server and the BE
+resize job each in their own \cgroups{} group with weights 10000 and 1
+respectively, and pin them to the same set of cores.
+\autoref{fig:srv-bg-unedited} shows the result: we see that at a $\sim$85\%
+baseline utilization of the server, after starting the BEs the server's mean
 latencies spike up from steady at around 6ms to as high as 20ms, and much higher
 for 99th percentile latencies.
 
@@ -57,20 +62,18 @@ for 99th percentile latencies.
 \end{figure}
 
 Using this simplified experiment, we analyze perf traces of the scheduling
-decisions, and visualize the trace using schedviz~\cite{schedviz-tool}, in order
-to understand where the latency impact comes from.
+decisions by visualizing the trace using schedviz~\cite{schedviz-tool}.
 \autoref{fig:schedviz-problem} shows a 10ms outtake of the resulting image. The
 process running on each core is shown as a an oval, and queued processes are
 shown as rectangles below; the x `axis' is time and the y `axis' shows the 4
-cores the experiment is running on. The root of the undesirable behavior is: on
-core 6, the red process that is running the whole time is a BE process, whereas
-LC threads, shown in varying shades of blue, are queued on the other cores. The
-takeaway here is that the failure mode we observe is that \textit{one core is
-running a BE process, while an LC process is waiting on another}.
+cores the experiment is running on. What we see is that \textit{one core is
+running a BE process, while LC processes are queued on another}. On core 6, the
+red process that is running for the whole 10ms is a BE process, and the LC threads,
+shown in varying shades of blue, are queued on the other cores.
 
 \subsection{Weights are enforced only locally}\label{ss:problem:weights-local}
 
-The reason this undesirable behavior happens is that Linux maintains a separate
+The reason this inversion is possible is that Linux maintains a separate
 runqueue on each core, in order to avoid the synchronization overheads of
 accessing global state for every scheduling decision. Within each runqueue,
 Linux's scheduler works to maintain the correct ratio of received CPU time at
@@ -80,28 +83,39 @@ processes and thus runs a low weight one, whereas another core has queued high
 weight processes.
 
 \subsection{Enforcing weights across cores is
-expensive}\label{ss:problem:cross-core-hard}
+hard}\label{ss:problem:cross-core-hard}
 
-The root of the problem goes deeper than just a poor implementation: a
-weight-based interface is at odds with machine-wide policy enforcement. In order
-to strictly and globally enforce a processes weight, the scheduler would need to
-synchronize at every scheduling decision: calculating whether a given process is
-owed time globally requires knowing the total weight across all cores as well as
-the sum of time that all the processes in the group have gotten. This
-effectively removes the benefit of local runqueues, since the scheduler needs to
-synchronize at every decision it makes. In increasingly multi-core and
-multi-NUMA machines, synchronization is expensive; other work has found that
-kernel lock contention is a bottleneck to performance at scale~\cite{afaas}.
-This means that the overheads of maintaining a weight split as a global
-invariant can quickly become prohibitive.
+This is not just a poor implementation: a weight-based interface is at odds with
+machine-wide policy enforcement. In order to strictly and globally enforce a
+processes weight, the scheduler would need to synchronize at every scheduling
+decision. This is because, in a weight-based system, the definition of what
+process should be running changes over time. If a core has one high-weight and
+one low-weight group, before running the low-weight group it needs to know if
+any other cores have recently run a different process within that group, because
+that would affect how much time it is owed on this core.
+
+Synchronizing at every tick effectively removes the benefit of local runqueues.
+In increasingly multi-core and multi-NUMA machines, synchronization is
+expensive; other work has found that kernel lock contention is a bottleneck to
+performance at scale~\cite{afaas}. This means that the overheads of maintaining
+a weight split as a global invariant can quickly become prohibitive.
+
+Managing and calculating global shares is complex: calculating whether a given
+process is owed time globally requires knowing the total weight across all cores
+as well as the sum of time that all the processes in the group have gotten. Such
+a calculation would include complicated accounting that takes into account,
+amount other things, different cores' virtual times, processes' weights, groups,
+and limits. Just within runqueues the accounting is already so complicated that
+comments in the Linux source include function derivations and equation
+rewriting.
 
 
 \subsection{Weights interact poorly with tick-based
 scheduling}\label{ss:problem:quantum}
 
-Even on a single runqueue, using very large weight differentials as an interface
-to isolate LC and BE doesn't work well because preemption is tick-based. In a
-weight based scheme, BE processes also get a fair share of the CPU. The problem
+Using very large weight differentials as an interface to isolate LC and BE
+doesn't work well because preemption is tick-based. Even on a single runqueue,
+in a weight based scheme BE processes get a fair share of the CPU. The problem
 is that, when this happens, the BE process will interrupt any running LC process
 for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
 thread processing a request may be interrupted for up to 4ms, provided the BE
