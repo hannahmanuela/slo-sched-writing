@@ -52,10 +52,13 @@ To exclude these effects, we run a simple CPU-bound server with a pool of worker
 threads. We run an open-loop client on a remote machine, and then start two BE
 workloads doing image resizing. We put the LC server and the BE resize job each
 in their own \cgroups{} group with weights 10000 and 1 respectively, and pin
-them to the same set of cores. \autoref{fig:srv-bg-unedited} shows the result:
-we see that at a $\sim$85\% baseline utilization of the server, after starting
-the BEs the server's mean latencies spike up from steady at around 6ms to as
-high as 20ms, and much higher for 99th percentile latencies.
+them to the same set of cores.\hmng{we could do an initial version where we run
+with weights from Kuberentes, and then use the bigger split to show that doens't
+solve it? The 10000 feels like an escalation, now that I'm saying the weight in
+the intro} \autoref{fig:srv-bg-unedited} shows the result: we see that at a
+$\sim$85\% baseline utilization of the server, after starting the BEs the
+server's mean latencies spike up from steady at around 6ms to as high as 20ms,
+and much higher for 99th percentile latencies.
 
 \begin{figure}[t]
     \centering
