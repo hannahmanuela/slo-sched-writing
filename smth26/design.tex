@@ -4,7 +4,7 @@ We design \beclass{} to implement our approach while fitting into Linux's existi
 scheduler design.
 
 Linux already has multiple scheduling classes that are accessible to users,
-which are (in descending order of priority): \deadlineclass{}, \fifoclass{}, and
+which are (in descending order of priority): \deadlineclass{}, \rtclass{}, and
 \normalclass{}. Generally speaking most load is expected to fall into the
 \normalclass{} scheduling class (hence the name). It is the default scheduling
 class, and it is only within the \normalclass{} scheduling class that the

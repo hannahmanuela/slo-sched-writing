@@ -144,14 +144,15 @@ To show the benefits of \schedbe{}, we compare with existing alternatives to
 As we discussed in \autoref{s:design}, Linux enforces the strict priority
 between tasks in different scheduling classes. 
 
-This points to a possible alternative to using \cgroups{}: run LC in the
-\fifoclass{} scheduling class and BE in \normalclass{}.\footnote{The
+This points to a possible alternative to using \cgroups{}: run LC in the real
+time \rtclass{} scheduling class and BE in \normalclass{}.\footnote{The
 \deadlineclass{} scheduling class is not a good fit, since it requires accurate
 knowledge of a processes runtime (processing time per request) and period (when
-requests come in)} \fifoclass{} runs a priority scheduler: it has 99 priorities,
-each takes strict precedent over the one lower; within priorities the scheduler
-enforces a global first-in-first-out (hence the \fifoclass{} class name), based
-on when processes become runnable.
+requests come in)} \rtclass{} has two different scheduling policies:
+\schedfifo{} and \schedrr{}. Both have 99 priorities between which they enforce
+strict priority; within priorities \schedfifo{} enforces a global
+first-in-first-out ordering based on when processes become runnable, and
+\schedrr{} does round-robin scheduling.
 
 \begin{figure}[t]
     \centering
@@ -172,17 +173,19 @@ on when processes become runnable.
 \end{figure}
 
 \autoref{fig:srv-bg-rt} shows the result of running the same microbenchmark from
-\autoref{fig:srv-bg-unedited} with the LC tasks in the \fifoclass{} scheduling
-class, leave BE tasks in the default \normalclass{} scheduler and weight. As
-expected, we see that Linux is able to isolate the two very well.
+\autoref{fig:srv-bg-unedited} with the LC server in the \rtclass{} scheduling
+class. We can see that \rtclass{} is isolated from \normalclass{} well.
 
-However, running LC in \fifoclass{} is an untenable solution because of
-\fifoclass{}'s run-to-completion scheduling, which is known to have a failure
-mode of head-of-line (HoL) blocking under varied request processing times, where
-long-running requests monopolize the CPU while short requests wait in the queue.
-The \fifoclass{} scheduler also enforces not only cross-core isolation between
-different priorities, but also a global ordering within the same priority. This
-requires more cross-core checks, and is a stricter policy than \beclass{} needs.
+However, running LC in \rtclass{} is an untenable solution because of
+\rtclass{}'s intra-priority schedulers. \schedfifo{} uses run-to-completion
+scheduling, which is known to have a failure mode of head-of-line (HoL) blocking
+under varied request processing times, where long-running requests monopolize
+the CPU while short requests wait in the queue. \schedrr{} addresses this
+concern by running a round-robin scheduler that will ensure Processor Sharing
+within priorities. However, \schedrr{} has no way way of enforcing unequal
+splits, every process just gets the same scheduling quantum and then gets put at
+the end of that priority's queue. Unequal splits is precisely what weights are
+good at, and why they are used for LC services today.
 
 
 \begin{figure}[t]
@@ -204,10 +207,10 @@ requires more cross-core checks, and is a stricter policy than \beclass{} needs.
 
 In addition, under high utilization of real time processes, Linux does not park
 the lower class processes or do something equivalent, but instead throttles the
-\fifoclass{} LC processes~\cite{lkml-deadline-srv}. We can see this happen when
+\rtclass{} LC processes~\cite{lkml-deadline-srv}. We can see this happen when
 we run the same microbenchmark experiment at a much higher baseline utilization
 ($\sim$ 100\%). The results are in \autoref{fig:overload-rt}. We see spikes
-begin to appear after starting the BE task, as the \fifoclass{} server gets
+begin to appear after starting the BE task, as the \rtclass{} server gets
 throttled in favor of running the BE tasks; we see parallel spikes in the BE's
 throughpu in the bottom graph. Notice also the increase of the slope of response
 times after starting the background tasks.
