@@ -50,16 +50,17 @@ does not run the BE at all anymore. If not done carefully, this will cause
 applications to crash.
 
 \subsubsection{BEs can resume after being parked }
-Parking keeps the runnable without actually running the user space application.
-It does by continuining to run the kernel services that manage critical state on
-behalf of the BE processes. This includes TCP connections, timers, and i/o
-completions, all of which are initially handled within the kernel. For instance,
-the kernel acknowledges incoming TCP packets and buffers their contents for the
-process. This means that when the load goes down and the parked process can run
-again, the read will return all the intermediate messages at once. Timers are
-similar: if a BE processes' timer fires while the BE is parked, the kernel will
-handle the initial interrupt and send the process a signal. Once the load goes
-down and the BE runs, it will see the timer has fired.
+Parking keeps the application runnable without actually running the user space
+application. It does this by continuining to run the kernel services that manage
+critical state on behalf of the BE processes. This includes TCP connections,
+timers, and i/o completions, all of which are initially handled within the
+kernel. For instance, the kernel acknowledges incoming TCP packets and buffers
+their contents for the process. This means that when the load goes down and the
+parked process can run again, the read will return all the intermediate messages
+at once. Timers are similar: if a BE processes' timer fires while the BE is
+parked, the kernel will handle the initial interrupt and send the process a
+signal. Once the load goes down and the BE runs, it will see the timer has
+fired.
 
 \subsubsection{Application-level coordinators can choose what to do with a
 parked BE} Because BEs are best effort, pausing application-level progress is
@@ -68,10 +69,10 @@ make slow progress or even be killed. For example, suppose a mapper running as
 part of a map-reduce job has a heartbeat with a coordinator, to check in on the
 mapper's progress. In the parked state, handling application-level heartbeats is
 paused until after the load goes down and CPU time is available again to run the
-BE. In the even that the mapper becomes parked, the coordinator would see no
+BE. In the event that the mapper becomes parked, the coordinator would see no
 heartbeats, and correctly know that the mapper's progress is very slow/that it
 is unable to run. The coordinator, with its knowledge of the size of the job and
-the other mappers progress can choose to kill that instance and restart the job,
+the other mappers progress, can choose to kill that mapper and restart the job,
 or it can choose to wait.
 
 \subsubsection{Parking is expected to be short-lived}

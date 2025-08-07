@@ -87,7 +87,7 @@ number of times the scheduler is required to look at other runqueues. Enforcing
 weights across cores requires the scheduler to do so every scheduling tick, but
 with a separate class it only has to look at other cores on \textit{class
 boundary crossings}: every time a core starts running a BE process, and every
-time it queues an LC task.
+time it queues an LC one.
 
 A challenge that emerges from creating a separate priority class is that, when
 the LC is under high load, the BE processes need somewhere to go. The goal is to
@@ -102,11 +102,10 @@ high, the scheduler ensures that the user-space process doesn't run and consume
 resources, but continues to run the kernel-space handlers that manage critical
 state such as TCP connections and timers on behalf of the BE processes. 
 
-We implement the \beclass{} class in Linux, and show that it is able to
-significiantly improve Linux's ability to isolate LC from BE workloads: in the
-same Kubernetes experiment, the increase in average latency when starting a BE
-workload goes from $>$2x to 0. The contributions of this paper are thus as
-follows: 
+We implement \beclass{} in Linux, and show that it is able to significiantly
+improve Linux's ability to isolate LC from BE workloads: in the same Kubernetes
+experiment, the increase in average latency when starting a BE workload goes
+from $>$2x to 0. The contributions of this paper are thus as follows: 
 \begin{enumerate}
     \item identifying that the reason isolation of LC from BE often fails is that
     \cgroups{} does a poor job of enforcing the weights of different groups

@@ -54,14 +54,16 @@ In order to enforce that ruqueues only run \schedbe{} threads when there are no
 runnable \schednormal{} ones, our implementation interferes in two places. 
 
 Because in existing Linux \schedidle{} and \schednormal{} share a runqueue, so
-will the new \schedbe{} and \schednormal{}. This means that the function that
-chooses the next task from the runqeueue will be potentially looking at a mix of
-both. We add an initial check that establishes whether there are any
+will the new \schedbe{} and \schednormal{}, since doing so maintains a
+complicated existing infrastructure around the runqueue for things like
+accounting and load balancing. This means that the function that chooses the
+next task from the runqeueue will be potentially looking at a mix of both
+policies. We add an initial check that establishes whether there are any
 \schednormal{} threads on the runqueue, and skips all \schedbe{} ones if that is
 the case. 
 
 The second change is necessary because the first breaks an existing eligibility
-mechanism. In order to maintain fairness, Linux currently accounts for the
+mechanism. In order to help maintain fairness, Linux currently accounts for the
 difference between the fair share processes should have gotten and the time they
 actually got, and stores that `lag'. Processes that have gotten more time than
 they should (ie have negative lag), are marked as ineligible and not considered
@@ -79,8 +81,7 @@ eligibility criterion in choosing what to run next.
 Ensuring the \entry{} and \exit{} checks requires interposing on Linux's wakeup
 and exit codepaths. Linux already special-cases on the wakeup path, although
 only checks if the thread itself is marked as idle, and not if the group as a
-whole is, and for \schedbe{} we check both.\hmng{this is not exactly true, but
-in a kinda complicated way}
+whole is, and for \schedbe{} we check both.
 
 \schedbe{} adds a check on the exit path: if the thread chosen to run next is
 \schedbe{}, then our implementation tries to steal a queued \schednormal{} task

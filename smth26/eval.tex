@@ -33,6 +33,14 @@ that our implementation builds on.
 
 \begin{figure}[t]
     \centering
+    \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp-unedited-schedbe.png}
+    \caption{A direct comparison between the server latencies when using the
+    existing \cgroups{} weights versus \schedbe{} to isolate the LC from the
+    BE}\label{fig:srv-bg-cmp-unedited-schedbe}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
     \includegraphics[width=\columnwidth]{graphs/schedviz-schedbe.png}
     \caption{BE threads only run in the gaps when there are no queued LC
     threads. The BE threads are colored in two different shades of green, the LC
@@ -45,19 +53,21 @@ that our implementation builds on.
 
 We run the microbenchmark experiment from \autoref{fig:srv-bg-unedited} using
 \schedbe{}. We can see the resulting performance in
-\autoref{fig:srv-bg-schedbe}. As desired, the latency of the server remains
-stable after the background tasks start. This does not mean that the background
-task never runs: the lower graph still shows iterations of image resizing being
-done. The difference is that now the background tasks will reliably get
-interrupted when the LC server has a request to process.
+\autoref{fig:srv-bg-schedbe}, and \autoref{fig:srv-bg-cmp-unedited-schedbe}
+shows a direct comparison between the original benchmark run on \cgroups{}
+weights and running it using \schedbe{}. As desired, the latency of the server
+remains stable after the background tasks start. This does not mean that the
+background task never runs: the lower part of each graph still shows iterations
+of image resizing being done. The difference is that now the background tasks
+will reliably get interrupted when the LC server has a request to process.
 \autoref{fig:schedviz-schedbe} shows this happening in an outtake of a schedviz
 visualization. The green BE processes run only in the gaps where there is no
 queued LC process, and are immediately preempted when one wakes up, on whatever
-core that may be. The vertical red lines show the \exit{} path \schedbe{}
-introduced, when the core has chosen intially to run a BE process. As we can
-see, this is sometimes followed by just running the BE, but often by the core
-running an LC process, meaning that it succesfully found and stole a queued and
-waiting LC thread.
+core that may be. The vertical red lines show when the \exit{} path \schedbe{}
+introduced runs, \ie{} when the core has chosen intially to run a BE process. As
+we can see, this is sometimes followed by just running the BE, but often by the
+core running an LC process, meaning that it succesfully found and stole a queued
+and waiting LC thread.
 
 \begin{figure}[t]
     \centering
@@ -73,7 +83,7 @@ same before and after starting the image resize job. It is not entirely without
 spikes, but the spikes come from interference with Python runtimes and
 Kubernetes controllers, and are the same before and after starting the BE tasks.
 Importantly, the baseline median latency of the LC web application stays stable
-after starting the the BE image resizing. 
+at around 7.4ms after starting the the BE image resizing. 
 
 \subsection{Can parked processes resume correctly?}\label{ss:eval:parking}
 
@@ -91,11 +101,11 @@ processing a request, the BE job is able to resume and return the final result
 to the client. \autoref{fig:parked-kubernetes} shows the throughput over time of
 an image resize job running in a BE container running as \schedbe{}. A couple
 seconds after sending a request to the image resize pod, we start an entirely
-cpu-bound antagonist on the same set of cores as the BE is running. We can see
+CPU-bound antagonist on the same set of cores as the BE is running. We can see
 that the image resize job is completely paused for about two and a half minutes,
 until the antagonist is done running. The job then continues and completes. The
 client connection did not experience any issues, even when setting the TCP
-keepalive timeout to expire within duration the BE spend in being parked.
+keepalive timeout to expire within duration the BE spent being parked.
 
 
 
@@ -116,10 +126,10 @@ the priority enforcement:
 \end{enumerate}
 
 We measure the amount of time that the \exit{} check takes, and look at how
-often it happens as well as how often it chooses to steal. The overhead of
-stealing the LC job is known, and is a complicated function of the CPU
-architecture and which cores it is moving between (\eg{} how much memory
-hierarchy do the two cores share).
+often it happens as well as how often it chooses to steal in the Kubernetes
+experiment. The overhead of stealing the LC job is known, and is a complicated
+function of the CPU architecture and which cores it is moving between (\eg{} how
+much memory hierarchy do the two cores share).
 
 \hmng{todo the measurements}
 
@@ -208,9 +218,10 @@ that the BE does not make progress until the very end, when the server is done
 processing the requests (the experiment stops the client after 30 seconds and
 the server from then finishes the backlog of requests).
 
-The takeaway is that Linux's current mechanism of scheduling classes can isolate
-workloads effectively, but existing scheduling classes use scheduling
-algorithms that are not a good fit for modern workloads.
+The takeaway is that Linux's mechanism of scheduling classes can isolate
+workloads effectively, but existing scheduling classes use algorithms that are
+not a good fit for modern workloads, and throttle the higher class under high
+load.
 
 \subsubsection{\schedidle}\label{ss:schedidle}
 
@@ -233,7 +244,7 @@ but not the \exit{} check or strict local priorities.
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp-all.png}
         \caption{Comparison of mean latency of the low load setting for weights,
         \schedidle{}, and \schedbe{}}\label{fig:srv-bg-cmp}
     \end{subfigure}
@@ -251,8 +262,8 @@ but not the \exit{} check or strict local priorities.
 \autoref{fig:srv-bg-idle} shows the result of running the BE jobs in the
 microbenchmark in \schedidle{}, as well as a graph that compares the low load
 setting of the standard \cgroups{} weight, \schedbe{}, and \schedidle{}. Average
-latency still increases from $\sim$6ms to $\sim$8ms. Although this increase is
-smaller than the original increase to $\sim$15ms using the standard weight
-interface, it is still high compared to the 0ms increase that \schedbe{}
-achieves. \autoref{fig:kubernetes-idle} shows similar results for the Kubernetes
-experiment.
+latency still increases from $\sim$6ms to $\sim$8ms in the low load setting.
+Although this increase is smaller than the original increase to $\sim$15ms using
+the standard weight interface, it is still high compared to the 0ms increase
+that \schedbe{} achieves. \autoref{fig:kubernetes-idle} shows similar results
+for the Kubernetes experiment.

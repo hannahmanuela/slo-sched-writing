@@ -41,7 +41,7 @@ how our implementation integrates with \schedidle{} in
     histogram of completed iterations of the BE tasks}\label{fig:srv-bg-unedited}
 \end{figure}
 
-In order to isolate why the jump in latency is happening when the BEs run, we
+In order to understand why the jump in latency is happening when the BEs run, we
 reproduce the effects in a simpler benchmark. The experiment shown in
 \autoref{fig:kubernetes-unedited} includes a complicated software stack of
 Kubernetes, uvicorn, FastAPI, and Python. All of this has performance
@@ -78,13 +78,14 @@ varying shades of blue, are queued on the other cores.
 
 \subsection{Weights are enforced only locally}\label{ss:problem:weights-local}
 
-The reason this inversion is possible is that Linux maintains a separate
-runqueue on each core, in order to avoid the overheads of accessing global state
-for every scheduling decision. Within each runqueue, Linux's scheduler works to
-maintain the correct ratio of received CPU time at each scheduling; but Linux
-does not enforce the weight ratios across cores. This leads to the above failure
-mode, where one core has no runnable high weight processes and thus runs a low
-weight one, whereas another core has queued high weight processes.
+The reason this priority inversion is possible is that Linux maintains a
+separate runqueue on each core, in order to avoid the overheads of accessing
+global state for every scheduling decision. Within each runqueue, Linux's
+scheduler works to maintain the correct ratio of received CPU time at each
+scheduling; but Linux does not enforce the weight ratios across cores. This
+leads to the above failure mode, where one core has no runnable high weight
+processes and thus runs a low weight one, whereas another core has queued high
+weight processes.
 
 \subsection{Enforcing weights across cores is
 hard}\label{ss:problem:cross-core-hard}
