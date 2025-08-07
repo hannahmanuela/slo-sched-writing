@@ -63,9 +63,10 @@ and much higher for 99th percentile latencies.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/schedviz-problem.png}
-    \caption{Each thread is a different color. Circles represent which
-    thread is running on that core, while rectangles underneath show waiting but
-    runnable threads
+    \caption{The BE thread (red) runs on one core, while LC threads (shades of
+    blue) are queued and waiting on other cores. Each thread is a different
+    color, circles represent which thread is running on that core while
+    rectangles underneath show waiting but runnable threads.
     }\label{fig:schedviz-problem}
 \end{figure}
 
