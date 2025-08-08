@@ -23,28 +23,28 @@ use. We show how our implementation integrates with \schedidle{} in
 \begin{figure}[t]
     \centering
     \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-low.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-150-low.png}
         \caption{Low load stetting, utilization before starting the BE tasks is
-        around 85\%}\label{fig:srv-bg-unedited-low}
+        around 85\%}\label{fig:srv-bg-weight-150-low}
         \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-unedited-high.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-150-high.png}
         \caption{High load setting, utilization before starting the BE tasks is
-        around 95\%}\label{fig:srv-bg-unedited-high}
+        around 95\%}\label{fig:srv-bg-weight-150-high}
     \end{subfigure}
     \vspace{4pt}
     \caption{Latencies of the server and iteration counts of the background
     tasks in different load scenarios show the BE tasks interfering with the LC
     server. Note the different y axis limits. The upper graphs show end-to-end
     request latencies, and the bottom graph is a histogram of completed
-    iterations of the BE tasks}\label{fig:srv-bg-unedited}
+    iterations of the BE tasks}\label{fig:srv-bg-weight-150}
 \end{figure}
 
 In order to understand why the jump in latency is happening when the BEs run, we
 reproduce the effects in a simpler benchmark. The experiment shown in
-\autoref{fig:kubernetes-unedited} includes a complicated software stack of
+\autoref{fig:kubernetes-weight-150} includes a complicated software stack of
 Kubernetes, uvicorn, FastAPI, and Python. All of this has performance
 implications, and we can see that even before the BE load starts there are large
 latency spikes up to 30ms.
@@ -52,16 +52,42 @@ latency spikes up to 30ms.
 To exclude these effects, we run a simple CPU-bound server with a pool of worker
 threads. We run an open-loop client on a remote machine, and then start two BE
 workloads doing image resizing. We put the LC server and the BE resize job each
-in their own \cgroups{} group with weights 10000 and 1 respectively, and pin
-them to the same set of cores.\hmng{we could do an initial version where we run
-with weights from Kuberentes, and then use the bigger split to show that doens't
-solve it? The 10000 feels like an escalation, now that I'm saying the weight in
-the intro} \autoref{fig:srv-bg-unedited} shows the result: we see that at a
-$\sim$85\% baseline utilization of the server, after starting the BEs the
-server's mean latencies spike up from steady at around 6ms to as high as 20ms,
-and much higher for 99th percentile latencies. At a baseline utilization of
-95\%, those numbers increase to up to 40ms for the the mean latency, and 80ms
+in their own \cgroups{} group with weights 150 and 1 respectively, and pin them
+to the same set of cores. \autoref{fig:srv-bg-unedited} shows the result: we see
+that at a $\sim$85\% baseline utilization of the server, after starting the BEs
+the server's mean latencies spike up from steady at around 6ms to as high as
+20ms, and much higher for 99th percentile latencies. At a baseline utilization
+of 95\%, those numbers increase to up to 40ms for the the mean latency, and 80ms
 for the tail.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
+        \caption{Low load stetting, utilization before starting the BE tasks is
+        around 85\%}\label{fig:srv-bg-weight-cmp-low}
+        \vspace{12pt}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-high.png}
+        \caption{High load setting, utilization before starting the BE tasks is
+        around 95\%}\label{fig:srv-bg-weight-cmp-high}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{Latencies of the server and iteration counts of the background
+    tasks in different load scenarios show the BE tasks interfering with the LC
+    server. Note the different y axis limits. The upper graphs show end-to-end
+    request latencies, and the bottom graph is a histogram of completed
+    iterations of the BE tasks}\label{fig:srv-bg-weight-cmp}
+\end{figure}
+
+\cgroups{} supports weights in the range of [1,10000]; a possible explanation
+could be that Kubernetes did not set the weights far apart enough. However,
+running the same experiment with the server weight set to 1000 show the exact
+same phenomenon. \autoref{fig:srv-bg-weight-cmp} shows the average server
+latencies when running it with different weights; the BE task always has weight
+1.
 
 \begin{figure}[t]
     \centering

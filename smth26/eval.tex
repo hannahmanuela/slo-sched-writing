@@ -153,14 +153,31 @@ experiment. The overhead of stealing the LC job is known, and is a complicated
 function of the CPU architecture and which cores it is moving between (\eg{} how
 much memory hierarchy do the two cores share).
 
+% Please add the following required packages to your document preamble:
+% \usepackage[normalem]{ulem}
+% \useunder{\uline}{\ul}{}
+\begin{table}[t]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+                & \# times runs & \# times successful \\ \hline
+        \entry{} & $\sim$60K    & $\sim$12.5K         \\ \hline
+        \exit{}  & $\sim$20K    & $\sim$10K          \\ \hline
+    \end{tabular}
+    \vspace{10pt}
+    \caption{Counts of checks and how many times they run/are able to find an LC to
+    run/a BE to interrupt}\label{tab:check-counts}
+\end{table}
+
 In the span of the 30 seconds the Kubernetes experiment takes to run, and across
-the four cores it runs, we see the following: scheduling happens around 112.5K
+the four cores it runs, we see the following: scheduling happens around 110K
 times, which is a little less than once per ms on each core. The \entry{} check
-happens $\sim$33K times, or about once every ms on each core. This makes sense:
-the client sends a request every 2ms which will cause a server thread wakeup,
-and the software stack includes Linux, Docker, and Kubernetes, all of which have
-worker threads. The \exit{} check happens slightly fewer times, around 21.5K
-times, of which approximately half lead to stealing a \schednormal{} task.
+happens $\sim$60K times, or about twice a ms. This makes sense: the client sends
+a request every 2ms which will cause a server thread wakeup, and the software
+stack includes Linux, Docker, and Kubernetes, all of which have worker threads.
+Of those 60K \entry{} checks, 12.5K find an idle runqueue. The \exit{} check
+happens fewer times, around 20K times, of which approximately half lead to
+stealing a \schednormal{} task.
 
 We can see that the \entry{} and \exit{} checks happen less than scheduling does
 by more than half. This demonstrates that enforcing isolation between LC and BE

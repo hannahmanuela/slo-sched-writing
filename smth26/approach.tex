@@ -1,14 +1,16 @@
 \section{Approach}\label{s:approach}
 
-We propose an extended \cgroups{} API where BE tasks are put in a separate
-piority class \beclass{}, and a scheduler where the separation of \beclass{}
-from the default LC class is enforced by strict priority scheduling. As we show
-in \autoref{ss:approach:solves-problems}, doing so solves the problems laid out
-in \autoref{s:problem}. Strict priority scheduling runs the risk of starving and
-thus crashing the lower class, which we avoid by separating critical process
-infrastructure from application logic (\autoref{ss:approach:parking}).
+In order to honor LC reservations while still running BEs opportunistically, our
+approach is to enforce the isolation between them by using priority scheduling.
 
-\subsection{\beclass{} solves the problems}\label{ss:approach:solves-problems}
+We show that doing so solves the enforcement problem that weights has, as well
+as its dependence on hardware ticks (\autoref{ss:approach:solves-problems}).
+Linux has priority scheduling for real time applications, which we show is able
+to isolate well between workloads of different priotiries
+(\autoref{ss:approach:linux-classes-isolate}), but is not a good fit for
+microservice workloads (\autoref{ss:approach:linux-classes-bad-fit}).
+
+\subsection{Priority scheduling solves the problems}\label{ss:approach:solves-problems}
 
 Enforcing isolation of two priorities is simpler and requires fewer cross-core
 checks than enforcing a weight split. 
@@ -22,12 +24,11 @@ Isolating priorities also requires fewer cross-core checks, because they only
 need to happen on \textit{class boundary crossings}: on \exit{}, when a core
 switches to running lower class processes after having previously been running
 high class, and on \entry{}, when a core enqueues a higher class process. These
-checks ensure that if a core is currently running a \beclass{} thread $t$, the
-scheduler knows that there are no queued and waiting \normalclass{} threads
-anywhere: If there were ones before it started running $t$, the \exit{} check
-would have stolen it, and if a new \normalclass{} thread wakes up while $t$ is
-running, the \entry{} check ensures that the core where it wakes up will
-interrupt $t$.
+checks ensure that if a core is currently running a BE thread $t$, the scheduler
+knows that there are no queued and waiting LC threads anywhere: If there were
+ones before it started running $t$, the \exit{} check would have stolen it, and
+if a new LC thread wakes up while $t$ is running, the \entry{} check ensures
+that the core where it wakes up will interrupt $t$.
 
 Strict priorities being enforced at class boundary crossings rather than ticks
 also means that the fidelity of the isolation is now dependent on how quickly
@@ -35,63 +36,132 @@ the handler for process wakeup or dequeue runs, not on the length of a
 scheduling tick. The kernel already runs handlers in the wakeup and exit paths,
 and can choose to reschedule or steal work from other cores. 
 
-\subsection{Parking during high load}\label{ss:approach:parking}
 
-The goal of parking is to maintain the strict priority between LC and BE when
-the CPU load is 100\%, while preserving the current progress of the BE
-application. Once LC load reaches $\geq$100\% for longer periods of time
-however, priority scheduling says the BE does not run at all anymore. If not
-done carefully, this can cause a BE application to crash once it resumes
-execution: while it was parked, TCP connections may have died or been closed,
-timers may have fired and been lost, and long-running i/o requests may have
-completed and not been handled.
+\subsection{Linux scheduling classes isolate
+well}\label{ss:approach:linux-classes-isolate}
 
-We address this by separating BE processes' logic into application logic and
-critical infrastructure; and ensure that, while parked, BE processes only get to
-run the critical pieces. This means that, while in the parked state, BEs make no
-application-level progress, but when the load comes down they can resume
-execution without explicit failure recovery.
+Linux already has multiple scheduling classes that are accessible to users,
+which are (in descending order of priority): \deadlineclass{}, \rtclass{}, and
+\normalclass{}. Generally speaking most load is expected to fall into the
+\normalclass{} scheduling class (hence the name). It is the default scheduling
+class, and it is only within the \normalclass{} scheduling class that the
+\cgroups{} cpu.weight interface is relevant.
 
-\subsubsection{Parking happens only in extreme load}
-As LC load approaches 100\%, a BE application runs proportionally less, since it
-only runs in the times where LC is not utilizing the core. But even if LC load
-is at 99\%, the BE can still run for 1\% of the time, which is in principle more
-than the 0.01\% it would have been allowed to with a weight of 1/10000. It is
-only when LC load reaches 100\% CPU utilization for extended periods of time
-that parking becomes different from running a process with a small weight.
+Each scheduling class exists completely separately: classes maintain their own
+runqueues and per-entity state; implement their own scheduling algorithms to
+choose from the entities on their runqueue; and balance the load across
+runqueues on different cores. 
 
-\subsubsection{BEs can resume normally after being parked }
-Parking keeps the application intact\hmng{w.c.?} without actually running the
-user space application. \hmng{this is a big question - is this something we want
-to get into? or do we just call it user/kernel divide from the getgo, but I
-wanted to try this } 
+Linux isolates strictly between different scheduling classes: it only schedules
+a lower scheduling class if the higher scheduling classes found nothing to run,
+and each scheduling class tries to steal work from other cores before returning
+that it has nothing to run.
 
-\subsubsection{Application-level coordinators can choose what to do with a
-parked BE} Because BEs are best effort, pausing application-level progress is
-not a problem: coordinators and other services they interact with expect them to
-make slow progress or even be killed. For example, suppose a mapper running as
-part of a map-reduce job has a heartbeat with a coordinator, to check in on the
-mapper's progress. In the parked state, handling application-level heartbeats is
-paused until after the load goes down and CPU time is available again to run the
-BE, but keeping the TCP connection alive is critical. In the event that the
-mapper becomes parked, the coordinator would see no heartbeats, and correctly
-know that the mapper's progress is very slow/that it is unable to run. The
-coordinator, with its knowledge of the size of the job and the other mappers
-progress, can choose to kill that mapper and restart the job, or it can choose
-to wait. If it waits, when the mapper comes back online the connection will be
-as it was and the mapper can proceed as if it was never parked.
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
+        \caption{Low load}\label{fig:srv-bg-rt-low}
+        \vspace{12pt}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
+        \caption{High load}\label{fig:srv-bg-rt-high}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{Results of the same experiment as in \autoref{fig:srv-bg-unedited}
+    and \autoref{fig:srv-bg-schedbe}, with LC running as a real time
+    process}\label{fig:srv-bg-rt}
+\end{figure}
 
-\subsubsection{Parking is expected to be short-lived}
-A machine in a datacenter experiencing that high of a load is likely a localized
-problem, both in space (as in, will only effect some small number of machines)
-and time (as in, the high load on the machine won't last long). It is localized
-in space because microservices' loads are independent from one another: on the
-order of seconds and minutes, individual microservices' loads may vary, but
-broadly load is known to be predictable, so even if one machine is experiencing
-high load other machines won't be~\cite{TODO}. 
+\autoref{fig:srv-bg-rt} shows the result of running the same microbenchmark from
+\autoref{fig:srv-bg-unedited}, but with the LC server running in the \rtclass{}
+scheduling class. We can see that \rtclass{} is isolated from \normalclass{}
+well: in both load settings the tail and average latency stays stable at
+$\sim$6.0ms after starting the BE workload.
 
-It is localized in time because of the distributed setting: a distributed
-scheduler monitors the state of all the machines and migrates load when it sees
-high CPU utilization, or an autoscaler starts new instances, shifting the excess
-LC load to remote machines and thereby allowing BEs to run again on the local
-machine.
+\subsection{Linux scheduling classes are not suited to enforce LC service
+reservations}\label{ss:approach:linux-classes-bad-fit}
+
+This points to a possible alternative to using \cgroups{}: run LC in the real
+time \rtclass{} scheduling class and BE in \normalclass{}.\footnote{The
+\deadlineclass{} scheduling class is not a good fit, since it requires accurate
+knowledge of a processes runtime (processing time per request) and period (when
+requests come in)} However, we show that the schedulers within each priority are
+not suited for microservices (\autoref{sss:approch:linux:policies}), and that
+Linux method of avoiding starvation is unfitting
+(\autoref{sss:approach:linux:starve-throttle}).
+
+\subsubsection{Real time schedulers are unsuitable for microservice
+workloads}\label{sss:approch:linux:policies}
+
+Running a microservice in \rtclass{} is an untenable way of isolating LC from BE
+because of \rtclass{}'s intra-priority schedulers. Our goal is to honor the
+reservations LC services make, they should not have to use different scheduling
+mechanisms to be able to get that. \hmng{a little clumsy} \rtclass{} has two
+different scheduling policies: \schedfifo{} and \schedrr{}. Both have 99
+priorities between which they enforce strict priority; within priorities they
+differ in the policy they enforce.
+
+\schedfifo{} uses first-in-first-out run-to-completion scheduling. This means
+that wihin each class, the process to run next will be the one that woke up
+first, and it will run until it blocks or exits. When a blocked thread becomes
+runnable again, that is counted as a wakeup and it will be put on the back of
+the queue. This is known to have a failure mode of head-of-line (HoL) blocking
+under varied request processing times, where long-running requests monopolize
+the CPU while short requests wait in the queue.
+
+\schedrr{} addresses this concern by running a round-robin scheduler that will
+ensure Processor Sharing within priorities. However, \schedrr{} has no way way
+of enforcing unequal splits, every process just gets the same scheduling quantum
+and then gets put at the end of that priority's queue. Unequal splits is
+precisely what weights are good at, and why they are used for LC services today.
+
+\subsubsection{Linux throttles \rtclass{} processes under high load
+}\label{sss:approach:linux:starve-throttle}
+
+Schedulers running priority scheduling have to contend with the possibility of
+starvation. Starvation can have many negative effects: it can cause deadlocks if
+a low and high priority process share a lock (either in user-space or in
+kernel-space), TCP connections can die while the process is being starved, and
+it can miss interrupts like timers or completed i/o requests.
+
+To avoid these, Linux chooses to carefully ensure that no process is ever
+starved by throttling high class processes with high load. Linux has two
+different safe guards that enforce that no process is ever starved. One is that
+\rtclass{} is as a scheduling class rate-limited: there are tuneable parameters
+\texttt{sched\_rt\_runtime} and \texttt{sched\_rt\_period}, that together define
+a rate limit for the \rtclass{} as a whole. The other safegaurd is that, even
+when set to be equal (ie \rtclass{} gets the full runtime each period if it
+wants), the \normalclass{} scheduling class also has a so-called
+\textit{deadline server}, which ensures it gets a small amount of time. The
+deadline server is a `process' is in the \deadlineclass{} scheduling class with
+a small amount of runtime per period, then when chosen will pass control on to
+the \normalclass{} scheduler~\cite{lkml-deadline-srv}.
+
+The throttling Linux chooses to do interferes with the goal of honoring
+reservations, because it throttles the LC experiencing high load, which is
+precisly when it needs its full reservation  most.
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/overload-rt.png}
+    \caption{LC in real time, throttling}\label{fig:overload-rt}
+\end{figure}
+
+
+
+Doing so impacts the performance of processes in the \rtclass{} at high load. We
+can see this happen when we run the same microbenchmark experiment at a much
+higher baseline utilization ($\sim$ 100\%). The results are in
+\autoref{fig:overload-rt}. We see spikes begin to appear after starting the BE
+task, as the \rtclass{} server gets throttled in favor of running the BE tasks;
+we see parallel spikes in the BE's throughput in the bottom graph. Notice also
+the increase of the slope of response times after starting the background tasks.
+
+We conclude that Linux's mechanism of scheduling classes can isolate workloads
+effectively, but that existing scheduling classes use algorithms that are not a
+good fit for modern workloads, and that the isolation does not enforce
+reservations because it throttles high priority class processes under high load.
