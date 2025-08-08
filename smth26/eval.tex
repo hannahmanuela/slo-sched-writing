@@ -116,8 +116,8 @@ the priority enforcement:
 
 \begin{enumerate}
     \item \local{} adds a small amount of compute overhead on each scheduling
-    decision, and removes some as well because it gets rid of the eligiblity
-    check. This is a small amount of code we do not expect to impact latency
+    decision to determine threads' priorities. This is a small amount of code we
+    do not expect to impact latency
     \item \entry{} adds no new latency to Linux, which already implements
     \entry{} for \schedidle{}
     \item \exit{} adds overheads in two places: one is the cross-core check that
@@ -131,7 +131,24 @@ experiment. The overhead of stealing the LC job is known, and is a complicated
 function of the CPU architecture and which cores it is moving between (\eg{} how
 much memory hierarchy do the two cores share).
 
-\hmng{todo the measurements}
+In the span of the 30 seconds the Kubernetes experiment takes to run, and across
+the four cores it run, we see the following counts: scheduling happens around
+112.5K times, which is a little less than once per ms on each core. The \entry{}
+check happens $\sim$33K times, or about once every ms on each core. This makes
+sense: the client sends a request every 2ms which will cause a server thread
+wakeup, and the software stack includes Linux, Docker, and Kubernetes, all of
+which have worker threads. The \exit{} check happens slightly fewer times,
+around 21.5K times, of which approximately half lead to stealing a
+\schednormal{} task.
+
+We can see that the \entry{} and \exit{} checks happen less than scheduling does
+by more than half. This demonstrates that enforcing the priority class isolation
+requires much fewer cross-core checks than doing so at every scheduling decision
+would require.
+
+The other takeaway is that, under high load, the \exit{} check is effective:
+around half of the time, the scheduler found a queued LC thread on another core.
+Without the check, each of those would have led to a priority inversion.
 
 
 \subsection{Existing approaches}\label{ss:eval:existing}
