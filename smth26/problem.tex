@@ -12,10 +12,10 @@ well as interacting poorly with Linux's large scheduling quantum
 (\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
 to use if the goal is to isolate LC services from BE ones.
 
-Linux offers an alternative to using \cgroups{} weights, which is called
-\schedidle{}, but which none of the existing open source systems use. We show
-how our implementation integrates with \schedidle{} in
-\autoref{s:implementation}, and evaluate it in \autoref{ss:eval:existing}.
+Linux offers an alternative to using \cgroups{} weights, which is a scheduling
+policy called \schedidle{}, but which none of the existing open source systems
+use. We show how our implementation integrates with \schedidle{} in
+\autoref{s:design}, and evaluate it in \autoref{ss:eval:schedidle}.
 
 
 \subsection{Weights don't isolate}\label{ss:problem:bes-run}
@@ -59,7 +59,9 @@ solve it? The 10000 feels like an escalation, now that I'm saying the weight in
 the intro} \autoref{fig:srv-bg-unedited} shows the result: we see that at a
 $\sim$85\% baseline utilization of the server, after starting the BEs the
 server's mean latencies spike up from steady at around 6ms to as high as 20ms,
-and much higher for 99th percentile latencies.
+and much higher for 99th percentile latencies. At a baseline utilization of
+95\%, those numbers increase to up to 40ms for the the mean latency, and 80ms
+for the tail.
 
 \begin{figure}[t]
     \centering
@@ -78,7 +80,7 @@ process running on each core is shown as an oval, and queued processes are shown
 as rectangles below; the x-axis is time and the y-axis shows the 4 cores the
 experiment is running on. What we see is that \textit{one core is running a BE
 process, while LC processes are queued on another}. On core 6, the red process
-that is running for the whole 10ms is a BE process, and the LC threads, shown in
+that is running for the whole 10ms is a BE process, while LC threads, shown in
 varying shades of blue, are queued on the other cores.
 
 \subsection{Weights are enforced only locally}\label{ss:problem:weights-local}

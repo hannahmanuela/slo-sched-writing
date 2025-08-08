@@ -2,32 +2,36 @@
 
 We propose an extended \cgroups{} API where BE tasks are put in a separate
 piority class \beclass{}, and a scheduler where the separation of \beclass{}
-from the default LC class is enforced by strict priority
-scheduling.\footnote{here we do not mean priorities in the way there are used in
-nice values, but rather a strict priority where threads of a higher priority
-always run first.} As we show in \autoref{ss:approach:solves-problems}, doing so
-solves the problems laid out in \autoref{s:problem}. Strict priority scheduling
-runs the risk of starving and thus crashing the lower class, which we avoid by
-separating critical process infrastructure from application logic
-(\autoref{ss:approach:parking}).
+from the default LC class is enforced by strict priority scheduling. As we show
+in \autoref{ss:approach:solves-problems}, doing so solves the problems laid out
+in \autoref{s:problem}. Strict priority scheduling runs the risk of starving and
+thus crashing the lower class, which we avoid by separating critical process
+infrastructure from application logic (\autoref{ss:approach:parking}).
 
 \subsection{\beclass{} solves the problems}\label{ss:approach:solves-problems}
 
 Enforcing isolation of two priorities is simpler and requires fewer cross-core
 checks than enforcing a weight split. 
 
-It is simple because priorities are: a core does not need to do complex
+It is simpler because priorities are: a core does not need to do complex
 accounting to figure out whether it is a low-weight processes turn to run, it
 just needs to know the set of runnable priorities. Enforcing the isolation
-between them is as simple as choosing only from the highest priority.
+between them equivalent to choosing only from the highest priority.
 
-Isolating priorities also requires fewer cross-core checks: they only need to
-happen on \textit{class boundary crossings}, ie when a core starts running a
-lower class process or when it enqueues a higher class one. This because the
-only thing one core needs about another cores runqueue is what class it is
-running. Strict priorities being enforced at class boundary crossings rather
-than ticks also means that the fidelity of the isolation is now dependent on how
-quickly the handler for process wakeup or dequeue runs, not on the length of a
+Isolating priorities also requires fewer cross-core checks, because they only
+need to happen on \textit{class boundary crossings}: on \exit{}, when a core
+switches to running lower class processes after having previously been running
+high class, and on \entry{}, when a core enqueues a higher class process. These
+checks ensure that if a core is currently running a \beclass{} thread $t$, the
+scheduler knows that there are no queued and waiting \normalclass{} threads
+anywhere: If there were ones before it started running $t$, the \exit{} check
+would have stolen it, and if a new \normalclass{} thread wakes up while $t$ is
+running, the \entry{} check ensures that the core where it wakes up will
+interrupt $t$.
+
+Strict priorities being enforced at class boundary crossings rather than ticks
+also means that the fidelity of the isolation is now dependent on how quickly
+the handler for process wakeup or dequeue runs, not on the length of a
 scheduling tick. The kernel already runs handlers in the wakeup and exit paths,
 and can choose to reschedule or steal work from other cores. 
 
@@ -35,32 +39,32 @@ and can choose to reschedule or steal work from other cores.
 
 The goal of parking is to maintain the strict priority between LC and BE when
 the CPU load is 100\%, while preserving the current progress of the BE
-application. We do this by separating BE processes' logic into user space and
-kernel space; and ensure that, while parked, BE processes only get to run in the
-kernel space. This means that, while in the parked state, BEs make no
-application-level progress, but remain runnable until the load has come down.
+application. Once LC load reaches $\geq$100\% for longer periods of time
+however, priority scheduling says the BE does not run at all anymore. If not
+done carefully, this can cause a BE application to crash once it resumes
+execution: while it was parked, TCP connections may have died or been closed,
+timers may have fired and been lost, and long-running i/o requests may have
+completed and not been handled.
+
+We address this by separating BE processes' logic into application logic and
+critical infrastructure; and ensure that, while parked, BE processes only get to
+run the critical pieces. This means that, while in the parked state, BEs make no
+application-level progress, but when the load comes down they can resume
+execution without explicit failure recovery.
 
 \subsubsection{Parking happens only in extreme load}
 As LC load approaches 100\%, a BE application runs proportionally less, since it
 only runs in the times where LC is not utilizing the core. But even if LC load
 is at 99\%, the BE can still run for 1\% of the time, which is in principle more
-than the 0.01\% it would have been allowed to with a weight of 1/10000. Once LC
-load reaches $\geq$100\% for longer periods of time however, priority scheduling
-does not run the BE at all anymore. If not done carefully, this will cause
-applications to crash.
+than the 0.01\% it would have been allowed to with a weight of 1/10000. It is
+only when LC load reaches 100\% CPU utilization for extended periods of time
+that parking becomes different from running a process with a small weight.
 
-\subsubsection{BEs can resume after being parked }
-Parking keeps the application runnable without actually running the user space
-application. It does this by continuining to run the kernel services that manage
-critical state on behalf of the BE processes. This includes TCP connections,
-timers, and i/o completions, all of which are initially handled within the
-kernel. For instance, the kernel acknowledges incoming TCP packets and buffers
-their contents for the process. This means that when the load goes down and the
-parked process can run again, the read will return all the intermediate messages
-at once. Timers are similar: if a BE processes' timer fires while the BE is
-parked, the kernel will handle the initial interrupt and send the process a
-signal. Once the load goes down and the BE runs, it will see the timer has
-fired.
+\subsubsection{BEs can resume normally after being parked }
+Parking keeps the application intact\hmng{w.c.?} without actually running the
+user space application. \hmng{this is a big question - is this something we want
+to get into? or do we just call it user/kernel divide from the getgo, but I
+wanted to try this } 
 
 \subsubsection{Application-level coordinators can choose what to do with a
 parked BE} Because BEs are best effort, pausing application-level progress is
@@ -69,11 +73,13 @@ make slow progress or even be killed. For example, suppose a mapper running as
 part of a map-reduce job has a heartbeat with a coordinator, to check in on the
 mapper's progress. In the parked state, handling application-level heartbeats is
 paused until after the load goes down and CPU time is available again to run the
-BE. In the event that the mapper becomes parked, the coordinator would see no
-heartbeats, and correctly know that the mapper's progress is very slow/that it
-is unable to run. The coordinator, with its knowledge of the size of the job and
-the other mappers progress, can choose to kill that mapper and restart the job,
-or it can choose to wait.
+BE, but keeping the TCP connection alive is critical. In the event that the
+mapper becomes parked, the coordinator would see no heartbeats, and correctly
+know that the mapper's progress is very slow/that it is unable to run. The
+coordinator, with its knowledge of the size of the job and the other mappers
+progress, can choose to kill that mapper and restart the job, or it can choose
+to wait. If it waits, when the mapper comes back online the connection will be
+as it was and the mapper can proceed as if it was never parked.
 
 \subsubsection{Parking is expected to be short-lived}
 A machine in a datacenter experiencing that high of a load is likely a localized
