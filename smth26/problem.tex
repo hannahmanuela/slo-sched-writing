@@ -12,12 +12,6 @@ well as interacting poorly with Linux's large scheduling quantum
 (\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
 to use if the goal is to isolate LC services from BE ones.
 
-Linux offers an alternative to using \cgroups{} weights, which is a scheduling
-policy called \schedidle{}, but which none of the existing open source systems
-use. We show how our implementation integrates with \schedidle{} in
-\autoref{s:design}, and evaluate it in \autoref{ss:eval:schedidle}.
-
-
 \subsection{Weights don't isolate}\label{ss:problem:bes-run}
 
 \begin{figure}[t]
