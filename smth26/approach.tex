@@ -1,16 +1,18 @@
 \section{Approach}\label{s:approach}
 
 In order to honor LC reservations while still running BEs opportunistically, our
-approach is to enforce the isolation between them by using priority scheduling.
+approach is to enforce the isolation between them using priority scheduling.
 
-We show that doing so solves the enforcement problem that weights has, as well
-as its dependence on hardware ticks (\autoref{ss:approach:solves-problems}).
-Linux has priority scheduling for real time applications, which we show is able
-to isolate well between workloads of different priotiries
-(\autoref{ss:approach:linux-classes-isolate}), but is not a good fit for
-microservice workloads (\autoref{ss:approach:linux-classes-bad-fit}).
+We show that priority scheduling solves the enforcement problem that weights
+has, as well as its dependence on hardware ticks
+(\autoref{ss:approach:solves-problems}). Linux has priority scheduling for real
+time applications, which we show is able to isolate well between workloads of
+different priotiries (\autoref{ss:approach:linux-classes-isolate}), but is not a
+good fit for microservice workloads
+(\autoref{ss:approach:linux-classes-bad-fit}).
 
-\subsection{Priority scheduling solves the problems}\label{ss:approach:solves-problems}
+\subsection{Priority scheduling solves the problems laid out in section
+\ref{s:problem}}\label{ss:approach:solves-problems}
 
 Enforcing isolation of two priorities is simpler and requires fewer cross-core
 checks than enforcing a weight split. 
@@ -25,27 +27,25 @@ need to happen on \textit{class boundary crossings}: on \exit{}, when a core
 switches to running lower class processes after having previously been running
 high class, and on \entry{}, when a core enqueues a higher class process. These
 checks ensure that if a core is currently running a BE thread $t$, the scheduler
-knows that there are no queued and waiting LC threads anywhere: If there were
-ones before it started running $t$, the \exit{} check would have stolen it, and
-if a new LC thread wakes up while $t$ is running, the \entry{} check ensures
-that the core where it wakes up will interrupt $t$.
+knows that there are no queued and waiting LC threads anywhere on the machine:
+If there were ones before it started running $t$, the \exit{} check would have
+stolen it, and if a new LC thread wakes up while $t$ is running, the \entry{}
+check ensures that the core where it wakes up will interrupt $t$.
 
 Strict priorities being enforced at class boundary crossings rather than ticks
-also means that the fidelity of the isolation is now dependent on how quickly
-the handler for process wakeup or dequeue runs, not on the length of a
-scheduling tick. The kernel already runs handlers in the wakeup and exit paths,
-and can choose to reschedule or steal work from other cores. 
+also means that the fidelity of the isolation is now dependent not on the length of a
+scheduling tick, but on how quickly the handler for process wakeup or dequeue runs.
 
 
 \subsection{Linux scheduling classes isolate
 well}\label{ss:approach:linux-classes-isolate}
 
-Linux already has multiple scheduling classes that are accessible to users,
-which are (in descending order of priority): \deadlineclass{}, \rtclass{}, and
-\normalclass{}. Generally speaking most load is expected to fall into the
-\normalclass{} scheduling class (hence the name). It is the default scheduling
-class, and it is only within the \normalclass{} scheduling class that the
-\cgroups{} cpu.weight interface is relevant.
+Linux already does priority scheduling across scheduling classes, of which it
+has three that are accessible to users (in descending order of priority):
+\deadlineclass{}, \rtclass{}, and \normalclass{}. Generally speaking most load
+is expected to fall into the \normalclass{} scheduling class (hence the name).
+It is the default scheduling class, and it is only within the \normalclass{}
+scheduling class that the \cgroups{} cpu.weight interface is relevant.
 
 Each scheduling class exists completely separately: classes maintain their own
 runqueues and per-entity state; implement their own scheduling algorithms to
@@ -70,16 +70,16 @@ that it has nothing to run.
         \caption{High load}\label{fig:srv-bg-rt-high}
     \end{subfigure}
     \vspace{4pt}
-    \caption{Results of the same experiment as in \autoref{fig:srv-bg-unedited}
+    \caption{Results of the same experiment as in \autoref{fig:srv-bg-weight-150}
     and \autoref{fig:srv-bg-schedbe}, with LC running as a real time
     process}\label{fig:srv-bg-rt}
 \end{figure}
 
 \autoref{fig:srv-bg-rt} shows the result of running the same microbenchmark from
-\autoref{fig:srv-bg-unedited}, but with the LC server running in the \rtclass{}
-scheduling class. We can see that \rtclass{} is isolated from \normalclass{}
-well: in both load settings the tail and average latency stays stable at
-$\sim$6.0ms after starting the BE workload.
+\autoref{fig:srv-bg-weight-150}, but with the LC server running in the
+\rtclass{} scheduling class. We can see that \rtclass{} is isolated from
+\normalclass{} well: in both load settings the tail and average latency stays
+stable at $\sim$6.0ms after starting the BE workload.
 
 \subsection{Linux scheduling classes are not suited to enforce LC service
 reservations}\label{ss:approach:linux-classes-bad-fit}
@@ -105,7 +105,7 @@ priorities between which they enforce strict priority; within priorities they
 differ in the policy they enforce.
 
 \schedfifo{} uses first-in-first-out run-to-completion scheduling. This means
-that wihin each class, the process to run next will be the one that woke up
+that within each class, the process to run next will be the one that woke up
 first, and it will run until it blocks or exits. When a blocked thread becomes
 runnable again, that is counted as a wakeup and it will be put on the back of
 the queue. This is known to have a failure mode of head-of-line (HoL) blocking
@@ -113,10 +113,12 @@ under varied request processing times, where long-running requests monopolize
 the CPU while short requests wait in the queue.
 
 \schedrr{} addresses this concern by running a round-robin scheduler that will
-ensure Processor Sharing within priorities. However, \schedrr{} has no way way
-of enforcing unequal splits, every process just gets the same scheduling quantum
-and then gets put at the end of that priority's queue. Unequal splits is
-precisely what weights are good at, and why they are used for LC services today.
+ensure Processor Sharing within each priority. However, \schedrr{} has no way
+way of enforcing unequal splits, every process just gets the same scheduling
+quantum and then gets put at the end of that priority's queue. Unequal splits is
+precisely what weights are good at, and why they are used for LC services
+today.\hmng{ew, this needs to be way more precise. I think in general it would
+be good to work out what weights are good for, and separate that out}
 
 \subsubsection{Linux throttles \rtclass{} processes under high load
 }\label{sss:approach:linux:starve-throttle}
@@ -128,13 +130,13 @@ kernel-space), TCP connections can die while the process is being starved, and
 it can miss interrupts like timers or completed i/o requests.
 
 To avoid these, Linux chooses to carefully ensure that no process is ever
-starved by throttling high class processes with high load. Linux has two
-different safe guards that enforce that no process is ever starved. One is that
-\rtclass{} is as a scheduling class rate-limited: there are tuneable parameters
-\texttt{sched\_rt\_runtime} and \texttt{sched\_rt\_period}, that together define
-a rate limit for the \rtclass{} as a whole. The other safegaurd is that, even
-when set to be equal (ie \rtclass{} gets the full runtime each period if it
-wants), the \normalclass{} scheduling class also has a so-called
+starved, which it does by throttling high class processes with high load. Linux
+has two different safeguards that enforce that no process is ever starved. One
+is that \rtclass{} is as a scheduling class rate-limited: there are tuneable
+parameters \texttt{sched\_rt\_runtime} and \texttt{sched\_rt\_period}, that
+together define a rate limit for the \rtclass{} as a whole. The other safegaurd
+is that, even when set to be equal (\ie{} \rtclass{} gets the full runtime each
+period if it wants), the \normalclass{} scheduling class also has a so-called
 \textit{deadline server}, which ensures it gets a small amount of time. The
 deadline server is a `process' is in the \deadlineclass{} scheduling class with
 a small amount of runtime per period, then when chosen will pass control on to

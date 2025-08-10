@@ -12,7 +12,7 @@ well as interacting poorly with Linux's large scheduling quantum
 (\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
 to use if the goal is to isolate LC services from BE ones.
 
-\subsection{Weights don't isolate}\label{ss:problem:bes-run}
+\subsection{Weights are a local property}\label{ss:problem:bes-run}
 
 \begin{figure}[t]
     \centering
@@ -38,21 +38,21 @@ to use if the goal is to isolate LC services from BE ones.
 
 In order to understand why the jump in latency is happening when the BEs run, we
 reproduce the effects in a simpler benchmark. The experiment shown in
-\autoref{fig:kubernetes-weight-150} includes a complicated software stack of
+\autoref{fig:kubernetes-unedited} includes a complicated software stack of
 Kubernetes, uvicorn, FastAPI, and Python. All of this has performance
 implications, and we can see that even before the BE load starts there are large
 latency spikes up to 30ms.
 
-To exclude these effects, we run a simple CPU-bound server with a pool of worker
-threads. We run an open-loop client on a remote machine, and then start two BE
-workloads doing image resizing. We put the LC server and the BE resize job each
-in their own \cgroups{} group with weights 150 and 1 respectively, and pin them
-to the same set of cores. \autoref{fig:srv-bg-unedited} shows the result: we see
-that at a $\sim$85\% baseline utilization of the server, after starting the BEs
-the server's mean latencies spike up from steady at around 6ms to as high as
-20ms, and much higher for 99th percentile latencies. At a baseline utilization
-of 95\%, those numbers increase to up to 40ms for the the mean latency, and 80ms
-for the tail.
+To exclude these effects, we run a simple c++ CPU-bound server with a pool of
+worker threads. We run an open-loop client on a remote machine, and then start
+two BE workloads doing image resizing. We put the LC server and the BE resize
+job each in their own \cgroups{} group with weights 150 and 1 respectively, and
+pin them to the same set of cores. \autoref{fig:srv-bg-weight-150} shows the
+result: we see that at a $\sim$85\% baseline utilization of the server, after
+starting the BEs the server's mean latencies spike up from steady at around 6ms
+to $\sim$15ms, and much higher for 99th percentile latencies. At a baseline
+utilization of 95\%, those numbers increase to up to 40ms for the the mean
+latency, and 80ms for the tail.
 
 \begin{figure}[t]
     \centering
@@ -69,11 +69,8 @@ for the tail.
         around 95\%}\label{fig:srv-bg-weight-cmp-high}
     \end{subfigure}
     \vspace{4pt}
-    \caption{Latencies of the server and iteration counts of the background
-    tasks in different load scenarios show the BE tasks interfering with the LC
-    server. Note the different y axis limits. The upper graphs show end-to-end
-    request latencies, and the bottom graph is a histogram of completed
-    iterations of the BE tasks}\label{fig:srv-bg-weight-cmp}
+    \caption{Changing the weight of the server beyond 100 has little impact on
+    how much the BE task interferes with it}\label{fig:srv-bg-weight-cmp}
 \end{figure}
 
 \cgroups{} supports weights in the range of [1,10000]; a possible explanation
@@ -117,14 +114,15 @@ weight processes.
 \subsection{Enforcing weights across cores is
 hard}\label{ss:problem:cross-core-hard}
 
-This is not just a poor implementation: a weight-based interface is at odds with
-machine-wide policy enforcement. In order to strictly and globally enforce a
-processes weight, the scheduler would need to compare different cores' runqueues
-at every scheduling decision. This is because, in a weight-based system, the
-definition of what process should be running changes over time. If a core has
-one high-weight and one low-weight group, before running the low-weight group it
-needs to know if any other cores have recently run a different process within
-that group, because that would affect how much time it is owed on this core.
+This is not an artifact of a poor implementation: a weight-based interface is at
+odds with machine-wide policy enforcement. In order to strictly and globally
+enforce a processes weight, the scheduler would need to compare different cores'
+runqueues at every scheduling decision. This is because, in a weight-based
+system, the definition of what process should be running changes over time. If a
+core has one high-weight and one low-weight group, before running the low-weight
+group it needs to know if any other cores have recently run a different process
+within that group, because that would affect how much time it is owed on this
+core.
 
 Managing and calculating global shares is complex: calculating whether a given
 process is owed time globally requires knowing the total weight across all cores
@@ -147,14 +145,15 @@ maintaining a weight split as a global invariant can quickly become prohibitive.
 scheduling}\label{ss:problem:quantum}
 
 Using very large weight differentials as an interface to isolate LC and BE
-doesn't work well because preemption is tick-based. Even on a single runqueue,
-in a weight based scheme BE processes get a fair share of the CPU. The problem
-is that, when this happens, the BE process will interrupt any running LC process
-for a whole tick. In Linux, hardware ticks are 4ms long. This means that an LC
-thread processing a request may be interrupted for up to 4ms, provided the BE
-process runs for that long before blocking. 4ms can be a large amount of time
-for microservice workloads, whose SLOs are often in the low double digit or even
-single digit ms realm.~\cite{in-the-plex, sigmaos}
+doesn't work well because preemption is tick-based.\hmng{don't like that
+sentence} Even on a single runqueue, in a weight based scheme BE processes get a
+fair share of the CPU. The problem is that, when this happens, the BE process
+will interrupt any running LC process for a whole tick. In Linux, hardware ticks
+are 4ms long. This means that an LC thread processing a request may be
+interrupted for up to 4ms, provided the BE process runs for that long before
+blocking. 4ms can be a large amount of time for microservice workloads, whose
+SLOs are often in the low double digit or even single digit ms
+realm.~\cite{in-the-plex, sigmaos}
 
 
 

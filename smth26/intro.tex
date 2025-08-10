@@ -34,8 +34,8 @@ overprovisioning on the part of LCs. BE tasks can run on unused resources
 opportunistically, because they can tolerate delays when LC load spikes. In
 order do so while guaranteeing LC services predictable and uncontended access to
 the resources they reserved, the platform needs to maintain strict isolation
-between the two. BEs share all the hardware resources with the LC, and LCs need
-isolation on all of them. The resource that this work focuses on is CPU.
+between the two. BEs share all the hardware resources with the LC. The resource
+that this work focuses on is CPU.
 
 
 \begin{figure}[t]
@@ -49,12 +49,12 @@ isolation on all of them. The resource that this work focuses on is CPU.
 We find that current popular scheduling systems fail to properly isolate latency
 critical from best effort workloads. When running a small but realistic social
 network web application on Kubernetes, we observe significant impacts on its
-latency when starting a best effort workload, doing image resizing, on the same
-machine. The top graph of \autoref{fig:kubernetes-unedited} plots the end-to-end
-latency of an endpoint that gets a users feed and applies a moderation; the
-bottom graph shows the throughput of the BE workload. After the BEs start
-running, the mean response latency of the web application jumps from $\sim$7ms
-to $\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$25ms. 
+latency when starting a best effort workload, on the same cores. The top graph
+of \autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
+that gets a users feed and applies a moderation; the bottom graph shows the
+throughput of a best effort image resize job. After the BE starts running, the
+mean response latency of the web application jumps from $\sim$7ms to $\sim$15ms,
+and the 99th percentile latency from $\sim$10ms to $\sim$25ms. 
 
 Understanding where the isolation fails requires looking at the underlying
 mechanism that is enforcing it: Linux's \cgroups{}. Most modern containers rely
@@ -63,7 +63,7 @@ on \cgroups{} for CPU isolation; this includes all Open Container Initiative
 containerd~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
 VM frameworks, including Firecracker, AFaas and libvirt, also rely on \cgroups{}
 to manage CPU time allocation when the number of vCPUs is
-oversubscribed.~\cite{firecracker-cgroups,afaas,libvirt-cgroups}
+oversubscribed~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
 
 The part of the \cgroups{} interface that these systems use to isolate LC and BE
 is based on weight.\footnote{Other operating systems expose a similar interface,
@@ -79,31 +79,34 @@ was assigned a weight of 157.
 
 \cgroups{} specifies that each group should get CPU time proportional to its
 weight as a share of the sum of weights of runnable
-groups~\cite{cgroups-kerneldocs}. However, we can see that this is not true for
-the application in \autoref{fig:kubernetes-unedited}. As we show in more detail
-in \autoref{s:problem}, the problem that leads to the increased latencies
-observed is that Linux will run a BE process on one core, unaware that an LC
-process is runnable and waiting on another. This happens because Linux uses
-per-CPU runqueues, which avoids the overheads of having a global runqueue. A key
-challenge this work addresses is how to manage this tension between expensive
-cross-core checks and affecting strict isolation across cores.
+groups~\cite{cgroups-kerneldocs}. However, the latency increase we see after
+starting the best effort tasks in \autoref{fig:kubernetes-unedited} is much more
+than the 1\% CPU time the server should be losing out on accoding to this
+interface. As we show in more detail in \autoref{s:problem}, the problem that
+leads to the increased latencies observed is that Linux will run a BE process on
+one core, unaware that an LC process is runnable and waiting on another. This
+happens because Linux uses per-CPU runqueues, which avoids the overheads of
+having a global runqueue. A key challenge this work addresses is how to manage
+this tension between affecting strict isolation across cores and how often the
+scheduler has to look at all the other cores' runqueues.
 
-Our approach addresses this challenge by exposing in the API a new priority
-class for BE to run in, \beclass{}, and enforcing it in the scheduler via strict
+Our approach addresses this challenge by creating a new priority class for BE
+tasks to run in, \beclass{}, and enforcing it in the scheduler via strict
 priority scheduling. Linux already has other classes between which it enforces
-strict priority, which are designed and used for real time applications; the
-proposed \schedbe{} sites below the default scheduling class. As we show in
+strict priority, which are designed and used for real time applications
+(\autoref{ss:approach:linux-classes-isolate}); the proposed \beclass{} sits
+below the default scheduling class. As we show in
 \autoref{ss:approach:solves-problems}, putting BE in a separate class from LC
 makes it viable to enforce the isolation across cores, because it reduces the
-number of times the scheduler is required to look at other runqueues. Enforcing
-weights across cores requires the scheduler to do so every scheduling tick, but
-with a separate class it only has to look at other cores on \textit{class
-boundary crossings}: every time a core swtiches from an LC to running a BE
-process, and every time it queues an LC one.
+number of times the scheduler is required to look at all the other cores'
+runqueues. Enforcing weights across cores requires the scheduler to do so every
+scheduling tick, but with a separate class it only has to look at other cores on
+\textit{class boundary crossings}: every time a core switches from running an LC
+process to running a BE on, and every time it enqueues an LC process.
 
-A challenge that emerges from creating a separate priority class is that, when
-the LC is under high load, completely starving BE processes can lead to issues
-such as broken TCP connections or missed timers. The goal is to make the
+A challenge that emerges from creating a separate priority class arises when the
+LC class is under high load: completely starving BE processes can lead to issues
+such as deadlocks, broken TCP connections, or missed timers. The goal is to make the
 priority of LC over BE as strict as possible, while allowing BE processes to
 resume execution normally once the load goes down, even if the high load lasts
 for multiple minutes.
@@ -111,22 +114,22 @@ for multiple minutes.
 We address this challenge by enabling BEs to exist in an ephemeral state called
 \textit{parked}, which BEs enter when the CPU utilization is high enough that
 any amount of running a BE would interfere with an LC. While load remains high,
-the scheduler ensures that the user-space process doesn't run and consume
-resources, but continues to run the kernel-space handlers that manage critical
-state, including TCP connections and timers, on behalf of the BE processes. 
+the scheduler ensures that the parked BE's user-space process doesn't run and
+consume resources, but continues to run the kernel-space handlers that manage
+critical state, including TCP connections and timers, on behalf of the BE
+processes. 
 
-We implement \beclass{} in Linux on top of an existing scheduling policy
+We implement \beclass{} in Linux on top of an existing scheduling policy called
 \schedidle{}, and show that it is able to significiantly improve Linux's ability
 to isolate LC from BE workloads: in the same Kubernetes experiment, the increase
 in average latency when starting a BE workload goes from $>$2x to 0. The
 contributions of this paper are thus as follows: 
 \begin{enumerate}
     \item identifying as the reason isolation between LC and BE often fails that
-    \cgroups{} does a poor job of enforcing the weights across cores; and that
-    this dramatically affects end-to-end latencies
-    \item the design of \beclass{}, a new class for BE tasks that separates
-    them from the default class LC tasks run in, and isolates LC workloads from
-    BE ones while minimizing the amount of cross-core checks required, as well as
-    naturally enforcing the parked state
+    \cgroups{} does a poor job of enforcing the weights across cores;
+    \item the design of \beclass{}, a new class for BE tasks isolates LC
+    workloads from BE ones by using priority scheduling, and minimizes the
+    amount of cross-core checks required as well as naturally enforcing the
+    parked state
     \item an implementation of \beclass{} in Linux
 \end{enumerate}

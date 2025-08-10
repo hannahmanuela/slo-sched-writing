@@ -29,7 +29,7 @@ that our implementation builds on.
         \caption{High load (95\%)}\label{fig:srv-bg-schedbe-high}
     \end{subfigure}
     \vspace{4pt}
-    \caption{same expiriment as in \autoref{fig:srv-bg-unedited}, but with the
+    \caption{same expiriment as in \autoref{fig:srv-bg-weight-150}, but with the
     BEs running in \schedbe{}}\label{fig:srv-bg-schedbe}
 \end{figure}
 
@@ -53,7 +53,7 @@ that our implementation builds on.
     }\label{fig:schedviz-schedbe}
 \end{figure}
 
-We run the microbenchmark experiment from \autoref{fig:srv-bg-unedited} using
+We run the microbenchmark experiment from \autoref{fig:srv-bg-weight-150} using
 \schedbe{}. We can see the resulting performance in
 \autoref{fig:srv-bg-schedbe}, and \autoref{fig:srv-bg-cmp-unedited-schedbe}
 shows a direct comparison between the original benchmark run on \cgroups{}
@@ -147,11 +147,10 @@ the priority enforcement:
     of the migration should it decide to steal a \schednormal{} process
 \end{enumerate}
 
-We measure the amount of time that the \exit{} check takes, and look at how
-often it happens as well as how often it chooses to steal in the Kubernetes
-experiment. The overhead of stealing the LC job is known, and is a complicated
-function of the CPU architecture and which cores it is moving between (\eg{} how
-much memory hierarchy do the two cores share).
+We look at how often the \exit{} check happens as well as how often it chooses
+to steal in the Kubernetes experiment. The overhead of stealing the LC job is
+known, and is a complicated function of the CPU architecture and which cores it
+is moving between (\eg{} how much memory hierarchy do the two cores share).
 
 % Please add the following required packages to your document preamble:
 % \usepackage[normalem]{ulem}
