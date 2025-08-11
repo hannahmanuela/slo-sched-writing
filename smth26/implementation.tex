@@ -1,84 +1,10 @@
-\section{Design/Parking?}\label{s:design}
-
-We design a new scheduling class \beclass{} that sits below \normalclass{}, that
-enforces LC's uncontended access to the CPUs it reserved. 
-
-\beclass{} continues to enforce LC reservations even under high load, without
-killing \beclass{} processes or throttling the LC workload, by introducing
-\textit{parking}.
-
-\subsection{Parking in Linux}
-
-As LC load approaches 100\%, BE applications run proportionally less, since they
-only run in the times where LC is not utilizing the core. But even if LC load
-is at 99\%, the BEs can still run for 1\% of the time, which is in principle more
-than the 0.01\% they would have been allowed to with a weight of 1/10000. It is
-only when LC load reaches 100\% CPU utilization for extended periods of time
-that parking becomes different from running a process with a small weight.
-
-We address the potential issues with starvation by separating BE processes'
-logic into application logic (user-space) and critical-state management
-(kernel-space). When LC load spikes, BEs run only on the kernel-space level. We
-call this state \textit{parked}, because although the application logic does not
-progress, the BE is not completely starved because kernel-space handlers still
-run.
-
-Our goal is to make parking as transparent as possible to the applications. On
-the most immediate level, parking needs to avoid causing deadlock or dropped
-connections. But it is also desirable that the BE and the services it talks to
-should not need to do special-cased error handling if the BE was parked. For
-instance, a mapper that has a heartbeat with a coordinator to check in on the
-mapper's progress, should not have to check on every read and write to the
-connection with the coordinator to see if the connection timed out because it
-was parked. What should happen is that handling application-level heartbeats is
-paused until the load goes down, but the TCP connection is kept alive. 
-
-In the event that the mapper becomes parked, the coordinator would see no
-heartbeats, and correctly know that the mapper's progress is very slow/that it
-is unable to run. The coordinator, with its knowledge of the size of the job and
-the other mappers progress, can then choose to kill that mapper and restart the
-job, or it can choose to wait.
-
-
-Creating the divide between user-space and kernel-space achieves this goal for
-us. To avoid deadlock, Linux already marks kernel-space operations that use
-locks as non-preemptible, and ensures that non-preemptible code is not
-interrupted. This means that it is not possible for a BE to still hold a
-kernel-space lock after being descheduled. User-space locks do not have such
-protection, but user-space locks are not shared across LC and BE applications.
-Linux also already manages I/O interrupts, including acknowledging network
-packets, in kernelspace interrupt handlers. These run irrespective of whether
-and when the userspace process is scheduled, and simply write the relevant
-message buffers to the processes' memory. This means that when the load goes
-down and the parked process can run again, the read will return all the
-intermediate messages at once. Timers are similar: if a BE processes' timer
-fires while the BE is parked, the kernel will handle the initial interrupt and
-send the process a signal. Once the load goes down and the BE runs, it will see
-the timer has fired.
-
-Parking is also expected to be short-lived, which positions it more as a
-temporary disaster-refief mechanism than as a long-term state\hmng{clumsy/not
-saying anything}. A machine in a datacenter experiencing that high of a load is
-likely a localized problem, both in space (as in, will only effect some small
-number of machines) and time (as in, the high load on the machine won't last
-long). It is localized in space because microservices' loads are independent
-from one another: on the order of seconds and minutes, individual microservices'
-loads may vary, but broadly load is known to be predictable, so even if one
-machine is experiencing high load other machines won't be~\cite{TODO}. It is
-localized in time because of the distributed setting: a distributed scheduler
-monitors the state of all the machines and migrates load when it sees high CPU
-utilization, or an autoscaler starts new instances, shifting the excess LC load
-to remote machines and thereby allowing BEs to run again on the local machine.
-
-
 \section{Implementing \beclass{} in Linux}\label{s:implementation}
 
-In order to enforce LC's uncontended access to CPUs, the goal of the
-implementation is to enforce the maxim that no \beclass{} userspace process is
-ever running on cores reserved for a \normalclass{} workload if a \normalclass{}
-process is runnable and queued.\hmng{what about fractional core reservations?
-maybe this fits into question of what are weights good for} In order to do so,
-the scheduler must enforce the priorities in three different places:
+In order to enforce latency critical service's uncontended access to CPUs, the
+goal of the implementation is to enforce the maxim that no \beclass{} userspace
+process is ever running on cores reserved for a \normalclass{} workload if a
+\normalclass{} process is runnable and queued. In order to do so, the scheduler
+must enforce the priorities in three different places:
 \begin{enumerate}
     \item \local: in picking the next process to run on each core, it must ensure
         that no \beclass{} process will be chosen if there is a runnable
@@ -93,8 +19,8 @@ the scheduler must enforce the priorities in three different places:
 
 In order to implement \beclass{} in Linux, we build on \schedidle{}, an existing
 scheduling \textit{policy} in Linux, rather than creating an actual new
-scheduling class. This is because \schedidle{} already has some of the features
-we want for \beclass{}.
+scheduling class, because \schedidle{} already has some of the features we want
+for \beclass{}.
 
 \subsection{\schedidle{} lends itself well to \beclass{}}
 
@@ -113,9 +39,9 @@ One way that \schedidle{} is promising as a foundation for our implementation of
 API recently~\cite{lkml-idle-cgroup}: a whole groups' policy can be set to
 \schedidle{} via the \cgroups{} interface. This means that building on
 \schedidle{} allows us to get for free the ability to use the \cgroups{} API to
-mark groups as BE. We thus have two ways to mark things as BE: we can mark
-individual processes by setting their policy to \schedidle{}, or we can do so
-for a whole group via the \cgroups{} API.
+mark groups as best effort. We thus have two ways to mark things as BE: we can
+mark individual processes by setting their policy to \schedidle{}, or we can do
+so for a whole group via the \cgroups{} API.
 
 An additional benefit to using \schedidle{} as the starting point for our
 implementation is that, after a push by Facebook, Linux developers already added
@@ -134,11 +60,12 @@ desired behavior of \beclass{}, and as a result behaves as if it was a
 scheduling class.
 
 To enforce the \local{} part of the design, which calls for the local (\ie{}
-single runqueue) isolation of \schedbe{} processes, we ensure that the task
-chosen to run from the runqueue is only \schedbe{} if everything else on the
-runqueue is as well (\autoref{ss:implementation:local}). To enforce the \exit{}
-check, we add a cross-core check and potentially steal work, which completes the
-global policy enforcement (\autoref{ss:implementation:exit}).
+single runqueue) strict prioritization of \schednormal{} over \schedbe{}
+processes, we ensure that the task chosen to run from the runqueue is only
+\schedbe{} if everything else on the runqueue is as well
+(\autoref{ss:implementation:local}). To enforce the \exit{} check, we add a
+cross-core check and potentially steal work, which completes the global policy
+enforcement (\autoref{ss:implementation:exit}).
 
 \subsubsection{Enforcing the local policy}\label{ss:implementation:local}
 

@@ -1,0 +1,80 @@
+\section{Design/Parking?}\label{s:design}
+
+We design a new scheduling class \beclass{} that sits at a lower priority than
+\normalclass{}, which enforces latency critical applications' uncontended access
+to the CPUs they reserved. Doing so addresses the two main concerns with Linux's
+existing scheduling classes. 
+
+One is that the latency critical microservices stay in the same scheduling class
+as they were before, which means existing mechanisms to balance CPU time between
+different microservices remain viable.
+
+It also allows us to design \beclass{} so that is continues to enforce
+reservations even under high load, without throttling the latency critical
+services or killing the best effort ones. To do this we introduce
+\textit{parking}.
+
+\subsection{Parking in Linux}
+
+As the load in \normalclass{} approaches 100\%, \beclass{} applications run
+proportionally less, since they only run in the times where \normalclass{} is
+not utilizing the core. But even if \normalclass{} load is at 99\%, the
+\beclass{} processes can still run for 1\% of the time, which is in principle
+more than the 0.01\% they would have been allowed to with the maximum weight
+split of 1/10000. It is only when the load in \normalclass{} reaches 100\% CPU
+utilization for extended periods of time that parking becomes different from
+running a process with a small weight.
+
+Parking addresses the potential issues with starvation by separating \beclass{}
+processes' logic into application logic (user-space) and critical-state
+management (kernel-space). When load spikes, \beclass{} processes' run only on
+the kernel-space level. We call this state \textit{parked}, because although the
+application logic does not progress, the BE is not completely starved because
+kernel-space handlers still run.
+
+Our goal is to make parking as transparent as possible to the applications. On
+the most immediate level, parking needs to avoid causing deadlock or dropped
+connections. But it is also desirable that the BE and the services it talks to
+should not need to do special-cased error handling if the BE was parked. For
+instance, a mapper that has a heartbeat with a coordinator to check in on the
+mapper's progress, should not have to check on every read and write to the
+connection with the coordinator to see if the connection timed out because it
+was parked. What should happen is that handling application-level heartbeats is
+paused until the load goes down, but the TCP connection is kept alive. 
+
+In the event that the mapper becomes parked, the coordinator would see no
+heartbeats, and correctly know that the mapper's progress is very slow/that it
+is unable to run. The coordinator, with its knowledge of the size of the job and
+the other mappers progress, can then choose to kill that mapper and restart the
+job, or it can choose to wait.
+
+
+Creating the divide between user-space and kernel-space achieves this goal for
+us. To avoid deadlock, Linux already marks kernel-space operations that use
+locks as non-preemptible, and ensures that non-preemptible code is not
+interrupted. This marking means that it is not possible for a BE to still hold a
+kernel-space lock after being descheduled. User-space locks do not have such
+protection, but user-space locks are not shared across LC and BE applications.
+Linux also already manages I/O interrupts, including acknowledging network
+packets, in kernelspace interrupt handlers. These run irrespective of whether
+and when the userspace process is scheduled, and simply write the relevant
+message buffers to the processes' memory. Thus, when the load goes down and the
+parked process can run again, the read will return all the intermediate messages
+at once. Timers are similar: if a BE processes' timer fires while the BE is
+parked, the kernel will handle the initial interrupt and send the process a
+signal. Once the load goes down and the BE runs, it will see the timer has
+fired.
+
+Parking is expected to be short-lived, which positions it more as a temporary
+disaster-refief mechanism than as a long-term state\hmng{clumsy/not saying
+anything}. A machine in a datacenter experiencing that high of a load is likely
+a localized problem, both in space (as in, will only effect some small number of
+machines) and time (as in, the high load on the machine won't last long). It is
+localized in space because microservices' loads are independent from one
+another: on the order of seconds and minutes, individual microservices' loads
+may vary, but broadly load is known to be predictable, so even if one machine is
+experiencing high load other machines won't be~\cite{TODO}. It is localized in
+time because of the distributed setting: a distributed scheduler monitors the
+state of all the machines and migrates load when it sees high CPU utilization,
+or an autoscaler starts new instances, shifting the excess LC load to remote
+machines and thereby allowing BEs to run again on the local machine.

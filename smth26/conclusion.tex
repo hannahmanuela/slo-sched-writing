@@ -3,26 +3,28 @@
 %-------------------------------------------------------------------------------
 
 This work shows that current isolation systems like Kubernetes are unable to
-effectively performance isolate between LC and BE workloads for workloads that
-are CPU-intensive. We trace this problem down to Linux's \cgroups{}, and show
-that because Linux uses per-core runqueues, its weight-based interface for
-isolation is not enforced across cores. Using a weight-based interface for
-isolating LC and BE has other problems as well: it makes it hard to enforce a
-split across cores, and it interacts poorly with the large scheduling quantum
-that Linux uses.
+effectively isolate the latencies of LC applications from BE workloads for tasks
+that are CPU-intensive. We trace this problem down to Linux's \cgroups{}, and
+show that because Linux uses per-core runqueues, its weight-based interface is
+not enforced across cores. Using a weight-based interface to enforce LC
+processes' reservations on cores also running BE processes has other problems as
+well: it makes it hard to enforce a split across cores, and it interacts poorly
+with the large scheduling quantum that Linux uses.
 
-Instead, we propose an API that separates BEs from LCs by introducing the
-\beclass{} priority class. Enforcing \beclass{} requires less cross-core
-interaction than a weight-based isolation approach, and ensures that no BE is
-ever running when an LC is queued. During high load this requires `parking',
-which enforces that BEs are immediately runnable once the load goes down, with
-minimal interference for LCs in the meantime while the load is high.
+Instead, we propose an API that separates best effort workloads from critical
+ones with reservations by introducing the \beclass{} priority class. \beclass{}
+requires fewer cross-core interactions than a weight-based approach, and ensures
+that no BE is ever running when an LC is queued. During high load this requires
+`parking', which enforces that BEs are immediately runnable once the load goes
+down, with minimal interference for LCs in the meantime while the load is high.
 
 We implement this strict priority in Linux, and show that the resulting
 \schedbe{} allows \cgroups{} itself, as well as higher level applications that
-build on \cgroups{} like Kubernetes, to do a better job of isolating LC from BE
-workloads. Using \schedbe{} rather than the standard \cgroups{} weight interface
-decrease the impact starting a BE process has on LC latencies from >2x to 0, and
-under high load a parked \schedbe{} process running in a Kubernetes pod can
-resume execution normally after multiple minutes of no user space CPU time.
+build on \cgroups{} like Kubernetes, to do a better job of ensuring LC
+processes' access to their reserved cores while running BE workloads
+opportunistically. Using \schedbe{} rather than the standard \cgroups{} weight
+interface decreases the impact starting a BE process has on LC latencies from
+>2x to 0, and under high load a parked \schedbe{} process running in a
+Kubernetes pod can resume execution normally after multiple minutes of no user
+space CPU time.
 

@@ -1,25 +1,24 @@
 \section{Related Work}
 
-Much previous has targeted improving the isolation of latency critical workloads
-from other tasks in the system.
+Much previous has targeted improving the isolation of latency critical
+applications' latencies from other tasks in the system.
 
-\textbf{Linux-related work} Some existing work focuses on better isolation in
-Linux. Many focus on real-time applications~\cite{rt-in-linux, state-rt-linux},
-which have stricter latency requirements than the microservice applications
-targeted in this paper, and have more predictable execution behavior. As a
-result, these systems build on the real time scheduling classes.\hmng{cld use better
-cites}
+\textbf{Linux-related work} Some existing work focuses on Linux. Many focus on
+real-time applications~\cite{rt-in-linux, state-rt-linux}, which have stricter
+latency requirements than the microservice applications targeted in this paper,
+and have more predictable execution behavior. As a result, these systems build
+on the real time scheduling classes.\hmng{cld use better cites}
 
 A Decade of Wasted Cores~\cite{wasted-cores} focuses on the idle behavior of the
 Linux scheduler. It does not find fault with the scheduling interface, but
 focuses on the internal migration and stealing behavior of cores in order to
-improve performance and utilization. By contrast, this work focuses on isolation
-and improves it by changing the way developers express what is LC and what is BE
-to the kernel.
+improve performance and utilization. By contrast, this work changes the way
+developers express what is latency critical and what is best effort to the
+kernel.
 
-\textbf{Other machine schedulers} Other systems work around the kernel scheduler
-to implement the desired isolation, by making policy decisions, handling
-cross-core communication, and enforcing interrupts, in userspace.
+\textbf{Other machine schedulers} Other systems work around the kernel
+scheduler, by making policy decisions, handling cross-core communication, and
+enforcing interrupts, in userspace.
 
 Systems like PerfIso~\cite{perfiso} reactively adjust the amount of cores that
 are allocated to different workloads, but still using kernel mechanisms to

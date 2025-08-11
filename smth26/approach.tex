@@ -1,108 +1,122 @@
 \section{Approach}\label{s:approach}
 
-In order to honor LC reservations while still running BEs opportunistically, our
-approach is to enforce the isolation between them using priority scheduling.
+In order to enforce reservations while still running best effort jobs
+opportunistically, our approach is use priority scheduling.
 
-We show that priority scheduling solves the enforcement problem that weights
+We describe how priority scheduling solves the enforcement problem that weights
 has, as well as its dependence on hardware ticks
 (\autoref{ss:approach:solves-problems}). Linux has priority scheduling for real
-time applications, which we show is able to isolate well between workloads of
-different priotiries (\autoref{ss:approach:linux-classes-isolate}), but is not a
-good fit for microservice workloads
+time applications (\autoref{ss:approach:linux-classes-isolate}), but they are
+not a good fit for microservice workloads
 (\autoref{ss:approach:linux-classes-bad-fit}).
 
-\subsection{Priority scheduling solves the problems laid out in section
-\ref{s:problem}}\label{ss:approach:solves-problems}
+\subsection{Priority scheduling solves the problems with
+weights}\label{ss:approach:solves-problems}
 
-Enforcing isolation of two priorities is simpler and requires fewer cross-core
-checks than enforcing a weight split. 
+Enforcing CPU isolation of two priorities is simpler and requires fewer global
+runqueue searches, where cores have to look at all the others' runqueues, than
+enforcing a weight split does. 
 
 It is simpler because priorities are: a core does not need to do complex
 accounting to figure out whether it is a low-weight processes turn to run, it
-just needs to know the set of runnable priorities. Enforcing the isolation
+just needs to know the set of runnable priorities. Enforcing the CPU isolation
 between them equivalent to choosing only from the highest priority.
 
-Isolating priorities also requires fewer cross-core checks, because they only
-need to happen on \textit{class boundary crossings}: on \exit{}, when a core
-switches to running lower class processes after having previously been running
-high class, and on \entry{}, when a core enqueues a higher class process. These
-checks ensure that if a core is currently running a BE thread $t$, the scheduler
-knows that there are no queued and waiting LC threads anywhere on the machine:
-If there were ones before it started running $t$, the \exit{} check would have
-stolen it, and if a new LC thread wakes up while $t$ is running, the \entry{}
-check ensures that the core where it wakes up will interrupt $t$.
+Enforcing priorities also requires fewer global runqueue searches, because they
+only need to happen on \textit{class boundary crossings}: on \exit{}, when a
+core switches to running lower class processes after having previously been
+running high class, and on \entry{}, when a core enqueues a higher class
+process. These checks ensure that if a core $c$ is currently running a BE thread
+$t$, the scheduler knows that there are no queued and waiting LC threads
+anywhere on the machine. If there is a queued LC thread on a different core $c'$
+when $c$ starts running $t$, the \exit{} check, that looks at every cores'
+runqueue, will see and steal it. If a new LC thread wakes up on a different core
+while $t$ is running, the \entry{} check ensures that $c'$ will look at $c$'s
+runqueue, see that it is running a BE thread, and will send the new LC thread to
+$c$ via an interrupt, where the interrupt handler will trigger a scheduling that
+interrupts $t$.
 
-Strict priorities being enforced at class boundary crossings rather than ticks
-also means that the fidelity of the isolation is now dependent not on the length of a
-scheduling tick, but on how quickly the handler for process wakeup or dequeue runs.
+Strict priorities being enforced at class boundary crossings also means that how
+quickly a runnable LC process gets access to a core it reserved (not already
+running one of its threads) is now dependent on how quickly the handler for
+process wakeup or dequeue runs, which in Linux is on the order of a few
+microseconds. Currently it is on the order of however often the load balancer
+runs (which is a complicated number that is dependent on how close the two cores
+are in the CPU architecture hierarchy, as well as how loaded the machine is),
+and even in a scheme where weight was enforced globally it would be on the order
+of a scheduling tick (4ms). For enforcing sharing across long-running processes
+balancing occasionally works well, but for workloads with runtimes on the order
+of low to mid double-digit ms, those delays significiantly influence final
+processing times.
 
 
-\subsection{Linux scheduling classes isolate
-well}\label{ss:approach:linux-classes-isolate}
+\subsection{Linux scheduling classes enforce
+priorities}\label{ss:approach:linux-classes-isolate}
 
-Linux already does priority scheduling across scheduling classes, of which it
-has three that are accessible to users (in descending order of priority):
+Linux already provides priority scheduling across scheduling classes, of which
+it has three that are accessible to users (in descending order of priority):
 \deadlineclass{}, \rtclass{}, and \normalclass{}. Generally speaking most load
 is expected to fall into the \normalclass{} scheduling class (hence the name).
-It is the default scheduling class, and it is only within the \normalclass{}
-scheduling class that the \cgroups{} cpu.weight interface is relevant.
+It is the default scheduling class, and both latency critical and best effort
+processes run in it. It is only within the \normalclass{} scheduling class that
+the \cgroups{} cpu.weight interface is relevant.
 
 Each scheduling class exists completely separately: classes maintain their own
 runqueues and per-entity state; implement their own scheduling algorithms to
 choose from the entities on their runqueue; and balance the load across
 runqueues on different cores. 
 
-Linux isolates strictly between different scheduling classes: it only schedules
-a lower scheduling class if the higher scheduling classes found nothing to run,
-and each scheduling class tries to steal work from other cores before returning
-that it has nothing to run.
+Linux prioritizes strictly between different scheduling classes: it only
+schedules a lower scheduling class if the higher scheduling classes found
+nothing to run, and each scheduling class tries to steal work from other cores
+before returning that it has nothing to run.
 
 \begin{figure}[t]
     \centering
     \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
-        \caption{Low load}\label{fig:srv-bg-rt-low}
+        \caption{Low load (85\%)}\label{fig:srv-bg-rt-low}
         \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}[t]{\columnwidth}
         \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
-        \caption{High load}\label{fig:srv-bg-rt-high}
+        \caption{High load (95\%)}\label{fig:srv-bg-rt-high}
     \end{subfigure}
     \vspace{4pt}
-    \caption{Results of the same experiment as in \autoref{fig:srv-bg-weight-150}
-    and \autoref{fig:srv-bg-schedbe}, with LC running as a real time
-    process}\label{fig:srv-bg-rt}
+    \caption{when running the server as a real time application, Linux does a
+     good job of isolating the server's latencies from the load from best effort
+     jobs }\label{fig:srv-bg-rt}
 \end{figure}
 
 \autoref{fig:srv-bg-rt} shows the result of running the same microbenchmark from
 \autoref{fig:srv-bg-weight-150}, but with the LC server running in the
-\rtclass{} scheduling class. We can see that \rtclass{} is isolated from
-\normalclass{} well: in both load settings the tail and average latency stays
-stable at $\sim$6.0ms after starting the BE workload.
+\rtclass{} scheduling class. We can see that in both load settings the tail and
+average latency stays stable at $\sim$6.0ms after starting the BE workload. The
+throughput of the image resize job (10 iter/100ms at low load, and 5iter at high
+load) is around 80\% of what it was in \autoref{fig:srv-bg-weight-150} when
+running the server with \cgroups{} weights.
 
-\subsection{Linux scheduling classes are not suited to enforce LC service
+\subsection{Linux scheduling classes are not suited to enforce microservice
 reservations}\label{ss:approach:linux-classes-bad-fit}
 
-This points to a possible alternative to using \cgroups{}: run LC in the real
-time \rtclass{} scheduling class and BE in \normalclass{}.\footnote{The
-\deadlineclass{} scheduling class is not a good fit, since it requires accurate
-knowledge of a processes runtime (processing time per request) and period (when
-requests come in)} However, we show that the schedulers within each priority are
-not suited for microservices (\autoref{sss:approch:linux:policies}), and that
-Linux method of avoiding starvation is unfitting
+We conclude a possible alternative to using \cgroups{}: run latency critical
+applications that have reservations in the real time \rtclass{} scheduling
+class, and best effort ones in \normalclass{}.\footnote{The \deadlineclass{}
+scheduling class is not a good fit, since it requires accurate knowledge of a
+processes runtime (processing time per request) and period (when requests come
+in)} However, we show that the schedulers within each priority are not suited
+for microservices (\autoref{sss:approch:linux:policies}), and that Linux method
+of avoiding starvation has adverse effects on the LC application
 (\autoref{sss:approach:linux:starve-throttle}).
 
 \subsubsection{Real time schedulers are unsuitable for microservice
 workloads}\label{sss:approch:linux:policies}
 
-Running a microservice in \rtclass{} is an untenable way of isolating LC from BE
-because of \rtclass{}'s intra-priority schedulers. Our goal is to honor the
-reservations LC services make, they should not have to use different scheduling
-mechanisms to be able to get that. \hmng{a little clumsy} \rtclass{} has two
-different scheduling policies: \schedfifo{} and \schedrr{}. Both have 99
-priorities between which they enforce strict priority; within priorities they
-differ in the policy they enforce.
+Running a microservice in \rtclass{} is untenable because of \rtclass{}'s
+intra-priority schedulers. \rtclass{} has two different scheduling policies:
+\schedfifo{} and \schedrr{}. Both have 99 priorities between which they enforce
+strict priority; within priorities they differ in the policy they enforce.
 
 \schedfifo{} uses first-in-first-out run-to-completion scheduling. This means
 that within each class, the process to run next will be the one that woke up
@@ -113,12 +127,22 @@ under varied request processing times, where long-running requests monopolize
 the CPU while short requests wait in the queue.
 
 \schedrr{} addresses this concern by running a round-robin scheduler that will
-ensure Processor Sharing within each priority. However, \schedrr{} has no way
-way of enforcing unequal splits, every process just gets the same scheduling
-quantum and then gets put at the end of that priority's queue. Unequal splits is
-precisely what weights are good at, and why they are used for LC services
-today.\hmng{ew, this needs to be way more precise. I think in general it would
-be good to work out what weights are good for, and separate that out}
+ensure Processor Sharing within each priority. Every thread just gets the same
+scheduling quantum and then gets put at the end of that priority's queue. This
+means that within each priority CPU time is allocated based on the number of
+runnable threads. This conflicts with how weights are used within runqueues to
+allocate CPU time between different LC workloads. Kubernetes, for instance,
+allows users to make fractional CPU requests, which are enforced using
+weights.\hmng{next part is just conjecture, should I just leave it out?}
+Similarly, a provider might overprovision vCPUs of tenants VMs to actual
+hardware cores. We can't know what they use to configure access to the
+underlying cores, but we know they use \cgroups{} to do so for serverless
+functions because that's what Firecracker uses~\cite{firecracker-cgroups}.
+Although \cgroups{} limits (\ie{} defining a maximum amount of runtime per
+period each group can get) can also be applied to cgroups in real time
+applications, both of these use cases require the weight interface to ensure the
+split they want. In Kubernetes, this is required for Burstable containers \hmng{
+not clear why it's needed in the VM setting? }
 
 \subsubsection{Linux throttles \rtclass{} processes under high load
 }\label{sss:approach:linux:starve-throttle}
@@ -158,12 +182,14 @@ precisly when it needs its full reservation  most.
 Doing so impacts the performance of processes in the \rtclass{} at high load. We
 can see this happen when we run the same microbenchmark experiment at a much
 higher baseline utilization ($\sim$ 100\%). The results are in
-\autoref{fig:overload-rt}. We see spikes begin to appear after starting the BE
-task, as the \rtclass{} server gets throttled in favor of running the BE tasks;
-we see parallel spikes in the BE's throughput in the bottom graph. Notice also
-the increase of the slope of response times after starting the background tasks.
+\autoref{fig:overload-rt}. We see spikes begin to appear after starting the
+image resize job, as the \rtclass{} server gets throttled in favor of running
+the BE task; we see parallel spikes in the BE's throughput in the bottom graph.
+Notice also the increase of the slope of response times after starting the
+background tasks, this happens as the client has to queue requests while all the
+current connections are blocked on running requests.
 
-We conclude that Linux's mechanism of scheduling classes can isolate workloads
-effectively, but that existing scheduling classes use algorithms that are not a
-good fit for modern workloads, and that the isolation does not enforce
-reservations because it throttles high priority class processes under high load.
+We conclude that Linux's mechanism of scheduling classes can enforce
+reservations effectively, but that existing scheduling classes use algorithms
+that are not a good fit for modern workloads, and that Linux throttles high
+priority classes under high load.

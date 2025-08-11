@@ -5,11 +5,12 @@
 
 This section answers the following questions:
 \begin{enumerate}
-    \item Does \schedbe{} isolate LC from BE workloads?
+    \item Does \schedbe{} isolate LC latencies from the presence of BE?
     \item Can parked processes resume correctly? How many resources does it used
     while parked?
     \item How much does \schedbe{} cost?
-    \item How does \schedbe{}'s isolation compare to that of \schedidle{}?
+    \item How does \schedbe{}'s ability to limit the impact BE has on LC compare
+    to that of \schedidle{}?
 \end{enumerate}
 
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
@@ -29,28 +30,22 @@ that our implementation builds on.
         \caption{High load (95\%)}\label{fig:srv-bg-schedbe-high}
     \end{subfigure}
     \vspace{4pt}
-    \caption{same expiriment as in \autoref{fig:srv-bg-weight-150}, but with the
-    BEs running in \schedbe{}}\label{fig:srv-bg-schedbe}
+    \caption{ \schedbe{} does a good job of isolating the server's latencies
+     from the load from best effort jobs}\label{fig:srv-bg-schedbe}
 \end{figure}
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp-unedited-schedbe.png}
     \caption{A direct comparison between the server latencies when using the
-    existing \cgroups{} weights versus \schedbe{} to isolate the LC from the
-    BE}\label{fig:srv-bg-cmp-unedited-schedbe}
+    existing \cgroups{} weights versus \schedbe{} }\label{fig:srv-bg-cmp-unedited-schedbe}
 \end{figure}
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/schedviz-schedbe.png}
-    \caption{BE threads only run in the gaps when there are no queued LC
-    threads. The BE threads are colored in two different shades of green, the LC
-    threads are the grey ones (all the threads are the same shade of grey, the
-    different shades have to do with the amount of processes the visualizer has
-    grouped). The red vertical lines are the scheduler initially choosing a BE
-    thread, which leads to an attempt to steal a queued LC one.
-    }\label{fig:schedviz-schedbe}
+    \caption{BE threads only run in the gaps when there are no queued LC threads
+    on any core }\label{fig:schedviz-schedbe}
 \end{figure}
 
 We run the microbenchmark experiment from \autoref{fig:srv-bg-weight-150} using
@@ -118,20 +113,20 @@ keepalive timeout to expire within duration the BE spent being parked.
     \caption{BE in \schedbe{}, no throttling}\label{fig:overload-schedbe}
 \end{figure}
 
-\autoref{fig:overload-schedbe} shows how parking enables the LC to be isolated
-from \schedbe{} even under sustained extremely high load. We run the same
-experiment as \autoref{fig:overload-rt}, but now instead instead of throttling
-the LC, the BE gets parked. Notice that the BE does not make progress until the
-very end, when the server is done processing the requests. The difference is
-stark: in both experiments, the open-loop client sent the same amount of
-requests with the same amount of time in between them, but when the LC was
-throttled it took the server 35s to process all the requests, with a final
-latency of >1s, and with parking the server finished the client load in 31s with
-a final avg latency of <200ms. 
+\autoref{fig:overload-schedbe} shows how parking enables the latency critical
+server to keep its reservation even under sustained extremely high load. We run
+the same experiment as \autoref{fig:overload-rt}, but now instead instead of
+throttling the server, the \schedbe{} workload gets parked. Notice that the
+\schedbe{} image resize job does not make progress until the very end, when the
+server is done processing the requests. The difference is stark: in both
+experiments, the open-loop client sent the same amount of requests with the same
+amount of time in between them, but when the LC was throttled it took the server
+35s to process all the requests, with a final latency of >1s, and with parking
+the server finished the client load in 31s with a final avg latency of <200ms. 
 
 
 
-\subsection{Cost of \schedbe{}}
+\subsection{Cost breakdown of \schedbe{}}
 
 The cost of \schedbe{} is can be broken down into the three checks that make up
 the priority enforcement:
@@ -164,8 +159,9 @@ is moving between (\eg{} how much memory hierarchy do the two cores share).
         \exit{}  & $\sim$20K    & $\sim$10K          \\ \hline
     \end{tabular}
     \vspace{10pt}
-    \caption{Counts of checks and how many times they run/are able to find an LC to
-    run/a BE to interrupt}\label{tab:check-counts}
+    \caption{The \exit{} and \entry{} checks are effective, significant
+    fractions of the times they run lead to stealing a queued LC
+    thread/interrupting a currently running BE one}\label{tab:check-counts}
 \end{table}
 
 In the span of the 30 seconds the Kubernetes experiment takes to run, and across
@@ -179,9 +175,9 @@ happens fewer times, around 20K times, of which approximately half lead to
 stealing a \schednormal{} task.
 
 We can see that the \entry{} and \exit{} checks happen less than scheduling does
-by more than half. This demonstrates that enforcing isolation between LC and BE
-via priority classes requires much fewer cross-core checks than doing so at
-every scheduling decision.
+by more than half. This demonstrates that enforcing prioritization between LC
+and BE via priority classes requires much fewer global cross-core runqueue
+checks than doing so at every scheduling decision.
 
 The other takeaway is that, under high load, the \exit{} check is effective:
 around half of the time, the scheduler found a queued LC thread on another core.
@@ -190,9 +186,8 @@ Without the check, each of those would have led to a priority inversion.
 
 \subsection{Comparison with \schedidle}\label{ss:eval:schedidle}
 
-As discussed in \autoref{s:implementation}, \schedidle{} implements some but not
-all of the isolation required of \beclass{}: it implements the \entry{} check,
-but not the \exit{} check or strict local priorities.
+As discussed in \autoref{s:implementation}, \schedidle{} implements the \entry{}
+check, but not the \exit{} check or strict local priorities.
 
 \begin{figure}[t]
     \centering
@@ -224,7 +219,7 @@ but not the \exit{} check or strict local priorities.
     running the BE as a \schedidle{} task}\label{fig:kubernetes-idle}
 \end{figure}
 
-\autoref{fig:srv-bg-idle} shows the result of running the BE jobs in the
+\autoref{fig:srv-bg-idle} shows the result of running the best effort job in the
 microbenchmark in \schedidle{}, as well as a graph that compares the low load
 setting of the standard \cgroups{} weight, \schedbe{}, and \schedidle{}. Average
 latency still increases from $\sim$6ms to $\sim$8ms in the low load setting.
