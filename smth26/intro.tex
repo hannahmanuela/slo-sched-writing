@@ -3,133 +3,139 @@
 \label{s:intro}
 %-------------------------------------------------------------------------------
 
-Many microservices are \textit{latency critical} (LC), meaning that the people
-running them care about their response time. When latency critical applications
-take significantly longer than expected to process requests, bad things happen:
-customers are turned off, and revenue is lost~\cite{google-speed-matters,
-amz-speed-matters}.\hmng{might be helpful to give a sense of the time scale we
-are targeting} In order to give developers a predictable environment for
-critical services to run in, providers expose an interface for reserving
-resources: developers using platforms like AWS ec2 or Kubernetes attach to each
-service they want to run a fixed amount of resources the service will get, \ie{}
-a number of CPUs and an amount of memory~\cite{aws-ec2-resources,
-kubernetes-resources}. The guarantee developers get is that the service will
-have undisturbed access to that amount of resources.
+Cloud providers like AWS and Google, as well as deployment management systems
+like Kubernetes, allow users to run services by attaching to each a fixed amount
+of resources the service will get, \ie{} a number of CPUs and an amount of
+memory~\cite{aws-ec2-resources, kubernetes-resources}. The guarantee developers
+get is that the service will have undisturbed access to that amount of
+resources.
 
-However, this leads to a utilization problem for providers. The load on the
-microservices is usually variable and unpredictable, so to account for this
+These reservations leads to a utilization problem. The load on most applications
+run in the cloud is variable and unpredictable, so to account for this
 developers choose the amount of resources to reserve based on the expected peak
-load~\cite{borg, nu, overprovision}. This means that LC services rarely use the
-full resource reservation they asked for.
+load~\cite{borg, nu, overprovision}. This means that services with reserved
+resources rarely use the full reservation they asked for. We call these services
+that have resource reservations \textit{latency critical}, or LC, because the
+fact that they reserved resource implies they care about the latency of the
+service they are running.
 
-\textit{Best effort} (BE) tasks, on the other hand, are tasks whose completion
-time is not critical. Popular examples include long-running map reduce jobs or
-background data analytics. Many cloud scheduling systems support LC and BE
-tasks; this includes distributed schedulers, \eg{} Borg\cite{borg} or
-Kubernetes\cite{kubernetes-resources}, and single machine schedulers, for
-example Caladan\cite{caladan}.
+\textit{Best effort} (BE) tasks, on the other hand, are tasks that do not have
+reservations and whose completion time is not critical. Popular examples include
+long-running map reduce jobs or background data analytics. Many cloud scheduling
+systems support LC and BE tasks; this includes distributed schedulers, \eg{}
+Borg\cite{borg} or Kubernetes\cite{kubernetes-resources}, and single machine
+schedulers, for example Caladan\cite{caladan}.
 
-Running BE alongside LC helps providers solve the utilization problem caused by
-overprovisioning on the part of LCs. BE tasks can run on unused resources
-opportunistically, because they can tolerate delays when LC load spikes. In
-order do so while guaranteeing LC services predictable and uncontended access to
-the resources they reserved, the platform needs to maintain strict isolation
-between the two. BEs share all the hardware resources with the LC. The resource
-that this work focuses on is CPU.
+Running BE workloads on the same resources as reserved applications helps solve
+the utilization problem caused by overprovisioning. While BE workloads can share
+any hardware resource with LC ones, the resource that this work focuses on is
+CPU. BE tasks can run on unused CPUs opportunistically, because they can
+tolerate delays when LC load spikes and the CPUs are fully used by the service
+that reserved them. The challenge is to enforce this correctly: run best effort
+workloads opportunistically, while guaranteeing services with reservations
+predictable and uncontended access to their resources.
 
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
-    \caption{E2E repsonse times for a simple social network web application,
-    before and after starting load on a BE service; Kubernetes allows BE to
-    interfere with LC}\label{fig:kubernetes-unedited}
+    \caption{In Kubernetes, running a best effort application has a latency
+    impact on server that has reserved resources}\label{fig:kubernetes-unedited}
 \end{figure}
 
-We find that current popular scheduling systems fail to properly isolate latency
-critical from best effort workloads. When running a small but realistic social
-network web application on Kubernetes, we observe significant impacts on its
-latency when starting a best effort workload, on the same cores. The top graph
-of \autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
+We find that current popular scheduling systems fail to properly enforce
+reservations. When running a small but realistic social network web application
+on Kubernetes, we observe significant impacts on its latency when starting a
+best effort workload on the same cores. The top graph of
+\autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
 that gets a users feed and applies a moderation; the bottom graph shows the
-throughput of a best effort image resize job. After the BE starts running, the
-mean response latency of the web application jumps from $\sim$7ms to $\sim$15ms,
-and the 99th percentile latency from $\sim$10ms to $\sim$25ms. 
+throughput of a best effort image resize job. After the image resize job starts
+running, the mean response latency of the web application jumps from $\sim$7ms
+to $\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$25ms.
 
-Understanding where the isolation fails requires looking at the underlying
-mechanism that is enforcing it: Linux's \cgroups{}. Most modern containers rely
-on \cgroups{} for CPU isolation; this includes all Open Container Initiative
-(OCI) compliant containers, including Kubernetes but also Docker, CRI-O, and
+Understanding why Kubernetes fails to honor the web application's reservation
+requires looking at the underlying mechanism enforcing the CPU isolation between
+the two: Linux's \cgroups{}. In fact, most modern containers rely on \cgroups{}
+for CPU isolation; this includes all Open Container Initiative (OCI) compliant
+containers, including Kubernetes but also Docker, CRI-O, and
 containerd~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
 VM frameworks, including Firecracker, AFaas and libvirt, also rely on \cgroups{}
 to manage CPU time allocation when the number of vCPUs is
-oversubscribed~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
+oversubscribed~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.\hmng{this is a
+bit of a weird point since those are for FaaS while we are talking about IaaS -
+we know they oversubscribe, but we don't know how they manage the
+oversubscription}
 
-The part of the \cgroups{} interface that these systems use to isolate LC and BE
-is based on weight.\footnote{Other operating systems expose a similar interface,
-for instance Windows exposes a number of shares.} Kubernetes creates one top
-level group for all BEs, \texttt{kubepods-besteffort}, inside which all BE pods
-are placed, and assigns it the lowest possible weight of 1. LC pods are
-separated into Burstable and Guaranteed, the main difference being that
-Guaranteed pods require a limit to be set on the resources it can use.
-Kubernetes calculates the weight that each pod gets based on the amount of
-milliCPUs they request. For instance, in the \autoref{fig:kubernetes-unedited}
-experiment, the LC service ran in the Guaranteed class and asked for 4 CPUs, and
-was assigned a weight of 157. 
+The part of the \cgroups{} interface that these systems use to enforce the
+reservations LC applications have, while still allowing BEs without reservations
+to run opportunistically, is based on weight.\footnote{Other operating systems
+expose a similar interface, for instance Windows exposes a number of shares.}
+Kubernetes creates one top level group for all best effort services, called
+\texttt{kubepods-besteffort}, inside which all BE pods are placed, and assigns
+it the lowest possible weight of 1. Pods with reservations are separated into
+Burstable and Guaranteed, the main difference being that Guaranteed pods require
+a limit to be set on the resources it can use. Kubernetes calculates the weight
+that each pod gets based on the amount of milliCPUs it requests. For instance,
+in the \autoref{fig:kubernetes-unedited} experiment, the web application service
+ran in the Guaranteed class and asked for 4 CPUs, and Kubernetes assigned the
+underlying pod a weight of 157.
 
-\cgroups{} specifies that each group should get CPU time proportional to its
-weight as a share of the sum of weights of runnable
+The \cgroups{} documentation specifies that each group should get CPU time
+proportional to its weight as a share of the sum of weights of runnable
 groups~\cite{cgroups-kerneldocs}. However, the latency increase we see after
 starting the best effort tasks in \autoref{fig:kubernetes-unedited} is much more
-than the 1\% CPU time the server should be losing out on accoding to this
+than the 1\% CPU time the server should be losing out on according to this
 interface. As we show in more detail in \autoref{s:problem}, the problem that
-leads to the increased latencies observed is that Linux will run a BE process on
-one core, unaware that an LC process is runnable and waiting on another. This
-happens because Linux uses per-CPU runqueues, which avoids the overheads of
-having a global runqueue. A key challenge this work addresses is how to manage
-this tension between affecting strict isolation across cores and how often the
-scheduler has to look at all the other cores' runqueues.
+leads to the increased latencies observed is that Linux will run a low weight
+process on one core, unaware that a high weight process is runnable and waiting
+on another. This happens because Linux uses per-CPU runqueues, which avoids the
+overheads of having a global runqueue. A key challenge this work addresses is
+managing this tension between how often the scheduler has to look at all the
+other cores' runqueues, and honoring reserved processes' priority while still
+running best effort ones opportunistically.
 
-Our approach addresses this challenge by creating a new priority class for BE
-tasks to run in, \beclass{}, and enforcing it in the scheduler via strict
+Our approach addresses this challenge by creating a new priority class for best
+effort tasks to run in, \beclass{}, and enforcing it in the scheduler via
 priority scheduling. Linux already has other classes between which it enforces
 strict priority, which are designed and used for real time applications
 (\autoref{ss:approach:linux-classes-isolate}); the proposed \beclass{} sits
 below the default scheduling class. As we show in
-\autoref{ss:approach:solves-problems}, putting BE in a separate class from LC
-makes it viable to enforce the isolation across cores, because it reduces the
-number of times the scheduler is required to look at all the other cores'
-runqueues. Enforcing weights across cores requires the scheduler to do so every
-scheduling tick, but with a separate class it only has to look at other cores on
-\textit{class boundary crossings}: every time a core switches from running an LC
-process to running a BE on, and every time it enqueues an LC process.
+\autoref{ss:approach:solves-problems}, putting best effort processes in a
+separate class from those with reservations makes it viable to enforce those
+reservations across cores, because it reduces the number of times the scheduler
+is required to look at all the other cores' runqueues. Enforcing weights across
+cores requires the scheduler to do so every scheduling tick, but with a separate
+class it only has to look at other cores on \textit{class boundary crossings}:
+every time a core switches from running an LC process to running a BE on, and
+every time it enqueues an LC process.
 
-A challenge that emerges from creating a separate priority class arises when the
-LC class is under high load: completely starving BE processes can lead to issues
-such as deadlocks, broken TCP connections, or missed timers. The goal is to make the
-priority of LC over BE as strict as possible, while allowing BE processes to
-resume execution normally once the load goes down, even if the high load lasts
-for multiple minutes.
+A challenge with creating a separate priority class arises when the LC class is
+under high load: completely starving best effort processes can lead to issues
+such as deadlocks, broken TCP connections, or missed timers. The goal is to make
+the priority of processes with reservations over those without as strict as
+possible, while still allowing BE processes to resume execution normally once
+the load goes down, even if the high load lasts for multiple minutes.
 
-We address this challenge by enabling BEs to exist in an ephemeral state called
-\textit{parked}, which BEs enter when the CPU utilization is high enough that
-any amount of running a BE would interfere with an LC. While load remains high,
-the scheduler ensures that the parked BE's user-space process doesn't run and
-consume resources, but continues to run the kernel-space handlers that manage
-critical state, including TCP connections and timers, on behalf of the BE
-processes. 
+We address this challenge by enabling best effort processes to exist in an
+ephemeral state called \textit{parked}, which they enter when the CPU
+utilization is high enough that processes with a reservation account for all the
+CPU time. While load remains high, the scheduler ensures that the parked BE's
+user-space process doesn't run and consume resources, but continues to run the
+kernel-space handlers that manage critical state, including TCP connections and
+timers, on behalf of the BE processes. 
 
 We implement \beclass{} in Linux on top of an existing scheduling policy called
 \schedidle{}, and show that it is able to significiantly improve Linux's ability
-to isolate LC from BE workloads: in the same Kubernetes experiment, the increase
-in average latency when starting a BE workload goes from $>$2x to 0. The
-contributions of this paper are thus as follows: 
+to honor reservations while sharing CPUs with best effort workloads: in the same
+Kubernetes experiment, the increase in average latency when starting a BE
+workload goes from $>$2x to 0. The contributions of this paper are thus as
+follows: 
 \begin{enumerate}
-    \item identifying as the reason isolation between LC and BE often fails that
-    \cgroups{} does a poor job of enforcing the weights across cores;
-    \item the design of \beclass{}, a new class for BE tasks isolates LC
-    workloads from BE ones by using priority scheduling, and minimizes the
-    amount of cross-core checks required as well as naturally enforcing the
-    parked state
+    \item identifying as the reason LC tasks' reservations are often violated is
+    that \cgroups{} does a poor job of enforcing the weights across cores;
+    \item the design of \beclass{}, a new class for best effort tasks whose goal
+    is to enforce reservations in the presence of BE processes by using priority
+    scheduling, that minimizes the points in time it needs to look at other
+    core's runqueues, as well as naturally enforcing the parked state
     \item an implementation of \beclass{} in Linux
 \end{enumerate}
