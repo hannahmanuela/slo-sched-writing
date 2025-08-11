@@ -13,14 +13,15 @@ not a good fit for microservice workloads
 \subsection{Priority scheduling solves the problems with
 weights}\label{ss:approach:solves-problems}
 
-Enforcing CPU isolation of two priorities is simpler and requires fewer global
-runqueue searches, where cores have to look at all the others' runqueues, than
-enforcing a weight split does. 
+Enforcing global prioritization between two priorities is simpler and requires
+fewer global runqueue searches, where cores have to look at all the others'
+runqueues, than enforcing a weight split does. 
 
 It is simpler because priorities are: a core does not need to do complex
 accounting to figure out whether it is a low-weight processes turn to run, it
-just needs to know the set of runnable priorities. Enforcing the CPU isolation
-between them equivalent to choosing only from the highest priority.
+just needs to know the set of runnable priorities. Enforcing the global
+prioritization between them equivalent to choosing only from the highest
+priority.
 
 Enforcing priorities also requires fewer global runqueue searches, because they
 only need to happen on \textit{class boundary crossings}: on \exit{}, when a
