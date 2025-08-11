@@ -215,8 +215,9 @@ check, but not the \exit{} check or strict local priorities.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/kubernetes-idle.png}
-    \caption{The same experiment as in \autoref{fig:kubernetes-unedited}, but
-    running the BE as a \schedidle{} task}\label{fig:kubernetes-idle}
+    \caption{ \schedidle{} does better than \cgroups{}' weights, but not as well
+    as the priority scheduling approach of \rtclass{} and \schedbe{}
+    }\label{fig:kubernetes-idle}
 \end{figure}
 
 \autoref{fig:srv-bg-idle} shows the result of running the best effort job in the
