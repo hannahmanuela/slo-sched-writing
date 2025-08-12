@@ -82,7 +82,8 @@ complicates its task: we want the scheduler to enforce weights within each of
 \schedbe{} and \schednormal{}, which includes keeping track of the sum of all
 the weights on the runqueue, while still enforcing strict priority between them.
 We add an initial check that establishes whether there are any \schednormal{}
-threads on the runqueue, and skips all \schedbe{} ones if that is the case.
+threads on the runqueue, and skips all \schedbe{} ones if that is the case. This
+strictness is what enforces parking under high load.
 
 The second change is necessary because the first breaks an existing eligibility
 mechanism. In order to help maintain fairness, Linux currently accounts for the
