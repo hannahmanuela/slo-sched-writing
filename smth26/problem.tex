@@ -11,7 +11,7 @@ enforced within runqueues, which are per-CPU
 enforce across cores (\autoref{ss:problem:cross-core-hard}), as well as
 interacting poorly with Linux's large scheduling quantum
 (\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
-to use if the goal is to honor reservations.
+to use to honor reservations globally.
 
 \subsection{Weights are a local property}\label{ss:problem:bes-run}
 
@@ -45,13 +45,15 @@ are large latency spikes up to 30ms.
 To exclude these effects, we run a simple CPU-bound server with a pool of worker
 threads. We run an open-loop client on a remote machine, and then start two best
 effort workloads doing image resizing. We put the LC server and the BE resize
-job each in their own \cgroups{} group with weights 150 and 1 respectively, and
-pin them to the same set of four cores. \autoref{fig:srv-bg-weight-150} shows
-the result: we see that at a $\sim$85\% baseline utilization of the server,
-after starting the image resize jobs the server's mean latencies spike up from
-steady at around 6ms to $\sim$15ms, and much higher for 99th percentile
-latencies. At a baseline utilization of 95\%, those numbers increase to up to
-40ms for the the mean latency, and 80ms for the tail.
+job each in their own \cgroups{} group with weights 150 and 1 respectively
+(similar to Kubernetes), and pin them to the same set of four cores.
+
+\autoref{fig:srv-bg-weight-150} shows the result: we see that at a $\sim$85\%
+baseline utilization of the server, after starting the image resize jobs the
+server's mean latencies spike up from steady at around 6ms to $\sim$15ms, and
+much higher for 99th percentile latencies. At a baseline utilization of 95\%,
+those numbers increase to up to 40ms for the the mean latency, and 80ms for the
+tail.
 
 \begin{figure}[t]
     \centering
@@ -73,11 +75,11 @@ latencies. At a baseline utilization of 95\%, those numbers increase to up to
 \end{figure}
 
 \cgroups{} supports weights in the range of [1,10000]; a possible explanation
-could be that Kubernetes did not set the weights far apart enough. However,
-running the same experiment with the server weight set to different values shows
-that using a bigger weight split has no impact on the ltency impact of the best
-effort task. \autoref{fig:srv-bg-weight-cmp} shows the average server latencies
-when running it with different weights; the image resize task always has weight 1.
+could be that Kubernetes did not set the weights far apart enough. Running the
+same experiment with the server weight set to different values shows that using
+a bigger weight split has no impact on the latency impact of the best effort
+task. \autoref{fig:srv-bg-weight-cmp} shows the average server latencies when
+running it with different weights; the image resize task always has weight 1.
 
 \begin{figure}[t]
     \centering
@@ -106,15 +108,16 @@ scheduler works to maintain the correct ratio of received CPU time at each
 scheduling; but Linux does not enforce the weight ratios across cores. 
 
 The threading model of the server interacts with the per-core runqueues. The
-server uses a pool of worker threads (one per client, each processing requests
-synchronously), and the client picks from a set of open connections to run the
-next request on. The number of threads that the server has is larger than the
-number of cores, which means that each core has multiple server threads. It
-occasionally occurs that all the current requests are on server threads that
-happen to be on only three of the four available cores, which leaves one
-runqeueue with only idle server worker threads. Although load balancing
-eventually remedies this, load balancing runs much less frequently than
-scheduling does.
+server uses a pool of worker threads (one per client). The number of threads
+that the server has is larger than the number of cores, which means that each
+core has multiple server threads. It occasionally occurs that all the current
+requests are on server threads that happen to be on only three of the four
+available cores, which leaves one runqeueue with only idle server worker
+threads. Although load balancing eventually remedies this, load balancing runs
+less frequently than scheduling does, at least during high load: how often load
+balancing runs in general is a complicated number that is dependent on how close
+the two cores are in the CPU architecture hierarchy, as well as how loaded the
+machine is.
 
 This leads to the above failure mode, where one core has no runnable high weight
 server threads and thus runs a low weight one, while other cores have queued
@@ -124,8 +127,8 @@ high weight processes.
 hard}\label{ss:problem:cross-core-hard}
 
 A weight-based interface is at odds with machine-wide policy enforcement. In
-order to strictly and globally enforce a processes weight, the scheduler would
-need to compare every cores' runqueues at every scheduling decision. 
+order to globally enforce a processes weight, the scheduler would need to
+look at every cores' runqueues at every scheduling decision. 
 
 This check needs to happens at every tick because, in a weight-based system, the
 definition of what process should be running changes over time. If a core has
@@ -133,12 +136,12 @@ one high-weight and one low-weight group, before running the low-weight group it
 needs to know if any other cores have recently run a different process within
 that group, because that would affect how much time it is owed on this core.
 
-Enforcing weights across cores is expensive: looking at remote
-queues at each scheduling decision removes the benefit of having local
-runqueues. In increasingly multi-core and multi-NUMA machines, synchronization
-is expensive; other work has found that kernel lock contention is a bottleneck
-to performance at scale~\cite{afaas}. This means that the overheads of
-maintaining a weight split as a global invariant can quickly become prohibitive.
+Enforcing weights across cores is expensive: looking at remote queues at each
+scheduling decision removes the benefit of having local runqueues. Inter-core
+communication and having every core look at every other cores' runqueues can
+lead to contention, which has been demonstrated to be a bottleneck for
+performance at scale~\cite{afaas}. This means that the overheads of maintaining
+a weight split as a global invariant can quickly become prohibitive.
 
 On top of the communication cost, managing and calculating global shares is
 complex: calculating whether a given process is owed time globally requires
@@ -153,14 +156,14 @@ source include function derivations and equation rewriting.
 \subsection{Weights interact poorly with tick-based
 scheduling}\label{ss:problem:quantum}
 
-Even on a single runqueue, in a weight based scheme best effort processes get a
-fair share of the CPU. The problem is that, when this happens, the BE process
-will interrupt any running LC process for a whole tick. In Linux, hardware ticks
-are 4ms long. This means that a thread that has a CPU reservation and is
-processing a request may be interrupted for up to 4ms by a best effort process,
-provided the latter runs that long before blocking. 4ms can be a large amount of
-time for microservice workloads, whose SLOs are often in the low double digit or
-even single digit ms realm.~\cite{in-the-plex, sigmaos}
+Even on a single runqueue, in a weight based scheme best effort processes need
+to get a fair share of the CPU. The problem is that, when this happens, the BE
+process will interrupt any running LC process for a whole tick. In Linux,
+hardware ticks are 4ms long. This means that a thread that has a CPU reservation
+and is processing a request may be interrupted for up to 4ms by a best effort
+process, provided the latter runs that long before blocking. 4ms can be a large
+amount of time for microservice workloads, whose SLOs are often in the low
+double digit or even single digit ms realm.~\cite{in-the-plex, sigmaos}
 
 
 

@@ -1,19 +1,19 @@
 \section{Implementing \beclass{} in Linux}\label{s:implementation}
 
-In order to enforce latency critical service's uncontended access to CPUs, the
-goal of the implementation is to enforce the maxim that no \beclass{} userspace
-process is ever running on cores reserved for a \normalclass{} workload if a
-\normalclass{} process is runnable and queued. In order to do so, the scheduler
-must enforce the priorities in three different places:
+In order to enforce latency critical service's CPU reservations, the goal of the
+implementation is to enforce the maxim that no \beclass{} userspace process is
+ever running on cores reserved for a \normalclass{} workload if a \normalclass{}
+process is runnable and queued. In order to do so, the scheduler needs to
+enforce the priorities in three different places:
 \begin{enumerate}
-    \item \local: in picking the next process to run on each core, it must ensure
+    \item \local: in picking the next process to run on each core, it ensures
         that no \beclass{} process will be chosen if there is a runnable
         \normalclass{} process,
     \item \entry: when waking up a \normalclass{} process on a core already
-        running a \normalclass{} process, it must look for other cores running
+        running a \normalclass{} process, it looks for other cores running
         \beclass{} entities to go interrupt,
     \item \exit: when the last \normalclass{} process on a core's queue blocks
-        or exits, the core must try to steal queued \normalclass{} processes from
+        or exits, the core tries to steal queued \normalclass{} processes from
         other cores before running a \beclass{} process.
 \end{enumerate}
 
@@ -26,11 +26,11 @@ for \beclass{}.
 
 Scheduling \textit{classes} in Linux can have multiple \textit{policies}, and
 \schedidle{} lives within the \normalclass{} class alongside the default policy
-of the \normalclass{} class, which is \schednormal{}.\footnote{There is, very
-confusingly, also an Idle scheduling \textit{class}, but that not accessible to
+of the \normalclass{} class, which is \schednormal{}.\footnote{There is,
+confusingly, also an Idle scheduling \textit{class}, but that is inaccessible to
 userspace and exists solely to manage the core's transition in and out of being
-actually idle (ie running nothing).} The existing \schedidle{} policy is in many
-ways not different from a low weight \schednormal{} process: both are kept on
+actually idle (\ie{} running nothing).} The existing \schedidle{} policy is in many
+ways not different from a low-weight \schednormal{} process: both are kept on
 the same runqueues as all the other \schednormal{} processes, and \schedidle{}
 just has a predefined low weight of 3~\cite{weight-idleprio}.
 
@@ -64,34 +64,39 @@ single runqueue) strict prioritization of \schednormal{} over \schedbe{}
 processes, we ensure that the task chosen to run from the runqueue is only
 \schedbe{} if everything else on the runqueue is as well
 (\autoref{ss:implementation:local}). To enforce the \exit{} check, we add a
-cross-core check and potentially steal work, which completes the global policy
-enforcement (\autoref{ss:implementation:exit}).
+cross-core check and potentially steal work, which, in combination with the
+existing \entry{} check, ensures the global policy enforcement
+(\autoref{ss:implementation:exit}).
 
 \subsubsection{Enforcing the local policy}\label{ss:implementation:local}
 
 In order to enforce that ruqueues only run \schedbe{} threads when there are no
-runnable \schednormal{} ones, our implementation interferes in two places. 
+runnable \schednormal{} ones, our implementation modofies Linux in two places. 
 
 Because in existing Linux \schedidle{} and \schednormal{} share a runqueue, so
-will the new \schedbe{} and \schednormal{}, since doing so maintains a
-complicated existing infrastructure around the runqueue for things like
-accounting and load balancing. This means that the function choosing the next
-task from the runqeueue will be potentially looking at a mix of both policies.
+will the new \schedbe{} and \schednormal{} (doing so maintains a complicated
+existing infrastructure around the runqueue for things like accounting and load
+balancing). Sharing a runqueue means that the function choosing the next task
+from the runqeueue will be potentially looking at a mix of both policies. This
+complicates its task: we want the scheduler to enforce weights within each of
+\schedbe{} and \schednormal{}, which includes keeping track of the sum of all
+the weights on the runqueue, while still enforcing strict priority between them.
 We add an initial check that establishes whether there are any \schednormal{}
-threads on the runqueue, and skips all \schedbe{} ones if that is the case. 
+threads on the runqueue, and skips all \schedbe{} ones if that is the case.
 
 The second change is necessary because the first breaks an existing eligibility
 mechanism. In order to help maintain fairness, Linux currently accounts for the
 difference between the fair share processes should have gotten and the time they
 actually got, and stores that `lag'. Processes that have gotten more time than
-they should (ie have negative lag), are marked as ineligible and not considered
-when choosing what to run next. Since \schedbe{} threads are now potentially not
-being run for a long time, there is a potential for deadlock: a \schednormal{}
-task has been running for a while and accrued enough time that its lag is
-negative and it is ineligible. However, if the only other thread is \schedbe{}
-then we won't run that either because there is a runnable \schednormal{} task on
-the runqueue. In order to avoid this situation, the implementation removes the
-eligibility criterion in choosing what to run next.\hmng{why is that ok?}
+they should (\ie{} have negative lag), are marked as ineligible and not
+considered when choosing what to run next. Since \schedbe{} threads are now
+potentially not being run for a long time, there is a potential for deadlock: a
+\schednormal{} task has been running for a while and accrued enough time that
+its lag is negative and it is ineligible. However, if the only other thread is
+\schedbe{} then we won't run that either because there is a runnable
+\schednormal{} task on the runqueue. In order to avoid this situation, the
+implementation removes the eligibility criterion in choosing what to run
+next.
 
 
 \subsubsection{Enforcing the global policy}\label{ss:implementation:exit}
@@ -99,11 +104,11 @@ eligibility criterion in choosing what to run next.\hmng{why is that ok?}
 Ensuring the \entry{} and \exit{} checks requires interposing on Linux's wakeup
 and exit codepaths. Linux already special-cases on the wakeup path, although
 only checks if the thread itself is marked as idle, and not if the group as a
-whole is, and for \schedbe{} we check both.
+whole is, and \schedbe{} checks both.
 
-\schedbe{} adds a check on the exit path: if the thread chosen to run next is
-\schedbe{}, but the previous one was \schednormal{}, then our implementation
-tries to steal a queued \schednormal{} task from a different core. Specifically,
-it picks the core with the max number of queued but runnable \schednormal{}
-threads. It steals only one, in order to not overzealously steal. This choice
-mirrors what Linux does when a core would otherwise go completely idle.
+\schedbe{} also adds a check on the exit path: if the thread chosen to run next
+is \schedbe{}, but the previous one was \schednormal{}, then \schedbe{} tries to
+steal a queued \schednormal{} task from a different core. Specifically, it picks
+the core with the max number of queued but runnable \schednormal{} threads. It
+steals only one, in order to not overzealously steal. This choice mirrors what
+Linux does when a core would otherwise go completely idle.

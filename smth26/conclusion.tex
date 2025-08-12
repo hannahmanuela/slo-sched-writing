@@ -2,14 +2,15 @@
 \section{Conclusion}
 %-------------------------------------------------------------------------------
 
-This work shows that current isolation systems like Kubernetes are unable to
-effectively isolate the latencies of LC applications from BE workloads for tasks
-that are CPU-intensive. We trace this problem down to Linux's \cgroups{}, and
-show that because Linux uses per-core runqueues, its weight-based interface is
-not enforced across cores. Using a weight-based interface to enforce LC
-processes' reservations on cores also running BE processes has other problems as
-well: it makes it hard to enforce a split across cores, and it interacts poorly
-with the large scheduling quantum that Linux uses.
+This work shows that container orchestration systems like Kubernetes are unable
+to effectively honor the reservations of LC applications in the presence BE
+workloads for tasks that are CPU-intensive. We trace this problem down to
+Linux's \cgroups{}, and show that because Linux uses per-core runqueues, its
+weight-based interface is not enforced across cores. Using a weight-based
+interface to enforce LC processes' reservations on cores also running BE
+processes has other problems as well: it makes it hard to enforce a split across
+cores, and it interacts poorly with the large scheduling quantum that Linux
+uses.
 
 Instead, we propose an API that separates best effort workloads from critical
 ones with reservations by introducing the \beclass{} priority class. \beclass{}

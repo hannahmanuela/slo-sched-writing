@@ -1,21 +1,18 @@
 \section{Approach}\label{s:approach}
 
 In order to enforce reservations while still running best effort jobs
-opportunistically, our approach is use priority scheduling.
-
-We describe how priority scheduling solves the enforcement problem that weights
-has, as well as its dependence on hardware ticks
-(\autoref{ss:approach:solves-problems}). Linux has priority scheduling for real
-time applications (\autoref{ss:approach:linux-classes-isolate}), but they are
-not a good fit for microservice workloads
-(\autoref{ss:approach:linux-classes-bad-fit}).
+opportunistically, our approach is use priority scheduling. We describe how
+priority scheduling solves the enforcement problem that weights has, as well as
+its dependence on hardware ticks (\autoref{ss:approach:solves-problems}). Linux
+has priority scheduling for real time applications
+(\autoref{ss:approach:linux-classes-isolate}), but they are not a good fit for
+microservice workloads (\autoref{ss:approach:linux-classes-bad-fit}).
 
 \subsection{Priority scheduling solves the problems with
 weights}\label{ss:approach:solves-problems}
 
 Enforcing global prioritization between two priorities is simpler and requires
-fewer global runqueue searches, where cores have to look at all the others'
-runqueues, than enforcing a weight split does. 
+fewer global runqueue searches than enforcing a weight split does. 
 
 It is simpler because priorities are: a core does not need to do complex
 accounting to figure out whether it is a low-weight processes turn to run, it
@@ -37,21 +34,16 @@ runqueue, see that it is running a BE thread, and will send the new LC thread to
 $c$ via an interrupt, where the interrupt handler will trigger a scheduling that
 interrupts $t$.
 
-Strict priorities being enforced at class boundary crossings also means that how
-quickly a runnable LC process gets access to a core it reserved (not already
-running one of its threads) is now dependent on how quickly the handler for
-process wakeup or dequeue runs, which in Linux is on the order of a few
-microseconds. Currently it is on the order of however often the load balancer
-runs (which is a complicated number that is dependent on how close the two cores
-are in the CPU architecture hierarchy, as well as how loaded the machine is),
-and even in a scheme where weight was enforced globally it would be on the order
-of a scheduling tick (4ms). For enforcing sharing across long-running processes
-balancing occasionally works well, but for workloads with runtimes on the order
-of low to mid double-digit ms, those delays significiantly influence final
-processing times.
+Strict priorities being enforced at class boundary crossings also means that a
+runnable LC process gets access to a core it reserved quickly. As soon as the
+handler for process wakeup or dequeue runs, which in Linux is on the order of a
+few microseconds, whereas the load balancer runs at the frequency of several ms.
+For enforcing sharing across long-running processes balancing occasionally works
+well, but for workloads with runtimes on the order of low to mid double-digit
+ms, those delays significiantly influence final processing times.
 
 
-\subsection{Linux scheduling classes enforce
+\subsection{Using scheduling classes enforce
 priorities}\label{ss:approach:linux-classes-isolate}
 
 Linux already provides priority scheduling across scheduling classes, of which
@@ -133,17 +125,11 @@ scheduling quantum and then gets put at the end of that priority's queue. This
 means that within each priority CPU time is allocated based on the number of
 runnable threads. This conflicts with how weights are used within runqueues to
 allocate CPU time between different LC workloads. Kubernetes, for instance,
-allows users to make fractional CPU requests, which are enforced using
-weights.\hmng{next part is just conjecture, should I just leave it out?}
-Similarly, a provider might overprovision vCPUs of tenants VMs to actual
-hardware cores. We can't know what they use to configure access to the
-underlying cores, but we know they use \cgroups{} to do so for serverless
-functions because that's what Firecracker uses~\cite{firecracker-cgroups}.
+allows users to make fractional CPU requests, which are enforced using weights.
 Although \cgroups{} limits (\ie{} defining a maximum amount of runtime per
-period each group can get) can also be applied to cgroups in real time
-applications, both of these use cases require the weight interface to ensure the
-split they want. In Kubernetes, this is required for Burstable containers \hmng{
-not clear why it's needed in the VM setting? }
+period each group can get) can also be applied to groups in real time
+applications, Kubernetes requires the weight interface to allow for Burstable
+pods.
 
 \subsubsection{Linux throttles \rtclass{} processes under high load
 }\label{sss:approach:linux:starve-throttle}
@@ -154,14 +140,14 @@ a low and high priority process share a lock (either in user-space or in
 kernel-space), TCP connections can die while the process is being starved, and
 it can miss interrupts like timers or completed i/o requests.
 
-To avoid these, Linux chooses to carefully ensure that no process is ever
-starved, which it does by throttling high class processes with high load. Linux
-has two different safeguards that enforce that no process is ever starved. One
-is that \rtclass{} is as a scheduling class rate-limited: there are tuneable
-parameters \texttt{sched\_rt\_runtime} and \texttt{sched\_rt\_period}, that
-together define a rate limit for the \rtclass{} as a whole. The other safegaurd
-is that, even when set to be equal (\ie{} \rtclass{} gets the full runtime each
-period if it wants), the \normalclass{} scheduling class also has a so-called
+To avoid these, Linux chooses to ensure that no process is ever starved, which
+it does by throttling high class processes with high load. Linux has two
+different safeguards that enforce that no process is ever starved. One is that
+\rtclass{} is as a scheduling class rate-limited: there are tuneable parameters
+\texttt{sched\_rt\_runtime} and \texttt{sched\_rt\_period}, that together define
+a rate limit for the \rtclass{} as a whole. The other safegaurd is that, even
+when set to be equal (\ie{} \rtclass{} gets the full runtime each period if it
+wants), the \normalclass{} scheduling class also has a so-called
 \textit{deadline server}, which ensures it gets a small amount of time. The
 deadline server is a `process' is in the \deadlineclass{} scheduling class with
 a small amount of runtime per period, then when chosen will pass control on to
@@ -192,5 +178,5 @@ current connections are blocked on running requests.
 
 We conclude that Linux's mechanism of scheduling classes can enforce
 reservations effectively, but that existing scheduling classes use algorithms
-that are not a good fit for modern workloads, and that Linux throttles high
-priority classes under high load.
+that are not a good fit for modern workloads, and that Linux doesn't enforce
+reservations under high load because it throttles high priority classes.

@@ -14,14 +14,14 @@ These reservations leads to a utilization problem. The load on most applications
 run in the cloud is variable and unpredictable, so to account for this
 developers choose the amount of resources to reserve based on the expected peak
 load~\cite{borg, nu, overprovision}. This means that services with reserved
-resources rarely use the full reservation they asked for. We call these services
-that have resource reservations \textit{latency critical}, or LC, because the
-fact that they reserved resource implies they care about the latency of the
-service they are running.
+resources rarely use the full reservation they asked for. Services with resource
+reservations are called \textit{latency critical}, or LC, because the fact that
+they reserved resource implies they care about the latency of the service they
+are running.
 
 \textit{Best effort} (BE) tasks, on the other hand, are tasks that do not have
 reservations and whose completion time is not critical. Popular examples include
-long-running map reduce jobs or background data analytics. Many cloud scheduling
+long-running MapReduce jobs or background data analytics. Many cloud scheduling
 systems support LC and BE tasks; this includes distributed schedulers, \eg{}
 Borg\cite{borg} or Kubernetes\cite{kubernetes-resources}, and single machine
 schedulers, for example Caladan\cite{caladan}.
@@ -30,10 +30,10 @@ Running BE workloads on the same resources as reserved applications helps solve
 the utilization problem caused by overprovisioning. While BE workloads can share
 any hardware resource with LC ones, the resource that this work focuses on is
 CPU. BE tasks can run on unused CPUs opportunistically, because they can
-tolerate delays when LC load spikes and the CPUs are fully used by the service
-that reserved them. The challenge is to enforce this correctly: run best effort
-workloads opportunistically, while guaranteeing services with reservations
-predictable and uncontended access to their resources.
+tolerate delays when LC load spikes and the CPUs are fully used by the LC
+service that reserved them. The challenge is to enforce resource reservations
+for LC services while achieveing good utilization by running best effort jobs
+opportunistically.
 
 
 \begin{figure}[t]
@@ -54,23 +54,19 @@ running, the mean response latency of the web application jumps from $\sim$7ms
 to $\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$25ms.
 
 Understanding why Kubernetes fails to honor the web application's reservation
-requires looking at the underlying mechanism enforcing the CPU isolation between
-the two: Linux's \cgroups{}. In fact, most modern containers rely on \cgroups{}
-for CPU isolation; this includes all Open Container Initiative (OCI) compliant
-containers, including Kubernetes but also Docker, CRI-O, and
-containerd~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}.
-VM frameworks, including Firecracker, AFaas and libvirt, also rely on \cgroups{}
-to manage CPU time allocation when the number of vCPUs is
-oversubscribed~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.\hmng{this is a
-bit of a weird point since those are for FaaS while we are talking about IaaS -
-we know they oversubscribe, but we don't know how they manage the
-oversubscription}
+requires looking at the underlying mechanism enforcing the CPU reservation:
+Linux's \cgroups{}. In fact, most modern containers rely on \cgroups{} for CPU
+isolation: all Open Container Initiative (OCI) compliant containers, including
+Kubernetes but also Docker, CRI-O, and containerd
+do~\cite{oci-cgroups,docker-docs-cgroups,container-isolation-article}. VM
+frameworks, including Firecracker, AFaas and libvirt, also rely on \cgroups{} to
+manage CPU time reservation~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
 
-The part of the \cgroups{} interface that these systems use to enforce the
-reservations LC applications have, while still allowing BEs without reservations
-to run opportunistically, is based on weight.\footnote{Other operating systems
-expose a similar interface, for instance Windows exposes a number of shares.}
-Kubernetes creates one top level group for all best effort services, called
+Weight is the part of the \cgroups{} interface these systems use for enforcing
+the reservations LC applications have, while still allowing BEs without
+reservations to run opportunistically.\footnote{Other operating systems expose a
+similar interface, for instance Windows exposes a number of shares.} Kubernetes
+creates one top level group for all best effort services, called
 \texttt{kubepods-besteffort}, inside which all BE pods are placed, and assigns
 it the lowest possible weight of 1. Pods with reservations are separated into
 Burstable and Guaranteed, the main difference being that Guaranteed pods require
@@ -84,15 +80,15 @@ The \cgroups{} documentation specifies that each group should get CPU time
 proportional to its weight as a share of the sum of weights of runnable
 groups~\cite{cgroups-kerneldocs}. However, the latency increase we see after
 starting the best effort tasks in \autoref{fig:kubernetes-unedited} is much more
-than the 1\% CPU time the server should be losing out on according to this
-interface. As we show in more detail in \autoref{s:problem}, the problem that
-leads to the increased latencies observed is that Linux will run a low weight
-process on one core, unaware that a high weight process is runnable and waiting
-on another. This happens because Linux uses per-CPU runqueues, which avoids the
-overheads of having a global runqueue. A key challenge this work addresses is
-managing this tension between how often the scheduler has to look at all the
-other cores' runqueues, and honoring reserved processes' priority while still
-running best effort ones opportunistically.
+than the 1\% CPU time the server should be losing out on based on its weight. As
+we show in more detail in \autoref{s:problem}, the problem that leads to the
+increased latencies observed is that Linux will run a low weight process on one
+core, unaware that a high weight process is runnable and waiting on another.
+This happens because Linux uses per-CPU runqueues, which avoids the overheads of
+having a global runqueue. A key challenge this work addresses is managing this
+tension between how often the scheduler has to look at all the other cores'
+runqueues to enforce reserved processes' priority globally, while still running
+best effort ones opportunistically.
 
 Our approach addresses this challenge by creating a new priority class for best
 effort tasks to run in, \beclass{}, and enforcing it in the scheduler via
@@ -135,7 +131,7 @@ follows:
     that \cgroups{} does a poor job of enforcing the weights across cores;
     \item the design of \beclass{}, a new class for best effort tasks whose goal
     is to enforce reservations in the presence of BE processes by using priority
-    scheduling, that minimizes the points in time it needs to look at other
-    core's runqueues, as well as naturally enforcing the parked state
+    scheduling, that reduces the points in time it needs to look at other core's
+    runqueues, as well as enforcing the parked state
     \item an implementation of \beclass{} in Linux
 \end{enumerate}

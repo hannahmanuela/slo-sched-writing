@@ -5,7 +5,7 @@
 
 This section answers the following questions:
 \begin{enumerate}
-    \item Does \schedbe{} isolate LC latencies from the presence of BE?
+    \item Does \schedbe{} honor LC's CPU reservations in presence of BE?
     \item Can parked processes resume correctly? How many resources does it used
     while parked?
     \item How much does \schedbe{} cost?
@@ -14,7 +14,12 @@ This section answers the following questions:
 \end{enumerate}
 
 All the graphs in this paper run on Linux version 6.14.2, the baseline version
-that our implementation builds on.
+that our implementation builds on. We run the experiments on two machines with
+Intel(R) Xeon(R) CPU E5-2680 v4, running at 2.40GHz, with 2 NUMA nodes with 14
+cores each, and 2 hyperthreads per core. Unless otherwise specified, most
+experiments run on four cores on the same NUMA node. The two machines are
+connected by a 100Gbps network connection, and the ping time between them is
+0.2ms. The graphs are generated from one run of the experiment.
 
 \subsection{Does \schedbe{} isolate?}
 
@@ -53,18 +58,20 @@ We run the microbenchmark experiment from \autoref{fig:srv-bg-weight-150} using
 \autoref{fig:srv-bg-schedbe}, and \autoref{fig:srv-bg-cmp-unedited-schedbe}
 shows a direct comparison between the original benchmark run on \cgroups{}
 weights and running it using \schedbe{}. As desired, the latency of the server
-remains stable after the background tasks start. This does not mean that the
-background task never runs: the lower part of each graph still shows iterations
-of image resizing being done. The difference is that now the background tasks
-will reliably get interrupted when the LC server has a request to process.
-\autoref{fig:schedviz-schedbe} shows this happening in an outtake of a schedviz
-visualization. The green BE processes run only in the gaps where there is no
-queued LC process, and are immediately preempted when one wakes up, on whatever
-core that may be. The vertical red lines show when the \exit{} path \schedbe{}
-introduced runs, \ie{} when the core has chosen intially to run a BE process
-after having previously run LC. As we can see, this is sometimes followed by
-just running the BE, but often by the core running an LC process, meaning that
-it succesfully found and stole a queued and waiting LC thread.
+remains stable after the background tasks start. 
+
+The background task still runs: the lower part of each graph still shows
+iterations of image resizing being done. The difference is that now the
+background tasks will reliably get interrupted when the LC server has a request
+to process. \autoref{fig:schedviz-schedbe} shows the interruption happening in
+an outtake of a schedviz visualization. The green BE processes run only in the
+gaps where there is no queued LC process, and are immediately preempted when one
+wakes up, on whatever core that may be. The vertical red lines show when the
+\exit{} path \schedbe{} introduced runs (\ie{} when the core has chosen intially
+to run a BE process after having previously run LC). As we can see, this line is
+sometimes followed by running the BE, but often by the core running an LC
+process, meaning that it succesfully found and stole a queued and waiting LC
+thread.
 
 \begin{figure}[t]
     \centering
@@ -98,14 +105,16 @@ parked?}\label{ss:eval:parking}
 We investigate parking by running a BE Kubernetes pod alongside an antagonist,
 and find that even after being parked for multiple minutes in the middle of
 processing a request, the BE job is able to resume and return the final result
-to the client. \autoref{fig:parked-kubernetes} shows the throughput over time of
-an image resize job running in a BE container running as \schedbe{}. A couple
-seconds after sending a request to the image resize pod, we start an entirely
-CPU-bound antagonist on the same set of cores as the BE is running. We can see
-that the image resize job is completely paused for about two and a half minutes,
-until the antagonist is done running. The job then continues and completes. The
-client connection did not experience any issues, even when setting the TCP
-keepalive timeout to expire within duration the BE spent being parked.
+to the client. 
+
+\autoref{fig:parked-kubernetes} shows the throughput over time of an image
+resize job running in a BE container running as \schedbe{}. A couple seconds
+after sending a request to the image resize pod, we start an entirely CPU-bound
+antagonist on the same set of cores as the BE is running. We can see that the
+image resize job is completely paused for about two and a half minutes, until
+the antagonist is done running. The job then continues and completes. The client
+connection did not experience any issues, even when setting the TCP keepalive
+timeout to expire within duration the BE spent being parked.
 
 \begin{figure}[t]
     \centering
@@ -116,9 +125,9 @@ keepalive timeout to expire within duration the BE spent being parked.
 \autoref{fig:overload-schedbe} shows how parking enables the latency critical
 server to keep its reservation even under sustained extremely high load. We run
 the same experiment as \autoref{fig:overload-rt}, but now instead instead of
-throttling the server, the \schedbe{} workload gets parked. Notice that the
-\schedbe{} image resize job does not make progress until the very end, when the
-server is done processing the requests. The difference is stark: in both
+throttling the server, \schedbe{} parks the best effort processes. Notice that
+the \schedbe{} image resize job does not make progress until the very end, when
+the server is done processing the requests. The difference is stark: in both
 experiments, the open-loop client sent the same amount of requests with the same
 amount of time in between them, but when the LC was throttled it took the server
 35s to process all the requests, with a final latency of >1s, and with parking
@@ -175,9 +184,9 @@ happens fewer times, around 20K times, of which approximately half lead to
 stealing a \schednormal{} task.
 
 We can see that the \entry{} and \exit{} checks happen less than scheduling does
-by more than half. This demonstrates that enforcing prioritization between LC
-and BE via priority classes requires much fewer global cross-core runqueue
-checks than doing so at every scheduling decision.
+by more than half. This result demonstrates that enforcing prioritization
+between LC and BE via priority classes requires much fewer global cross-core
+runqueue checks than doing so at every scheduling decision.
 
 The other takeaway is that, under high load, the \exit{} check is effective:
 around half of the time, the scheduler found a queued LC thread on another core.
@@ -228,3 +237,13 @@ Although this increase is smaller than the original increase to $\sim$15ms using
 the standard weight interface, it is still high compared to the 0ms increase
 that \schedbe{} achieves. \autoref{fig:kubernetes-idle} shows similar results
 for the Kubernetes experiment.
+
+This is because \schedidle{} does not perform the \exit{} check. This means that
+the following scenario can occur: all the cores are running server threads when
+a new request comes in on core 2. It performs the \entry{} check, sees that all
+cores are currently running high weight processes, and enqueues the new thread
+itself. A millisecond or two later, the server thread on core 4 completes the
+request and blocks on the next read. Core 4, having nothing else to run, starts
+running the best effort job. An \exit{} check would have prevented this by
+adding another check on core 4 before starting to run the BE process, which
+would have found the queued thread on core 2.
