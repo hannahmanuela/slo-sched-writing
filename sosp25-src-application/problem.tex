@@ -1,5 +1,5 @@
 
-\section{Problem}
+\section{Problem \& Background}
 
 The underlying mechanism enforcing CPU reservations for most modern containers
 running on Linux is \cgroups{}' weight interface: all Open Container Initiative
@@ -14,19 +14,7 @@ Kubernetes assigned its pod a weight of 157.
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
-        \caption{Low load, utilization before starting the BE tasks is
-        around 85\%}\label{fig:srv-bg-weight-cmp-low}
-        \vspace{12pt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-high.png}
-        \caption{High load, utilization before starting the BE tasks is around
-        95\%}\label{fig:srv-bg-weight-cmp-high}
-    \end{subfigure}
-    \vspace{4pt}
+    \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
     \caption{Changing the weight of the server has little impact on how much the
     weight 1 BE task interferes with it}\label{fig:srv-bg-weight-cmp}
 \end{figure}

@@ -1,19 +1,14 @@
 %-------------------------------------------------------------------------------
-\section{Introduction}
+\section{Motivation}
 %-------------------------------------------------------------------------------
 
 Developers running services on cloud provders like AWS or Google, or
-containerization systems like Kubernetes, reserve the CPU and memory that service
-will run on. Workloads requiring such guarantees are \textit{latency critical}
-(LC).
-
-These reservations leads to a utilization problem: the load on most applications
-is variable, so developers choose reservations based on the expected peak
-load~\cite{borg, nu, overprovision}.
-
-\textit{Best effort} (BE) workloads do not have reservations and their
-completion time is not critical. Popular examples include long-running MapReduce
-jobs or background data analytics.
+containerization systems like Kubernetes, reserve the CPU and memory that
+service will run on. Workloads requiring such guarantees are \textit{latency
+critical} (LC). These reservations leads to a utilization problem: the load on
+most applications is variable, so developers choose reservations based on the
+expected peak load~\cite{borg, nu, overprovision}. \textit{Best effort} (BE)
+workloads do not have reservations and their completion time is not critical.
 
 Running BE workloads on the same resources as LCs helps solve the utilization
 problem; the resource that this work focuses on is CPU. BE tasks can run on

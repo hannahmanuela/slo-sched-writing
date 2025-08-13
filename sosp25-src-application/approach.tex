@@ -1,4 +1,4 @@
-\section{Approach \& Background}
+\section{Approach \& Uniqueness}
 
 In order to enforce reservations while still running best effort jobs
 opportunistically, our approach is use priority scheduling.
@@ -7,42 +7,36 @@ Enforcing priorities requires fewer global runqueue searches than weights do,
 because they only need to happen on \textit{class boundary crossings}: on
 \exit{}, when a core switches to running lower class processes after having
 previously been running high class, and on \entry{}, when a core enqueues a
-higher class process. 
-
-Linux already provides priority scheduling across scheduling classes, of which
-it has three that are accessible to users (in descending order of priority):
-\deadlineclass{}, \rtclass{}, and \normalclass{}. Most load falls into the
-\normalclass{} scheduling class, it is only within the \normalclass{} scheduling
-class that the \cgroups{} weight interface is relevant.
-
-Linux prioritizes strictly between different scheduling classes, and each class
-has its own scheduling algorithm, keeps its own runqueues, and balances its own
-load across cores.
+higher class process. These checks ensure that if a core $c$ is currently
+running a BE thread $t$, the scheduler knows that there are no queued and
+waiting LC threads anywhere on the machine. If there is a queued LC thread on a
+different core $c'$ when $c$ starts running $t$, the \exit{} check, that looks
+at every cores' runqueue, will see and steal it. If a new LC thread wakes up on
+a different core while $t$ is running, the \entry{} check ensures that $c'$ will
+look at $c$'s runqueue, see that it is running a BE thread, and will send the
+new LC thread to $c$ via an interrupt, where the interrupt handler will trigger
+a scheduling that interrupts $t$.
 
 \begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-low.png}
-        \caption{Low load (85\%)}\label{fig:srv-bg-rt-low}
-        \vspace{12pt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-rt-high.png}
-        \caption{High load (95\%)}\label{fig:srv-bg-rt-high}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{when running the server as in \rtclass{}, Linux enforces the
-     server's access to its reserved cores}\label{fig:srv-bg-rt}
+    \includegraphics[width=\columnwidth]{graphs/overload-rt.png}
+    \caption{LC in real time, throttling}\label{fig:overload-rt}
 \end{figure}
 
-\autoref{fig:srv-bg-rt} shows the result of running the microbenchmark with the
-LC server in the \rtclass{} scheduling class. We can see that in both load
-settings the tail and average latency stays stable at $\sim$6.0ms after starting
-the BE workload.
 
-However, running microservices in \rtclass{} is untenable because of
-\rtclass{}'s intra-priority schedulers. Both do not support the \cgroups{}
-weight interface, which although not good for scheduling LC and BE, is also used
-to allocate CPU time within LC workloads; Kubernetes, for instance, allows users
-to make fractional CPU requests, which are enforced using weights.
+Linux already provides priority scheduling across scheduling classes, which are
+used to separate real-time applications from all other workload. The priority
+scheduling between real-time and the default scheduling classes comes with an
+asterisk: if real-time applications experience high load, Linux throttles them
+in order to not starve the default class. We can see the result in
+\autoref{fig:overload-rt}, where throttling leads to spikes in the background
+task as it is able to run, and corresponding spikes in the server's latency.
+
+We design a new scheduling class \beclass{} that sits at a lower priority than
+\normalclass{}, which enforces LC applications' uncontended access to the CPUs
+they reserved. To enforce reservations even under high load, without throttling
+the latency critical services or killing the best effort ones, \beclass{}
+\textit{parks} best effort processes. Parking addresses the potential issues
+with starvation by separating \beclass{} processes' logic into application logic
+(user-space) and critical-state management (kernel-space). When load spikes to
+100\%, \beclass{} processes' run only kernel-level services.

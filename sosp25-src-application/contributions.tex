@@ -1,0 +1,17 @@
+%-------------------------------------------------------------------------------
+\section{Contributions}
+%-------------------------------------------------------------------------------
+
+This work shows that \cgroups{} weights, used by systems like Kubernetes to
+separate LC from BE, are unable to effectively honor the reservations of LC
+applications in the presence BE workloads, and that this is because Linux uses
+per-core runqueues. 
+
+Instead, we propose an API that separates BE from LC by introducing \beclass{},
+which requires fewer cross-core interactions than a weight-based approach, and
+ensures that no BE is ever running when an LC is queued.
+
+We implement this strict priority in Linux, and show that \beclass{} allows
+\cgroups{} itself, as well as higher level applications like Kubernetes, to
+ensure LC processes' access to their reserved cores while running BE workloads
+opportunistically.
