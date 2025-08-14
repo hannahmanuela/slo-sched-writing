@@ -1,7 +1,6 @@
-\section{Approach \& Uniqueness}
+\section{Approach}
 
-In order to enforce reservations while running BE jobs opportunistically, our
-approach replaces weights with priority scheduling.
+Our approach replaces weights with priority scheduling.
 
 Enforcing priorities requires fewer global runqueue searches than weights,
 because searches only need to happen on \textit{class boundary crossings}: on
@@ -9,7 +8,7 @@ because searches only need to happen on \textit{class boundary crossings}: on
 enqueueing a high-class process. These checks ensure that a core running a BE
 thread $t$ knows that there are no queued LC threads anywhere: the \exit{} check
 ensures there's none when starting to run $t$, and the \entry{} check ensures if
-one wakes up while running $t$ it will interrupt $t$.
+one wakes up while running $t$, it will interrupt $t$.
 
 \begin{figure}[t]
     \centering
@@ -17,6 +16,8 @@ one wakes up while running $t$ it will interrupt $t$.
     \caption{when running the server in real time, throttling degrades
     performance at high load}\label{fig:overload-rt}
 \end{figure}
+% when running the server in real-time, throttling degrades
+%     performance at high load
 
 
 Linux enforces priority across scheduling classes, but higher class schedulers
@@ -26,7 +27,7 @@ happening in \autoref{fig:overload-rt}, where throttling leads to spikes in the
 BE's throughput, and corresponding spikes in the server's latency.
 
 We design a new scheduling class \beclass{} that sits at a lower priority than
-the default one, and enforces LCs' uncontended access to CPUs they reserved. To
+the default one, and enforces LCs' uncontended access to reserved CPUs. To
 enforce reservations under high load, without throttling LCs or killing BEs,
 \beclass{} uses \textit{parking}, wherein user-space code never runs, only
 kernel-level services.

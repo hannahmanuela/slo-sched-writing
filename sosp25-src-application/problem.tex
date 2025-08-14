@@ -13,13 +13,15 @@ libvirt~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
     \caption{ the weight of the server has little impact on how much the
     weight 1 BE task interferes }\label{fig:srv-bg-weight-cmp}
 \end{figure}
+% the weight of the server has little impact on how much the
+%     weight 1 BE task interferes
 
 
 A simplified experiment shows \cgroups{} weights are unable to enforce
 reservations. We run a simple CPU-bound server sharing 4 cores with an image
 resize job, each in their own group. \cgroups{} supports weights in the range
-[1,10000]. \autoref{fig:srv-bg-weight-cmp} shows that running the server with
-different weights has no effect on the latency impact of the BE.
+[1,10000]; \autoref{fig:srv-bg-weight-cmp} shows running the server with any
+weight above 50 does not change the latency impact of the BE.
 
 \begin{figure}[t]
     \centering
@@ -27,16 +29,18 @@ different weights has no effect on the latency impact of the BE.
     \caption{Core 6 runs an image resize process, unaware that the other cores
     have queued server threads}\label{fig:schedviz-problem}
 \end{figure}
+% Core 6 runs an image resize process, unaware that the other cores
+%     have queued server threads
 
 This latency impact happens because the BE occasionally runs uncontended on one
 core, while another has queued server threads. \autoref{fig:schedviz-problem}
-shows this happening in the trace: on core 6, the red BE thread runs for 10ms,
-while server threads, in shades of blue, are queued on the other cores.
+shows this happening in the trace: on core 6, the red BE runs for 10ms, while
+blue server threads are queued on the other cores.
 
 This happens because weights are only enforced within per-CPU runqueues. Load
 balancing eventually remedies imblances, but runs less frequently than
-scheduling does. For workloads with request processing times in the millisecond
-range, waiting for the load balancer influences final processing times.
+scheduling. For workloads with request processing times in the millisecond
+range, waiting for the load balancer affects processing times.
 
 In order to globally enforce weights, each scheduling decision would require a
 search of all runqueues for potentially higher-weight processes, which is too

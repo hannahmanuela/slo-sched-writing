@@ -17,11 +17,13 @@ opportunistically running BEs.
     \caption{In Kubernetes, running a BE has latency impacts on an LC with
     reservations}\label{fig:kubernetes-unedited}
 \end{figure}
+% In Kubernetes, running a BE has latency impacts on an LC with
+%     reservations
 
-Current popular scheduling systems fail to honor reservations.
+Surprisingly, current popular scheduling systems fail to honor reservations.
 $\autoref{fig:kubernetes-unedited}$ shows the latency of an endpoint in a web
-application on Kubernetes that gets a users feed, and the throughput of a BE
-image resize job on the same cores. The mean response latency of the server
+application in Kubernetes that gets a user's feed, and the throughput of a BE
+image resize job, both running on the same cores. The mean response latency
 jumps from $\sim$7ms to $\sim$15ms after starting the BE.
 
 
