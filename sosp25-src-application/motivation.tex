@@ -2,33 +2,28 @@
 \section{Motivation}
 %-------------------------------------------------------------------------------
 
-Developers running services on cloud provders like AWS or Google, or
-containerization systems like Kubernetes, reserve the CPU and memory that
-service will run on. Workloads requiring such guarantees are \textit{latency
-critical} (LC). These reservations leads to a utilization problem: the load on
-most applications is variable, so developers choose reservations based on the
-expected peak load~\cite{borg, nu, overprovision}. \textit{Best effort} (BE)
-workloads do not have reservations and their completion time is not critical.
+Cloud providers like AWS, or containerization systems like Kubernetes, support
+reserving CPU for \textit{latency critical} (LC) services. Developers choose
+reservations based on expected peak load~\cite{borg, nu, overprovision}, but
+load is variable, leading to a utilization problem. 
 
-Running BE workloads on the same resources as LCs helps solve the utilization
-problem; the resource that this work focuses on is CPU. BE tasks can run on
-unused CPUs opportunistically, the challenge is to enforce resource reservations
-for LC services while achieving good utilization.
+\textit{Best effort} (BE) workloads do not have reservations, so providers run
+them opportunistically on the same resources as LCs reserved; the resource that
+this work focuses on is CPU. The challenge is to honor resource reservations for
+LCs while opportunistically running BEs.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
-    \caption{In Kubernetes, running a best effort application has a latency
-    impact on server that has reserved resources}\label{fig:kubernetes-unedited}
+    \caption{In Kubernetes, running a BE has latency impacts on an LC with
+    reservations}\label{fig:kubernetes-unedited}
 \end{figure}
 
-Current popular scheduling systems fail to properly enforce reservations. When
-running a small social web application on Kubernetes, we observe significant
-impacts on its latency when starting a BE image resize job on the same cores.
-$\autoref{fig:kubernetes-unedited}$ shows the end-to-end latency of an endpoint
-that gets a users feed, and the throughput of the BE job. After the BE job
-starts running, the mean response latency of the server jumps from $\sim$7ms to
-$\sim$15ms.
+Current popular scheduling systems fail to honor reservations.
+$\autoref{fig:kubernetes-unedited}$ shows the latency of an endpoint in a web
+application on Kubernetes that gets a users feed, and the throughput of a BE
+image resize job on the same cores. The mean response latency of the server
+jumps from $\sim$7ms to $\sim$15ms after starting the BE.
 
 
 

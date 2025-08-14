@@ -28,12 +28,13 @@ starting the the BE image resizing.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/overload-schedbe.png}
-    \caption{BE in \schedbe{}, no throttling}\label{fig:overload-schedbe}
+    \caption{ \beclass{} starves the BE user-space threads, leaving all CPU time
+    to the LC}\label{fig:overload-schedbe}
 \end{figure}
 
 \autoref{fig:overload-schedbe} shows how parking enables the latency critical
 server to keep its reservation even under sustained extremely high load. We run
 the same client load as \autoref{fig:overload-rt}, but now instead instead of
-throttling the server, \schedbe{} parks the best effort processes. Notice that
-the \schedbe{} image resize job does not make progress until the very end, when
+throttling the server, \beclass{} parks the best effort processes. Notice that
+the \beclass{} image resize job does not make progress until the very end, when
 the server is done processing the requests.
