@@ -1,12 +1,12 @@
 \section{Related work}
 
-Some existing work focuses on isolating real-time applications in
-Linux~\cite{rt-in-linux, state-rt-linux}, while Wasted Cores~\cite{wasted-cores}
-focuses on the idle behavior of the Linux scheduler.
+Some work focuses on isolating real-time applications in
+Linux~\cite{rt-in-linux, state-rt-linux}. Wasted Cores~\cite{wasted-cores}
+addresses the idle behavior of Linux. 
+
+Linux's \schedidle{} policy addresses the observed weight inversion, but is
+still inadequate: running the microbenchmark using \schedidle{} leads to an
+increase in the mean latency from 6ms to 8ms.
 
 Other systems work around the kernel scheduler, by running primarily in
 userspace~\cite{perfiso,caladan,skyloft}.
-
-Linux's own \schedidle{} policy attempts to address this issue, but does not
-fully solve it (running the microbenchmark using \schedidle{} still leads to an
-increase in the mean latency from 6ms to 8).
