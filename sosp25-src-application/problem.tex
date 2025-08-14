@@ -16,8 +16,8 @@ libvirt~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
 
 
 A simplified experiment shows \cgroups{} weights are unable to enforce
-reservations. We run a simple CPU-bound server sharing four cores with an image
-resize job, each in their own group. \cgroups{} supports weights in the range of
+reservations. We run a simple CPU-bound server sharing 4 cores with an image
+resize job, each in their own group. \cgroups{} supports weights in the range
 [1,10000]. \autoref{fig:srv-bg-weight-cmp} shows that running the server with
 different weights has no effect on the latency impact of the BE.
 

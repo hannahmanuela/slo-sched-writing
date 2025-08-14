@@ -5,12 +5,11 @@
 Cloud providers like AWS, or containerization systems like Kubernetes, support
 reserving CPU for \textit{latency critical} (LC) services. Developers choose
 reservations based on expected peak load~\cite{borg, nu, overprovision}, but
-load is variable, leading to a utilization problem. 
-
-\textit{Best effort} (BE) workloads do not have reservations, so providers run
-them opportunistically on the same resources as LCs reserved; the resource that
-this work focuses on is CPU. The challenge is to honor resource reservations for
-LCs while opportunistically running BEs.
+load is variable, leading to a utilization problem. \textit{Best effort} (BE)
+workloads do not have reservations, so providers run them opportunistically on
+the same resources as LCs reserved; the resource that this work focuses on is
+CPU. The challenge is to honor resource reservations for LCs while
+opportunistically running BEs.
 
 \begin{figure}[t]
     \centering
