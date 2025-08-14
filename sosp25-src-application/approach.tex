@@ -6,7 +6,7 @@ Enforcing priorities requires fewer global runqueue searches than weights,
 because searches only need to happen on \textit{class boundary crossings}: on
 \exit{}, when switching to running a low-class process, and on \entry{}, when
 enqueueing a high-class process. These checks ensure that a core running a BE
-thread $t$ knows that there are no queued LC threads anywhere: the \exit{} check
+thread $t$ knows there are no queued LC threads anywhere: the \exit{} check
 ensures there's none when starting to run $t$, and the \entry{} check ensures if
 one wakes up while running $t$, it will interrupt $t$.
 
@@ -21,10 +21,10 @@ one wakes up while running $t$, it will interrupt $t$.
 
 
 Linux enforces priority across scheduling classes, but higher class schedulers
-are designed for real-time applications. Additionally, if these experience high
-load, Linux throttles them in order to not starve the default class. We see this
+are designed for real-time applications. Additionally, Linux throttles them
+under high load in order to not starve the default class. We see this
 happening in \autoref{fig:overload-rt}, where throttling leads to spikes in the
-BE's throughput, and corresponding spikes in the server's latency.
+BE's throughput and corresponding spikes in the server's latency.
 
 We design a new scheduling class \beclass{} that sits at a lower priority than
 the default one, and enforces LCs' uncontended access to reserved CPUs. To
