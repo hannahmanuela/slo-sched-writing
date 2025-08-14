@@ -20,14 +20,14 @@ while running $t$ it will interrupt $t$.
 \end{figure}
 
 
-Linux already provides priority scheduling across scheduling classes, but it is
-designed for real time applications: if these experience high load, Linux
-throttles them in order to not starve the default class. We can see this
+Linux enforces priority across scheduling classes, but higher class schedulers
+are designed for real time applications. Additionally, if these experience high
+load, Linux throttles them in order to not starve the default class. We see this
 happening in \autoref{fig:overload-rt}, where throttling leads to spikes in the
 BE task's throughput, and corresponding spikes in the server's latency.
 
 We design a new scheduling class \beclass{} that sits at a lower priority than
-\normalclass{}, which enforces LC applications' uncontended access to CPUs they
-reserved. To enforce reservations under high load, without throttling the LCs or
-killing the BEs, \beclass{} \textit{parks} BE processes, meaning the user-space
-code never runs, only kernel-level services.
+the default, which enforces LC applications' uncontended access to CPUs they
+reserved. To enforce reservations under high load, without throttling LCs or
+killing BEs, \beclass{} is \textit{parked}, meaning the user-space code never
+runs, only kernel-level services.

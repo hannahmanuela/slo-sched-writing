@@ -1,14 +1,14 @@
 
-\section{Problem \& Background}
+\section{Background \& Problem}
 
 All Open Container Initiative (OCI) compliant containers, including Kubernetes,
-Docker, CRI-O, and containerd, enforce CPU reservations using \cgroups{}' weight
-interface~\cite{oci-cgroups, docker-docs-cgroups, container-isolation-article},
-as do VM frameworks, including Firecracker, AFaas and
+enforce CPU reservations using \cgroups{}' weight interface~\cite{oci-cgroups,
+docker-docs-cgroups, container-isolation-article}, as do VM frameworks,
+including Firecracker and
 libvirt~\cite{firecracker-cgroups,afaas,libvirt-cgroups}. Kubernetes creates one
-group for all BE services, given the lowest weight 1, and pods with reservations
-are in separate groups with higher weights (in the experiment the server
-requested 4 CPUs and Kubernetes assigned it a pod with weight 157).\
+group for all BE services, given the lowest weight 1, all others are in separate
+groups with higher weights (in our experiment the server requests 4 CPUs,
+Kubernetes assigns it weight 157).
 
 \begin{figure}[t]
     \centering
@@ -19,9 +19,9 @@ requested 4 CPUs and Kubernetes assigned it a pod with weight 157).\
 
 
 A simplified experiment shows \cgroups{} weights are unable to enforce
-reservations. We run an open-loop client on a remote machine, with a simple LC
-CPU-bound server and BE image resize job sharing four cores, each in their own
-group. \cgroups{} supports weights in the range of [1,10000],
+reservations. We run an open-loop remote client, with a simple LC CPU-bound
+server and BE image resize job sharing four cores, each in their own group.
+\cgroups{} supports weights in the range of [1,10000],
 \autoref{fig:srv-bg-weight-cmp} shows that running the server with different
 weights has no effect on the latency impact of the BE task.
 
