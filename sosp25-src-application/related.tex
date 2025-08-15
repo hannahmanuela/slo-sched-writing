@@ -1,9 +1,8 @@
 \section{Related work}
 
-Wasted Cores~\cite{wasted-cores} improves the idle behavior of Linux, whereas we
-change the API to the scheduler. Linux's \schedidle{} policy addresses the
-observed weight inversion, but is inadequate: running the microbenchmark using
-\schedidle{} leads to a mean latency increase from 6ms to 8ms.
+Linux's \schedidle{} policy addresses the observed weight inversion, but is
+inadequate: running the microbenchmark using \schedidle{} leads to a mean
+latency increase from 6ms to 8ms.
 
 Other schedulers run primarily in userspace in order to work around the kernel
 scheduler~\cite{perfiso,caladan,skyloft}. This paper avoids doing so by

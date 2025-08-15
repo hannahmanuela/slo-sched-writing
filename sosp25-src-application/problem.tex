@@ -23,9 +23,10 @@ resize job, each in their own group. \cgroups{} supports weights in the range
 [1,10000]; \autoref{fig:srv-bg-weight-cmp} shows running the server with any
 weight above 50 does not change the latency impact of the BE.
 
-Visualizing the trace shows us this latency impact happens because for sometimes
-10s of milliseconds, one core runs a BE thread because its own runqueue is
-otherwise empty, while server threads are queued on the other cores.
+Visualizing the trace using schedviz~\cite{schedviz-tool} shows us this latency
+impact happens because for up to 10s of milliseconds, one core runs a BE thread
+(its own runqueue is otherwise empty), while server threads are queued on the
+other cores.
 
 This happens because weights are only enforced within per-CPU runqueues. Load
 balancing eventually remedies imblances, but runs less frequently than

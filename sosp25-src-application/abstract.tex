@@ -1,10 +1,11 @@
 \begin{abstract}
     
 Widely-used container orchestration systems like Kubernetes are surprisingly
-unable to honor the reservations of LC applications in the presence BE workloads
-for tasks that are CPU-intensive. This paper traces this problem down to Linux's
-cgroups, and show that because Linux uses per-core runqueues, its weight-based
-interface is not enforced across cores.
+unable to honor the reservations of LC applications in the presence BE
+workloads: a Kubernetes web application's mean latency jumps from 6.2ms to
+$\sim$13ms after starting a BE image resize job. This paper traces this problem
+down to Linux's cgroups, and show that because Linux uses per-core runqueues,
+its weight-based interface is not enforced across cores.
 
 This paper proposes an API that separates best effort workloads from critical
 ones with reservations by introducing the BeClass priority class. BeClass
@@ -16,10 +17,8 @@ so that when load goes down it can continue to run.
 
 Experiments with a BeClass implementation in Linux show that BeClass ensures LC
 processes' access to their reserved cores, while running BE workloads
-opportunistically. When using cgroups weights, a Kubernetes server's mean
-latency jumped from 6.2ms to $\sim$13ms after starting a BE image resize job,
-while using BeClass for the BE reduced the same application's mean latency
-increase to 0.
+opportunistically. When using BeClass in the same Kubernetes experiment, the
+application's mean latency stayed stable at 6.2ms even after starting the BE.
 
 
 \end{abstract}
