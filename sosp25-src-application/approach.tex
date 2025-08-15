@@ -30,4 +30,4 @@ We design a new scheduling class \beclass{} that sits at a lower priority than
 the default one, and enforces LCs' uncontended access to reserved CPUs. To
 enforce reservations under high load, without throttling LCs or killing BEs,
 \beclass{} uses \textit{parking}, wherein user-space code never runs, only
-kernel-level services.
+kernel-level services. We implement this strict priority in Linux.
