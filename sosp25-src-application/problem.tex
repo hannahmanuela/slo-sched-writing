@@ -2,14 +2,13 @@
 \section{Background \& Problem}
 
 All Open Container Initiative compliant containers, including Kubernetes,
-enforce CPU reservations using \cgroups{}' weight interface~\cite{oci-cgroups,
-docker-docs-cgroups, container-isolation-article}, as do VM frameworks,
-including Firecracker and
-libvirt~\cite{firecracker-cgroups,afaas,libvirt-cgroups}. 
+enforce CPU reservations using \cgroups{}' weight
+interface~\cite{container-isolation-article}, as do VM frameworks, including
+Firecracker and libvirt~\cite{firecracker-cgroups,libvirt-cgroups}. 
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
+    \includegraphics[width=0.9\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
     \caption{ the weight of the server has little impact on how much the
     weight 1 BE task interferes }\label{fig:srv-bg-weight-cmp}
 \end{figure}
