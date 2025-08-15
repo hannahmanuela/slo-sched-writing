@@ -6,8 +6,7 @@ We identify a serious limitation of \cgroups{} weights: they are unable to honor
 the reservations of LC applications in the presence BE workloads. We show that
 this is because Linux uses per-core runqueues.
 
-We propose an API that separates BE from LC by introducing \beclass{}.
-\beclass{} ensures that no BE is ever running when an LC is queued, and requires
-fewer cross-core interactions than a weight-based approach to do so.
-
-We implement this strict priority in Linux.
+We propose an API that separates BE from LC by introducing \beclass{}, and
+implement it in Linux. \beclass{} ensures that no BE is ever running when an LC
+is queued, and requires fewer cross-core interactions than a weight-based
+approach to do so.
