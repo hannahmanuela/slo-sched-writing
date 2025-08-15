@@ -2,20 +2,6 @@
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{graphs/srv-bg-schedbe-low.png}
-    \caption{ \beclass{} isolates the server's latencies from BE
-     jobs}\label{fig:srv-bg-schedbe}
-\end{figure}
-% \beclass{} isolates the server's latencies from BE
-%      jobs
-
-We re-run the microbenchmark using \beclass{}; the results are in
-\autoref{fig:srv-bg-schedbe}. As desired, the latency of the server remains
-stable after the BE starts, and the BE runs only in gaps where cores would
-otherwise be idle.
-
-\begin{figure}[t]
-    \centering
     \includegraphics[width=\columnwidth]{graphs/kubernetes-schedbe.png}
     \caption{ Kubernetes using \beclass{} honors reservations, unlike in
     \autoref{fig:kubernetes-unedited} }\label{fig:kubernetes-schedbe}
@@ -23,9 +9,10 @@ otherwise be idle.
 % Kubernetes using \beclass{} honors reservations, unlike in
 %     \autoref{fig:kubernetes-unedited}
 
-We run the Kubernetes application using \beclass{}.
+We re-run the Kubernetes application using \beclass{}.
 \autoref{fig:kubernetes-schedbe} shows that the baseline mean latency of the LC
-server stays around 6.5ms after starting the the BE.
+server stays around 6.5ms after starting the the BE. Looking at the trace shows
+the BE runs only in gaps where cores would otherwise be idle.
 
 \begin{figure}[t]
     \centering

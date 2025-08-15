@@ -23,19 +23,9 @@ resize job, each in their own group. \cgroups{} supports weights in the range
 [1,10000]; \autoref{fig:srv-bg-weight-cmp} shows running the server with any
 weight above 50 does not change the latency impact of the BE.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/schedviz-problem.png}
-    \caption{Core 6 runs an image resize process, unaware that the other cores
-    have queued server threads}\label{fig:schedviz-problem}
-\end{figure}
-% Core 6 runs an image resize process, unaware that the other cores
-%     have queued server threads
-
-This latency impact happens because the BE occasionally runs uncontended on one
-core, while another has queued server threads. \autoref{fig:schedviz-problem}
-shows this happening in the trace: on core 6, the red BE runs for 10ms, while
-blue server threads are queued on the other cores.
+Visualizing the trace shows us this latency impact happens because for sometimes
+10s of milliseconds, one core runs a BE thread because its own runqueue is
+otherwise empty, while server threads are queued on the other cores.
 
 This happens because weights are only enforced within per-CPU runqueues. Load
 balancing eventually remedies imblances, but runs less frequently than
