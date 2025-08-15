@@ -1,0 +1,23 @@
+\begin{abstract}
+    
+This work shows that container orchestration systems like Kubernetes are
+unable to effectively honor the reservations of LC applications in the
+presence BE workloads for tasks that are CPU-intensive. We trace this
+problem down to Linux's cgroups, and show that because Linux uses
+per-core runqueues, its weight-based interface is not enforced across cores.
+
+Instead, we propose an API that separates best effort workloads from
+critical ones with reservations by introducing the BeClass priority class.
+BeClass requires fewer cross-core interactions than a weight-based approach,
+and ensures that no BE is ever running when an LC is queued. During high
+load this requires `parking', which enforces that BEs user-space code
+doesn't run if doing so would interrupt an LC process, but continues to run
+kernel-level services for the BE so that when load goes down it can continue
+to run.
+
+We implement this strict priority in Linux, and show that BeClass allows
+cgroups itself, as well as higher level applications that build on
+cgroups like Kubernetes, to do a better job of ensuring LC processes'
+access to their reserved cores while running BE workloads opportunistically.
+
+\end{abstract}
