@@ -29,7 +29,7 @@ impact happens because for up to 10s of milliseconds, one core runs a BE thread
 other cores.
 
 This happens because weights are only enforced within per-CPU runqueues. Load
-balancing eventually remedies imblances, but runs less frequently than
+balancing eventually remedies imbalances, but runs less frequently than
 scheduling. For workloads with request processing times in the millisecond
 range, waiting for the load balancer affects processing times.
 
