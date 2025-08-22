@@ -4,54 +4,59 @@
 %-------------------------------------------------------------------------------
 
 Cloud providers like AWS and Google, as well as deployment management systems
-like Kubernetes, allow users to run services by attaching to each a fixed amount
-of resources the service will get, \ie{} a number of CPUs and an amount of
-memory~\cite{aws-ec2-resources, kubernetes-resources}. The guarantee developers
-get is that the service will have undisturbed access to that amount of
-resources.
+like Kubernetes, allow users to run services by attaching to each an amount of
+resources the service will get. This includes compute (a number of vCPUs),
+memory, and sometimes network bandwidth~\cite{aws-ec2-resources,
+kubernetes-resources}; the resource this work focuses on is CPU. The guarantee
+developers get is that the service will have undisturbed access to that amount
+of resources.
 
-These reservations leads to a utilization problem. The load on most applications
-run in the cloud is variable and unpredictable, so to account for this
-developers choose the amount of resources to reserve based on the expected peak
-load~\cite{borg, nu, overprovision}. This means that services with reserved
-resources rarely use the full reservation they asked for. Services with resource
-reservations are called \textit{latency critical}, or LC, because the fact that
-they reserved resource implies they care about the latency of the service they
-are running.
+Enforcing this guanatee is hard. If providers leave the CPUs idle so they are
+available when the service needs them, that leads to a utilization problem. The
+load on most applications run in the cloud is variable and unpredictable, so to
+account for this developers choose the amount of resources to reserve based on
+the expected peak load~\cite{borg, nu, overprovision}. This means that services
+with reserved resources rarely use the full reservation they asked for. 
 
-\textit{Best effort} (BE) tasks, on the other hand, are tasks that do not have
-reservations and whose completion time is not critical. Popular examples include
-long-running MapReduce jobs or background data analytics. Many cloud scheduling
-systems support LC and BE tasks; this includes distributed schedulers, \eg{}
-Borg\cite{borg} or Kubernetes\cite{kubernetes-resources}, and single machine
-schedulers, for example Caladan\cite{caladan}.
+What most systems do instead is allow other workloads to run opportunistically
+on temporarly unutilized resources. This includes so-called \textit{best effort}
+workloads, which have no reservations, as well letting services with
+reservations temporarily \textit{burst}, meaning use more CPUs than they asked
+for. This solves the utilization problem, without requiring compromises on the
+guarantees made: services with reservations get access to the CPUs they
+requested when desired, while best effort or bursting services can make use of
+otherwise idle resources.
 
-Running BE workloads on the same resources as reserved applications helps solve
-the utilization problem caused by overprovisioning. While BE workloads can share
-any hardware resource with LC ones, the resource that this work focuses on is
-CPU. BE tasks can run on unused CPUs opportunistically, because they can
-tolerate delays when LC load spikes and the CPUs are fully used by the LC
-service that reserved them. The challenge is to enforce resource reservations
-for LC services while achieveing good utilization by running best effort jobs
-opportunistically.
+Kubernetes follows presicely this model. Services fall into three quality of
+service (QOS) classes: \textit{Guaranteed}, which have requests (\ie{}
+reservations) as well as limits, \textit{Burstable}, which have requests and no
+limits, and \textit{Best Effort}, which have
+neither~\cite{kubernetes-pod-qos-types}. Guaranteed services are the last to be
+evicted from a node experiencing high load, and give more predictable
+performance, whereas the Burstable class allows applications with bursty load to
+opportunistically make use of available resources, thereby better utilizing the
+resources Kubernetes is running on.
+
+AWS similarly supports both guaranteed- and burstable-style reservations, with
+their M and T instance types~\cite{aws-ec2-burstable,aws-ec2-resources}. In this
+case the motivation for customers to use the burstable-style instance rather
+than overprovisioning on guaranteed-style is pricing.
 
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
-    \caption{In Kubernetes, running a best effort application has a latency
-    impact on server that has reserved resources}\label{fig:kubernetes-unedited}
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-lc-cmp.png}
+    \caption{In Kubernetes, running anything alongside a server in the
+    Guaranteed QOS class affects the server's
+    performance}\label{fig:kubernetes-qos-cmp}
 \end{figure}
 
-We find that current popular scheduling systems fail to properly enforce
-reservations. When running a small but realistic social network web application
-on Kubernetes, we observe significant impacts on its latency when starting a
-best effort workload on the same cores. The top graph of
-\autoref{fig:kubernetes-unedited} plots the end-to-end latency of an endpoint
-that gets a users feed and applies a moderation; the bottom graph shows the
-throughput of a best effort image resize job. After the image resize job starts
-running, the mean response latency of the web application jumps from $\sim$7ms
-to $\sim$15ms, and the 99th percentile latency from $\sim$10ms to $\sim$25ms.
+However, we find that current popular scheduling systems fail to properly
+enforce reservations. We use as a case study a small but realistic social
+network web application, which we run using Kubernetes.
+\autoref{fig:kubernetes-qos-cmp} shows that running anything, even another
+guaranteed service, alongside the web server affected its end-to-end latencies,
+and that these effects go away when using core-pinning.\hmng{edited up to here}
 
 Understanding why Kubernetes fails to honor the web application's reservation
 requires looking at the underlying mechanism enforcing the CPU reservation:

@@ -23,8 +23,8 @@ cp ../../../benchs-existing/linux/srv-bg/out/unedited-rt-normal/1550/out_clnt.pn
 cp ../../../benchs-existing/linux/srv-bg/out/unedited-rt-normal/1720/out_clnt.png graphs/srv-bg-rt-low.png
 cp ../../../benchs-existing/linux/srv-bg/out/patched/1550/out_clnt.png graphs/srv-bg-schedbe-high.png
 cp ../../../benchs-existing/linux/srv-bg/out/patched/1720/out_clnt.png graphs/srv-bg-schedbe-low.png
-cp ../../../benchs-existing/linux/srv-bg/out/unedited-weight/1550/150/out_clnt.png graphs/srv-bg-weight-150-high.png
-cp ../../../benchs-existing/linux/srv-bg/out/unedited-weight/1720/150/out_clnt.png graphs/srv-bg-weight-150-low.png
+cp ../../../benchs-existing/linux/srv-bg/out/unedited-weight/1550/150/out_clnt.png graphs/srv-bg-weight-high.png
+cp ../../../benchs-existing/linux/srv-bg/out/unedited-weight/1720/150/out_clnt.png graphs/srv-bg-weight-low.png
 
 # mutliple weights
 cp ../../../benchs-existing/linux/srv-bg/out/unedited-weight/1550/overall_latency.png graphs/srv-bg-weight-cmp-high.png

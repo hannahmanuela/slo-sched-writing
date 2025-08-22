@@ -53,7 +53,7 @@ connected by a 100Gbps network connection, and the ping time between them is
     on any core }\label{fig:schedviz-schedbe}
 \end{figure}
 
-We run the microbenchmark experiment from \autoref{fig:srv-bg-weight-150} using
+We run the microbenchmark experiment from \autoref{fig:srv-bg-weight} using
 \schedbe{}. We can see the resulting performance in
 \autoref{fig:srv-bg-schedbe}, and \autoref{fig:srv-bg-cmp-unedited-schedbe}
 shows a direct comparison between the original benchmark run on \cgroups{}
@@ -193,33 +193,10 @@ around half of the time, the scheduler found a queued LC thread on another core.
 Without the check, each of those would have led to a priority inversion.
 
 
-\subsection{Comparison with \schedidle}\label{ss:eval:schedidle}
+\subsection{Comparison with existing approached}\label{ss:eval:cmp}
 
 As discussed in \autoref{s:implementation}, \schedidle{} implements the \entry{}
 check, but not the \exit{} check or strict local priorities.
-
-\begin{figure}[t]
-    \centering
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
-        \caption{\schedidle{} in low load (85\%)}\label{fig:srv-bg-idle-low}
-        \vspace{12pt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
-        \caption{\schedidle{} in high load (95\%)}\label{fig:srv-bg-idle-high}
-        \vspace{12pt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp-all.png}
-        \caption{Comparison of mean latency of the low load setting for weights,
-        \schedidle{}, and \schedbe{}}\label{fig:srv-bg-cmp}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{}\label{fig:srv-bg-idle}
-\end{figure}
 
 \begin{figure}[t]
     \centering
@@ -228,6 +205,9 @@ check, but not the \exit{} check or strict local priorities.
     as the priority scheduling approach of \rtclass{} and \schedbe{}
     }\label{fig:kubernetes-idle}
 \end{figure}
+% \includegraphics[width=\columnwidth]{graphs/srv-bg-cmp-all.png}
+% \caption{Comparison of mean latency of the low load setting for weights,
+% \schedidle{}, and \schedbe{}}\label{fig:srv-bg-cmp}
 
 \autoref{fig:srv-bg-idle} shows the result of running the best effort job in the
 microbenchmark in \schedidle{}, as well as a graph that compares the low load

@@ -2,37 +2,36 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
-The observed failure to protect the latency critical application's reservation
-from the best effort job happens because the latter sometimes runs uncontended
-on one core, even while another has queued and waiting server threads
+The observed failure to protect the server application's reservation from the
+image resize job happens because the latter sometimes runs uncontended on one
+core, even while another has queued and waiting server threads
 (\autoref{ss:problem:bes-run}). This is because weights are only strictly
 enforced within runqueues, which are per-CPU
 (\autoref{ss:problem:weights-local}). Weights are complicated and expensive to
 enforce across cores (\autoref{ss:problem:cross-core-hard}), as well as
 interacting poorly with Linux's large scheduling quantum
-(\autoref{ss:problem:quantum}). We conclude that weights are the wrong interface
-to use to honor reservations globally.
+(\autoref{ss:problem:quantum}).
 
 \subsection{Weights are a local property}\label{ss:problem:bes-run}
 
 \begin{figure}[t]
     \centering
     \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-150-low.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-low.png}
         \caption{Low load stetting, utilization before starting the BE tasks is
-        around 85\%}\label{fig:srv-bg-weight-150-low}
+        around 85\%}\label{fig:srv-bg-weight-low}
         \vspace{12pt}
     \end{subfigure}
     \hspace{\fill}
     \begin{subfigure}{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-150-high.png}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-high.png}
         \caption{High load setting, utilization before starting the BE tasks is
-        around 95\%}\label{fig:srv-bg-weight-150-high}
+        around 95\%}\label{fig:srv-bg-weight-high}
     \end{subfigure}
     \vspace{4pt}
     \caption{in a simplified experiment using \cgroups{}, running best effort
     tasks has a large impact on the latency critical
-    server}\label{fig:srv-bg-weight-150}
+    server}\label{fig:srv-bg-weight}
 \end{figure}
 
 In order to understand why the jump in latency is happening when the best effort
@@ -48,7 +47,7 @@ effort workloads doing image resizing. We put the LC server and the BE resize
 job each in their own \cgroups{} group with weights 150 and 1 respectively
 (similar to Kubernetes), and pin them to the same set of four cores.
 
-\autoref{fig:srv-bg-weight-150} shows the result: we see that at a $\sim$85\%
+\autoref{fig:srv-bg-weight} shows the result: we see that at a $\sim$85\%
 baseline utilization of the server, after starting the image resize jobs the
 server's mean latencies spike up from steady at around 6ms to $\sim$15ms, and
 much higher for 99th percentile latencies. At a baseline utilization of 95\%,
