@@ -52,26 +52,28 @@ leads to two important problems.
 \end{figure}
 
 One problem is with using a very small weight to run BestEffort pods. Because
-the weight is only enforced per-core, this can lead to a situation where that
+the weight is only enforced per-core, this can lead to a situation where
 \textit{one core is running a best effort process, while threads of processes
-with resource reservations are queued on another}. This is because the threading
-model of the server interacts with the per-core runqueues. The server uses a
-pool of worker threads (one per client). The number of threads that the server
-has is larger than the number of cores, which means that each core has multiple
-server threads. It occasionally occurs that all the current requests are on
-server threads that happen to be on only three of the four available cores,
-which leaves one runqeueue with only idle server worker threads. This leads to
-an inversion, where the core that has no runnable high weight server threads and
-thus runs a low weight one, while other cores have queued high weight processes.
+with resource reservations are queued on another}. 
+
+This inversion happens because the threading model of the server interacts with
+the per-core runqueues. The server uses a pool of worker threads (one per
+client). The number of threads that the server has is larger than the number of
+cores, which means that each core has multiple server threads. It occasionally
+occurs that all the current requests are on server threads that happen to be on
+only three of the four available cores, which leaves one runqeueue with only
+idle server worker threads. This leads to an inversion, where the core that has
+no runnable high weight server threads and thus runs a low weight image resize
+thread, even while other cores have queued high weight processes.
 
 \autoref{fig:schedviz-be-problem} shows this occuring in a trace from the
-experiment running an image resize job along the web server, from which we
-visualize the perf trace using schedviz~\cite{schedviz-tool}. The process
-running on each core is shown as an oval, and queued processes are shown as
-rectangles below; the x-axis is time and the y-axis shows the 4 cores the
-experiment is running on. We see that on core 6, the red process that is running
-for the whole 10ms is a thread of the image resize job, while server threads,
-shown in varying shades of blue, are queued on the other cores. 
+experiment in \autoref{fig:kubernetes-unedited}, which we visualize the perf
+trace of using schedviz~\cite{schedviz-tool}. The process running on each core
+is shown as an oval, and queued processes are shown as rectangles below; the
+x-axis is time and the y-axis shows the 4 cores the experiment is running on. We
+see that on core 6, the red process that is running for the whole 10ms is a
+thread of the image resize job, while server threads, shown in varying shades of
+blue, are queued on the other cores. 
 
 Load balancing eventually remedies the inversion by migrating runnable
 high-weight threads to the under-loaded core. However, load balancing runs
