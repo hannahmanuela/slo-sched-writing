@@ -45,10 +45,17 @@ than overprovisioning on guaranteed-style is pricing.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-lc-cmp.png}
-    \caption{In Kubernetes, running anything alongside a server in the
-    Guaranteed QOS class affects the server's
-    performance}\label{fig:kubernetes-qos-cmp}
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-guar.png}
+    \caption{In Kubernetes, running a Guaranteed server2 alongside the
+    Guaranteed server1 affects server1's
+    performance}\label{fig:kubernetes-lc-guar}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-burst.png}
+    \caption{In Kubernetes, running a Burstable server2 alongside the Guaranteed
+    server1 affects server1's performance}\label{fig:kubernetes-lc-burst}
 \end{figure}
 
 \begin{figure}[t]
