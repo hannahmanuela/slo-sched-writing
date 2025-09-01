@@ -1,0 +1,35 @@
+%-------------------------------------------------------------------------------
+\section{Goals}
+\label{s:goals}
+%-------------------------------------------------------------------------------
+
+
+Our goal is to allow for the different quality of service (QOS) classes that
+Kubernetes uses, and to enforce guarantees for each of the QOS classes.
+
+% maybe I should do like a survey of existing systems and look at how they deal
+% with it?
+
+The highest QOS class is Guaranteed. Guaranteed services are guaranteed access
+to the number of CPUs they request, but are also limited to them. Guaranteed
+services should not be able to tell the difference if unused but reserved cores
+are being used to run other workloads or not. They should never be able to use
+more CPUs than they reserved.
+
+The middle QOS class is Burstable. Burstable services are also guaranteed access
+to the number of CPUs they requested, with the same stipulation that they not be
+able to tell the difference if unused but reserved cores are being used to run
+other work. Burstable services are however allowed to use CPUs beyond their
+reservation opportunistically.\hmng{where does the limit on bursting come in? I
+think in amazon the whole thing is credit-based and there is no minimum,
+although its also not clear at what level that is/needs to be enforced}
+
+The lowest QOS class is BestEffort. BestEffort services are only ever allowed to
+run opportunistically, and when they do they have a priority below that of
+bursting Burstable services.
+
+All of these classes are defined by guaranteed vCPU minimums, and limits. In
+Kubernetes these are expressed by attaching resource `requests' and `limits' to
+pods. These are expressed as a number of vCPUs, and can be fractional (\ie{} a
+pod could request 0.5 vCPUs).
+

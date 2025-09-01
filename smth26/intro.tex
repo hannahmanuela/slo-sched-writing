@@ -43,50 +43,6 @@ case the motivation for customers to use the burstable-style instance rather
 than overprovisioning on guaranteed-style is pricing.
 
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-guar.png}
-    \caption{In Kubernetes, running a Guaranteed server2 alongside the
-    Guaranteed server1 affects server1's
-    performance}\label{fig:kubernetes-lc-guar}
-\end{figure}
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-burst.png}
-    \caption{In Kubernetes, running a Burstable server2 alongside the Guaranteed
-    server1 affects server1's performance}\label{fig:kubernetes-lc-burst}
-\end{figure}
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-unedited.png}
-    \caption{Running a BestEffort affects the server's
-    performance}\label{fig:kubernetes-unedited}
-\end{figure}
-
-We find that current popular scheduling systems fail to properly enforce
-reservations. We use as a case study a small but realistic social network web
-application, which we run using Kubernetes. We run alongside it different other
-classes: in one experiment, we run another server in either the Guaranteed and
-Burstable class, and in another we run a best effort workload alongside the
-server. 
-
-In \autoref{fig:kubernetes-qos-cmp} we show the results of the first experiment.
-We run two servers, and compare the performance in three settings: both are
-pinned to their own cores, both running in the Guaranteed class, and the web
-server running in the Guaranteed class but the other in the Burstable class. The
-graphs show the utilization and performance benefit of using the Burstable
-class, but also show that running either class alongside the web server affected
-its end-to-end latencies.
-
-\autoref{fig:kubernetes-unedited} shows the result of running a best effort
-workload, using the BestEffort class, alongside the web server. The top graph of
-plots the end-to-end latency of an endpoint that gets a users feed and applies a
-moderation; the bottom graph shows the throughput of a best effort image resize
-job. After the image resize job starts running, the mean response latency of the
-web application jumps from $\sim$7ms to $\sim$15ms, and the 99th percentile
-latency from $\sim$10ms to $\sim$25ms.
 
 \hmng{edited up to here}
 
