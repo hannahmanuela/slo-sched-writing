@@ -22,13 +22,14 @@ is not conducive to supporting the QOS guarantees outlined.
 
 We use as a case study a small but realistic social network web application,
 which we run using Kubernetes. We run alongside it a CPU-bound server, service2,
-as a Burstable pod. They each request 2 CPUS, and they are pinned to the same
-four cores. \autoref{fig:kubernetes-lc-burst} shows the impact on the web
-server's latency of starting load on the other Burstable service: average
-latency jumps up by $\sim$1ms, and 99th pctile by > 6ms.
+as a Burstable pod. They each request two CPUs, and are pinned to the same four
+cores. \autoref{fig:kubernetes-lc-burst} shows the impact on the web server's
+latency of starting load on the other Burstable service: average latency jumps
+up by $\sim$2ms, and 99th pctile by > 6ms.
 
-The reason this happens is because Kubernetes uses the \cgroups{} weight
-interface to enforce pods' CPU requests. It makes sure that machines are never
+Understanding why this is happening requires understanding how Kubernetes
+enforces the CPU isolation between pods. Kubernetes uses the \cgroups{} weight
+interface to enforce pods' CPU requests: It makes sure that machines are never
 oversubscribed on requested CPU, and then uses weights to split up the cores on
 the machine. Burstable and Guaranteed pods are given a weight that is calculated
 based on the number of cores the machine has and how many CPUs the pod
@@ -53,22 +54,26 @@ scheduling; but Linux does not enforce the weight ratios across cores.
 \end{figure}
 
 
-This is a problem because Burstable and Guarnateed pods share cores where they
+This is a problem because Burstable and Guaranteed pods share cores where they
 both have threads based on weight, irrespective of who is running how much on
-other cores.
+other cores. In particular, Server1 has less load and thus less runnable
+threads. However, on the few cores where its threads are runnable, it will have
+to share that core equally; even while the server with higher load runs
+uncontended on other cores. \autoref{fig:schedviz-lc-burst-problem} shows this
+occuring in a trace from the experiment, which we visualize using
+schedviz~\cite{schedviz-tool}. The process running on each core is shown as an
+oval, and queued processes are shown as rectangles below; the x-axis is time and
+the y-axis shows the 4 cores the experiment is running on. On the left hand side
+of the trace, server1 can run uncontended on any core when requests come in.
+Then server2 starts, and has a high load and thus immediately starts running on
+all four cores, because it is Burstable. When a request from server1 comes in,
+the thread processing that request has to share the core equally with threads
+from server2, even while server2 gets other cores all to itself.
 
-Server1 has less load and thus less runnable threads. However, on the few cores
-where its threads are runnable, it will have to share that core equally; even
-while the server with higher load runs uncontended on other cores.
-\autoref{fig:schedviz-lc-burst-problem} shows this happening: on the left hand
-side of the trace, server1 can run uncontended on any core when requests come
-in. Then server2 starts, and has a high load and thus immediately starts running
-on all four cores, because it is Burstable. When a request from server1 comes
-in, the thread processing that request has to share the core equally with
-threads from server2, even while server2 gets other cores all to itself.
 
 
-\subsubsection{BestEffort pods run more than they should}
+
+\subsection{BestEffort pods run more than they should}
 
 Kubernetes uses the smallest weight possible, 1, to run BestEffort pods. 
 
@@ -97,14 +102,10 @@ latency from $\sim$10ms to $\sim$25ms.
 
 The reason this happens is because \textit{one core is running a best effort
 process, while threads of processes with resource reservations are queued on
-another}. \autoref{fig:schedviz-be-problem} shows this occuring in a trace from
-the experiment in \autoref{fig:kubernetes-unedited}, which we visualize the perf
-trace of using schedviz~\cite{schedviz-tool}. The process running on each core
-is shown as an oval, and queued processes are shown as rectangles below; the
-x-axis is time and the y-axis shows the 4 cores the experiment is running on. We
-see that on core 6, the red process that is running for the whole 10ms is a
-thread of the image resize job, while server threads, shown in varying shades of
-blue, are queued on the other cores. 
+another}. \autoref{fig:schedviz-be-problem} shows this happening: We see that on
+core 6, the red process that is running for the whole 10ms is a thread of the
+image resize job, while server threads, shown in varying shades of blue, are
+queued on the other cores. 
 
 The core of this issue goes back to the local nature of \cgroups{} weight
 enforcement. The observed inversion happens because the threading model of the
@@ -128,8 +129,9 @@ well as how loaded the machine is.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{graphs/srv-bg-weight-cmp-low.png}
-    \caption{Low load stetting, utilization before starting the BE tasks is
-        around 85\%}\label{fig:srv-bg-weight-cmp}
+    \caption{Changing the weight of the server beyond 100 has little impact on
+    how much the weight 1 best effort task interferes with
+    it}\label{fig:srv-bg-weight-cmp}
 \end{figure}
 
 \hmng{Not sure if this is still the right place to do this then?}This inversion
@@ -183,15 +185,15 @@ multi-threading is a thing, it is possible that $r>p$.
 \end{figure}
 
 Enforcing a limit of 2 vCPUs is different than enforcing that a group only get
-2ms of CPU time every ms. If a pod is restricted to 2vCPUs, then it can run up
+2ms of CPU time every 1ms. If a pod is restricted to 2 vCPUs, then it can run up
 to two things at the same time, and thus use only up to two cores. However, if a
-group is limited to 2ms every ms, it could also fill its quota by running four
+group is limited to 2ms every 1ms, it could also fill its quota by running four
 things on four cores for half a ms. In the time when one group is running on all
 four cores, Kubernetes relies on weights to separate the two, which can lead to
 significant delays for other services, as we saw.
 \autoref{fig:schedviz-lc-guar-problem} shows this happening in a trace from the
 experiment from \autoref{fig:kubernetes-lc-guar}. We can see the phases of
-servive2 threads in grey, which run for a while on all four cores, disrupting
+service2 threads in grey, which run for a while on all four cores, disrupting
 the blue server1 threads, before being throttled, during which time server1
 threads can run uninterrupted and otherwise the cores lie idle.
 

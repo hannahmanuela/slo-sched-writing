@@ -4,7 +4,7 @@
 %-------------------------------------------------------------------------------
 
 
-Our goal is to allow for the different quality of service (QOS) classes that
+Our goal is to support the different quality of service (QOS) classes that
 Kubernetes uses, and to enforce guarantees for each of the QOS classes.
 
 % maybe I should do like a survey of existing systems and look at how they deal
@@ -28,8 +28,9 @@ The lowest QOS class is BestEffort. BestEffort services are only ever allowed to
 run opportunistically, and when they do they have a priority below that of
 bursting Burstable services.
 
-All of these classes are defined by guaranteed vCPU minimums, and limits. In
-Kubernetes these are expressed by attaching resource `requests' and `limits' to
-pods. These are expressed as a number of vCPUs, and can be fractional (\ie{} a
-pod could request 0.5 vCPUs).
+In Kubernetes, the reservations and limits are expressed by attaching resource
+`requests' and `limits' to pods. These are expressed as a number of vCPUs, and
+can be fractional (\ie{} a pod could request 0.5 vCPUs). Pods are BestEffort if
+their request is 0, and are Guaranteed if they have both a request and a limit
+and those two are the same.
 
