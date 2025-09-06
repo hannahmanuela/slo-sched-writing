@@ -70,7 +70,7 @@ the machine.
 Burstable and Guaranteed pods are given a weight that is calculated based on the
 number of cores the machine has and how many CPUs the pod requested. For
 instance, on a 56 core machine we found that a pod that requested 4 cores was
-given a weight of 157, whereas one that request 2 CPUs was given a weight of XX.
+given a weight of 157, whereas one that request 2 CPUs was given a weight of 79.
 Kubernetes uses the smallest weight possible, 1, to run BestEffort pods.
 
 The key fact relevant here about \cgroups{} weight is that \textit{weights are a
@@ -228,7 +228,7 @@ balancing is not enough.
 
 \subsubsection{Bigger weight splits}
 
-As we saw in our experiment, Kubernetes uses a weight split of around XX:1,
+As we saw in our experiment, Kubernetes uses a weight split of around 79:1,
 whereas Linux supports weights in the range of [10000,1]. We show that a larger
 weight split does not fix the problem. We demonstrate this with a
 microbenchmark, which runs a simple CPU-bound server with a pool of worker
