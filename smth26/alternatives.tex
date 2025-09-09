@@ -3,10 +3,10 @@
 %-------------------------------------------------------------------------------
 
 Weights remains the \cgroups{} interface of choice for Kubernetes as well as
-others like Firecracker and libvirt, but Linux scheduler is a complicated system
-with many different parts. In this section we discuss the existing alternatives
-to using \cgroups{} weights in Linux, and show that none of them completely
-address the issue.
+others like Firecracker and libvirt, but Linux also supports other mechanisms
+for scheduling. In this section we discuss the existing alternatives to using
+\cgroups{} weights in Linux, and show that none of them completely address the
+issue.
 
 The Linux scheduler is hierarchical: it supports different \textit{scheduling
 classes}, within which there might be different \textit{policies}. The
