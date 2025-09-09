@@ -5,23 +5,23 @@
 
 
 Developers use the different quality of service (QOS) classes that Kubernetes
-supports to run different services with different latency needs.
+supports to run different services with different latency needs. We expect a
+multi-tenant setting, where developers have to pay for the resources they use.
 
 The highest QOS class is Guaranteed. Guaranteed services are guaranteed access
-to the number of CPUs they request, but are also limited to them. They are the
-last to be evicted under resource pressure, and are used for critical
-infrastructure like databases or core microservices~\cite{reddit-kub-qos}. When
-using this QOS class, because there is also a limit, developers provision for
-peak load.
+to the number of CPUs they request, but are also limited to them. Developers
+using this class ned to provision and thus pay for peak load, and in return get
+guaranteed access to enough resources to handle peak load. Examples include
+critical infrastructure like databases~\cite{reddit-kub-qos}.
 
 The middle QOS class is Burstable. Burstable services are similarly guaranteed
 access to the number of CPUs they requested, but are also allowed to use CPUs
 beyond their reservation opportunistically. This is the category in which a web
 server would be expected to run, where it can make use of the bursting in
 moments of higher load. As a result, developers can provision for closer to
-average load; as long as there are not too many services bursting at the same
-time, each will be able to use slack of other services to handle the bursting
-load.
+average load. If the number of services bursting at the same time is low, each
+will be able to use slack of other services to handle the bursting load.
+However, it is not guaranteed that the resources will be available.
 
 The lowest QOS class is BestEffort. BestEffort services are only allowed to run
 on resources that would otherwise go idle. For instance, if a CPU has completely
