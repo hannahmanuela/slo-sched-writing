@@ -1,43 +1,43 @@
-\section{Approach}\label{s:approach}
+% \section{Approach}\label{s:approach}
 
-In order to enforce reservations while still running best effort jobs
-opportunistically, our approach is use priority scheduling. We describe how
-priority scheduling solves the enforcement problem that weights has, as well as
-its dependence on hardware ticks (\autoref{ss:approach:solves-problems}).
+% In order to enforce reservations while still running best effort jobs
+% opportunistically, our approach is use priority scheduling. We describe how
+% priority scheduling solves the enforcement problem that weights has, as well as
+% its dependence on hardware ticks (\autoref{ss:approach:solves-problems}).
 
-\subsection{Priority scheduling solves the problems with
-weights}\label{ss:approach:solves-problems}
+% \subsection{Priority scheduling solves the problems with
+% weights}\label{ss:approach:solves-problems}
 
-Enforcing global prioritization between two priorities is simpler and requires
-fewer global runqueue searches than enforcing a weight split does. 
+% Enforcing global prioritization between two priorities is simpler and requires
+% fewer global runqueue searches than enforcing a weight split does. 
 
-It is simpler because priorities are: a core does not need to do complex
-accounting to figure out whether it is a low-weight processes turn to run, it
-just needs to know the set of runnable priorities. Enforcing the global
-prioritization between them equivalent to choosing only from the highest
-priority.
+% It is simpler because priorities are: a core does not need to do complex
+% accounting to figure out whether it is a low-weight processes turn to run, it
+% just needs to know the set of runnable priorities. Enforcing the global
+% prioritization between them equivalent to choosing only from the highest
+% priority.
 
-Enforcing priorities also requires fewer global runqueue searches, because they
-only need to happen on \textit{class boundary crossings}: on \exit{}, when a
-core switches to running lower class processes after having previously been
-running high class, and on \entry{}, when a core enqueues a higher class
-process. These checks ensure that if a core $c$ is currently running a BE thread
-$t$, the scheduler knows that there are no queued and waiting LC threads
-anywhere on the machine. If there is a queued LC thread on a different core $c'$
-when $c$ starts running $t$, the \exit{} check, that looks at every cores'
-runqueue, will see and steal it. If a new LC thread wakes up on a different core
-while $t$ is running, the \entry{} check ensures that $c'$ will look at $c$'s
-runqueue, see that it is running a BE thread, and will send the new LC thread to
-$c$ via an interrupt, where the interrupt handler will trigger a scheduling that
-interrupts $t$.
+% Enforcing priorities also requires fewer global runqueue searches, because they
+% only need to happen on \textit{class boundary crossings}: on \exit{}, when a
+% core switches to running lower class processes after having previously been
+% running high class, and on \entry{}, when a core enqueues a higher class
+% process. These checks ensure that if a core $c$ is currently running a BE thread
+% $t$, the scheduler knows that there are no queued and waiting LC threads
+% anywhere on the machine. If there is a queued LC thread on a different core $c'$
+% when $c$ starts running $t$, the \exit{} check, that looks at every cores'
+% runqueue, will see and steal it. If a new LC thread wakes up on a different core
+% while $t$ is running, the \entry{} check ensures that $c'$ will look at $c$'s
+% runqueue, see that it is running a BE thread, and will send the new LC thread to
+% $c$ via an interrupt, where the interrupt handler will trigger a scheduling that
+% interrupts $t$.
 
-Strict priorities being enforced at class boundary crossings also means that a
-runnable LC process gets access to a core it reserved quickly. As soon as the
-handler for process wakeup or dequeue runs, which in Linux is on the order of a
-few microseconds, whereas the load balancer runs at the frequency of several ms.
-For enforcing sharing across long-running processes balancing occasionally works
-well, but for workloads with runtimes on the order of low to mid double-digit
-ms, those delays significiantly influence final processing times.
+% Strict priorities being enforced at class boundary crossings also means that a
+% runnable LC process gets access to a core it reserved quickly. As soon as the
+% handler for process wakeup or dequeue runs, which in Linux is on the order of a
+% few microseconds, whereas the load balancer runs at the frequency of several ms.
+% For enforcing sharing across long-running processes balancing occasionally works
+% well, but for workloads with runtimes on the order of low to mid double-digit
+% ms, those delays significiantly influence final processing times.
 
 
 

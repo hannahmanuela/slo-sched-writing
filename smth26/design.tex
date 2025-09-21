@@ -1,77 +1,68 @@
-\section{Design/Parking?}\label{s:design}
+\section{Design}\label{s:design}
 
-We design a new scheduling class \beclass{} that sits at a lower priority than
-\normalclass{}, which enforces latency critical applications' uncontended access
-to the CPUs they reserved. Doing so addresses the two main concerns with Linux's
-existing scheduling classes.
+We design a new cgroup interface file, cpuset.min, that allows groups, \ie{}
+applications, to have guaranteed access to their reserved CPUs, while at the
+same time supporting bursting on cores that are reserved but not currently in
+use. Best effort tasks need to be allowed to share cores with reserved
+workloads.
 
-One is that the latency critical microservices stay in the same scheduling class
-as they were before, which means existing mechanisms to balance CPU time between
-different microservices remain viable.
+\subsection{The Guarantees we want}
 
-To enforce reservations even under high load, without throttling the latency
-critical services or killing the best effort ones, \beclass{} \textit{parks}
-best effort processes.
+We imagine cpuset.min as a new interface file in the same cgroup controller as
+the existing cpuset mechanisms. cpuset.min takes in a list of cpu numbers, in
+the same way that existing cpuset mechanisms do.
 
-\subsection{Parking}
+Groups with min cores are guaranteed to always be able to run on those cores,
+and to do so without interruption\hmng{should I asterisk this b/c not if the min
+core is shared}. Concretely, the invariant we need to maintain is that if a
+group has $m$ cpus that are designated as its min, and $t$ runnable threads,
+then if $t \leq m$ each thread will have its own core to run on. If $t > m$,
+then the $t$ threads will run on \textit{at least} $m$ cores. We make no
+guarantees about bursting: if there are unused cpu cores, we do not enforce that
+the extra cpu time will be allocated to align with any guarantees.
 
-As the load in \normalclass{} approaches 100\%, \beclass{} applications run less
-frequently, since they only run in the times where \normalclass{} is not
-utilizing the core. But even if \normalclass{} load is at 99\%, the \beclass{}
-processes can still run for 1\% of the time, which is in principle more than the
-0.01\% they would have been allowed to with the maximum weight split of 1/10000.
-It is only when the load in \normalclass{} reaches 100\% CPU utilization for
-extended periods of time that parking becomes different from running a process
-with a small weight.
+Developers can specify fractional CPUs by having the same cpu show up in
+multiple groups' min cores lists. In that case, each overlapped cpu is shared
+according to the weight specified in cpu.weight. We expect fractional cores will
+only be used for reservations that ask for less than one core, and make no
+guarantees about which min core a thread will run on. For example, if a core
+were to reserve two cores, one of which was shared and the other was not, we do
+not guarantee that the first thread to run will use the core that this group
+alone has reserved.
 
-Parking addresses the potential issues with starvation by separating \beclass{}
-processes' logic into application logic (user-space) and critical-state
-management (kernel-space). When load spikes to 100\%, \beclass{} processes' run
-only kernel-level services. We call this state \textit{parked}, because
-although the application logic does not progress, the BE is not completely
-starved because kernel-space handlers still run.
+Best effort workloads have no min cores: they are not guaranteed any CPU time,
+and must not get CPU time on a given core $c$ if there is a runnable thread that
+has that $c$ as a min core.
 
-Our goal is to make parking as transparent as possible to the applications. On
-the most immediate level, parking needs to avoid causing deadlock or dropped
-connections. But it is also desirable that the BE and the services it talks to
-should not need to do special-cased error handling if the BE was parked. For
-instance, suppose a MapReduce mapper has a heartbeat with a coordinator to check
-in on the mapper's progress. What should happen is that handling
-application-level heartbeats is paused until the load goes down, but the TCP
-connection is kept alive and the mapper can respond to heartbeats and complete
-its job when the load goes down. The coordinator would have in the meantime
-likely marked the parked mapper as a straggler and started a backup job; if the
-original temporarily parked mapper still finishes first it would simply send its
-results via the existing TCP connection.
+\subsection{The design that gets us those guarantees}
 
-Creating the divide between application and critical operating system services
-achieves this goal for us. To avoid deadlock, Linux already marks kernel-space
-operations that use locks as non-preemptible, and ensures that non-preemptible
-code is not interrupted. This marking means that it is not possible for a BE to
-still hold a kernel-space lock after being descheduled. User-space locks do not
-have such protection, but user-space locks are not shared across LC and BE
-applications.
+We define \textit{events}, which are the relevant points in time at which
+cross-core scheduling decisions need to take place, in order to maintain the
+desired invariants. They are related to \textit{enqueue}, which is when a thread
+wakes up and needs to be enqueued on some cores runqueue, and \textit{dequeue},
+which is when a previously runnable thread exits or blocks and is removed from
+that cores runqueue.
 
-Linux also already manages I/O interrupts, including acknowledging network
-packets, in kernelspace interrupt handlers. These run irrespective of whether
-and when the userspace process is scheduled, and simply write the relevant
-message buffers to the processes' memory. Thus, when the load goes down and the
-parked process can run again, the read will return all the intermediate messages
-at once. 
+There are two cases in which \textit{enqueue} requires interposition. Let $t$ is
+again the number of threads and $m$ the number of reserved cores, the two cases
+are: 1. if $t < m$ for waking group, and 2. if $t \geq m$ for the waking group.
+In the first case, that means that at least one min core is currently not being
+used by the group that reserved them, and the new thread needs to start running
+there. This may mean moving currently bursting load off that core. If $t \geq
+m$, the new thread should join the core already running that group with the
+lowest load.
 
-Timers are similar: if a BE processes' timer fires while the BE is parked, the
-kernel will handle the initial interrupt and send the process a signal. Once the
-load goes down and the BE runs, it will see the timer has fired.
+\textit{Dequeue} can similarly be broken down into cases: 1. if the thread
+exiting is the last thread in that group on that core, 2. if it is not. If it is
+the last thread, then the core needs to try to steal another runnable but queued
+thread from that group on a different core. If that's not possible, then any
+other group can burst: if there is queued best effort work run that, otherwise
+steal a thread from the most loaded core. If the thread being dequeued is not
+the last of its group on the core, no further action is required.
 
-Parking is expected to be short-lived, unlike approaches such as
-checkpoint-restore. A machine in a datacenter experiencing that high of a load
-is likely a localized problem, both in space (as in, will only effect some small
-number of machines) and time (as in, the high load on the machine won't last
-long). It is localized in space because microservices' loads are independent
-from one another: on the order of seconds and minutes, individual microservices'
-loads may vary, but broadly load is known to be predictable, so even if one
-machine is experiencing high load other machines won't be~\cite{TODO}. It is
-localized in time because of the distributed setting: a distributed scheduler
-monitors the state of all the machines and migrates load when it sees high CPU
-utilization, or an autoscaler starts new instances, shifting the excess LC load
-to remote machines and thereby allowing BEs to run again on the local machine.
+These interventions in \textit{enqueue} and \textit{dequeue} enforce the desired
+invariants.
+
+
+
+
