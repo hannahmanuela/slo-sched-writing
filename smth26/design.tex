@@ -1,67 +1,90 @@
 \section{Design}\label{s:design}
 
-We design a new cgroup interface file, cpuset.min, that allows groups, \ie{}
-applications, to have guaranteed access to their reserved CPUs, while at the
-same time supporting bursting on cores that are reserved but not currently in
-use. Best effort tasks need to be allowed to share cores with reserved
-workloads.
+We design a new cgroup interface file, cpuset.min, that allows the group, \ie{}
+application, to have guaranteed access to its reserved CPUs, while at the same
+time supporting bursting on cores that are reserved by someone else but not
+currently in use.
 
-\subsection{The Guarantees we want}
+\subsection{The interface}
 
 We imagine cpuset.min as a new interface file in the same cgroup controller as
-the existing cpuset mechanisms. cpuset.min takes in a list of cpu numbers, in
-the same way that existing cpuset mechanisms do.
-
-Groups with min cores are guaranteed to always be able to run on those cores,
-and to do so without interruption\hmng{should I asterisk this b/c not if the min
-core is shared}. Concretely, the invariant we need to maintain is that if a
-group has $m$ cpus that are designated as its min, and $t$ runnable threads,
-then if $t \leq m$ each thread will have its own core to run on. If $t > m$,
-then the $t$ threads will run on \textit{at least} $m$ cores. We make no
-guarantees about bursting: if there are unused cpu cores, we do not enforce that
-the extra cpu time will be allocated to align with any guarantees.
+the existing \cgroups{} cpuset mechanisms. cpuset.min takes in a list of cpu
+numbers, in the same way that existing cpuset mechanisms do; that list of cores
+represents a reservation for that application. 
 
 Developers can specify fractional CPUs by having the same cpu show up in
 multiple groups' min cores lists. In that case, each overlapped cpu is shared
-according to the weight specified in cpu.weight. We expect fractional cores will
-only be used for reservations that ask for less than one core, and make no
-guarantees about which min core a thread will run on. For example, if a core
-were to reserve two cores, one of which was shared and the other was not, we do
-not guarantee that the first thread to run will use the core that this group
-alone has reserved.
+according to the weight specified in cpu.weight.
 
-Best effort workloads have no min cores: they are not guaranteed any CPU time,
-and must not get CPU time on a given core $c$ if there is a runnable thread that
-has that $c$ as a min core.
+Best effort workloads have no min cores.
+
+\subsection{The guarantees we want}
+
+Groups with reserved min cores need to be guaranteed to always run on those
+cores if possible. Concretely, the invariant we need to maintain is that if a
+group has $m$ reserved cpus, and $t$ runnable threads, then if $t \leq m$ each
+thread will have its own core to run on. If $t > m$, then the $t$ threads will
+run on \textit{at least} $m$ cores.
+
+In addition to ensuring that a group runs on its reserved cores, we also need to
+guarantee that it will do so without interruption: best effort groups with no
+reservations must only run opportunistically. Concretely, we need to enforce
+that groups without reservations not get CPU time on a given core $c$ if there
+is a runnable thread that has that $c$ as a min core.
+
+Finally, we want to maintain Linux's work-conserving nature: cores should not go
+idle unless there is no work to do. If an application with a reservation has no
+work, we need to guarantee that a higher loaded application will use those
+cores.
+
+\hmng{the relation between bursting and best effort is not a settled question to
+me yet, but probably will end up being part of the above guarantees?}
+
+\subsection{Things we do not guarantee/are out of scope}
+
+We expect fractional cores will only be used for reservations that ask for less
+than one core, and therefore make no guarantees about which min core a thread
+will run on. For example, if an application were to reserve two cores, one of
+which was shared and the other was not, we do not guarantee that the first
+thread to run will use the core that this group alone has reserved.
+
+We also make no guarantees about who will get to burst, or how much.\hmng{we
+could change that}
 
 \subsection{The design that gets us those guarantees}
 
-We define \textit{events}, which are the relevant points in time at which
-cross-core scheduling decisions need to take place, in order to maintain the
-desired invariants. They are related to \textit{enqueue}, which is when a thread
-wakes up and needs to be enqueued on some cores runqueue, and \textit{dequeue},
-which is when a previously runnable thread exits or blocks and is removed from
-that cores runqueue.
+\hmng{this section is centered around guarantees, I could also center around
+processes (more along the lines of the previously defined entry/exit events,
+except they are more complicated here?), but given the guarantees is the thing
+we care about this seemed more helpful?}
 
-There are two cases in which \textit{enqueue} requires interposition. Let $t$ is
-again the number of threads and $m$ the number of reserved cores, the two cases
-are: 1. if $t < m$ for waking group, and 2. if $t \geq m$ for the waking group.
-In the first case, that means that at least one min core is currently not being
-used by the group that reserved them, and the new thread needs to start running
-there. This may mean moving currently bursting load off that core. If $t \geq
-m$, the new thread should join the core already running that group with the
-lowest load.
+The first guarantee we need to enforce is that a group will use as many of its
+reserved cores as possible. In order to do so, we need to intervene in
+\textit{enqueue}, which is when a thread wakes up and needs to be enqueued on
+some cores runqueue, and \textit{dequeue}, which is when a previously runnable
+thread exits or blocks and is removed from that cores runqueue. On enqueue, if
+there is a reserved core not yet running the waking group, the new thread needs
+to start running there. On dequeue, if the thread exiting or blocking is the
+last runnable thread of that group on that core, the core needs to try to steal
+another runnable but queued thread from that group on a different core.
+Together, these mechanisms enforce the desired invariant that if a group has $m$
+reserved cpus, and $t$ runnable threads, then it will use min$(m,t)$ cores.
 
-\textit{Dequeue} can similarly be broken down into cases: 1. if the thread
-exiting is the last thread in that group on that core, 2. if it is not. If it is
-the last thread, then the core needs to try to steal another runnable but queued
-thread from that group on a different core. If that's not possible, then any
-other group can burst: if there is queued best effort work run that, otherwise
-steal a thread from the most loaded core. If the thread being dequeued is not
-the last of its group on the core, no further action is required.
 
-These interventions in \textit{enqueue} and \textit{dequeue} enforce the desired
-invariants.
+The second guarantee is that threads in groups with reservations, when running
+on min cores, take precedent over other groups. We enforce this manually in the
+process that chooses the next thread to run \hmng{this is a bit of a todo, and
+will depend on how we decide to finesse the three levels - eg should it even
+ever happen that reserved and normal/bursting are on the same core? if not, what
+happens to groups that are not best effort (ie sched\_idle/sched\_be), but also
+have no reservation?}
+
+Finally, we want to ensure that if cores are available, applications with excess
+load are allowed to burst. To do this, we add to the aforementioned dequeue
+step: if we find no reserved threads to steal, we try to steal from an
+overloaded group with a reservation. If that fails, we run or try to steal best
+effort threads.\hmng{note that this is implying a prioritization of bursting
+over best effort}
 
 
 
