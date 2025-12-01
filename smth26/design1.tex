@@ -1,17 +1,21 @@
 \section{Design of \sys}
+\label{sec:global}
 
 \sys is a new design for scheduling processes that enforces group
-weights across cores.  It assign each runnable process a virtual based
-on its weight and maintains a global heap of virtual runtimes, with
-the process with lowest virtual at the front of the heap. To implement
-this global heap in a scalable manner, \sys uses an {\it approximate}
-global heap and may select process that has a virtual time slightly
-higher than the absolute minimum virtual time.  Finally, if several
-processes of the same group are runnable, \sys selects the one that it
-has run recently to provide core affinity so that the selected process
-runs with a warm L1/L2 caches.
+weights across cores.  It assign each runnable process a global
+virtual time based on its weight and maintains a heap of runnable
+processes based on their virtual runtimes, with the process with
+lowest virtual at the front of the heap (\autoref{sec:vt}) . To
+implement this heap in a scalable manner, \sys uses an {\it
+  approximate} global heap and may select a process that has a virtual
+time higher than the global minimum virtual time
+(\autoref{sec:approximate}).  Finally, if several processes of the
+same group are runnable, \sys selects the one that it has run recently
+to provide core affinity so that the selected process runs with a warm
+L1/L2 caches.
 
-\subsection{Virtual time}
+\subsection{Global virtual time}
+\label{sec:vt}
 
 \begin{figure}
 \input{code/group}
@@ -32,21 +36,21 @@ next available virtual runtime for a process in the cgroup to run, and
 \end{figure}
 
 When a process of in a group becomes runnable, \sys assigns it a
-virtual and inserts it in the global heap, as show in
+virtual time and inserts it in the global heap, as show in
 \autoref{fig:enq}. Consider a \cc{tick_length} of 1000us and two
 groups, $g_1$ with weight 10 and $g_2$ with weight 20. When a process
 of $g_1$ becomes runnable it will get assigned the current group's
-virtual time and increases it by 100, $ = 1000/10$.  If concurrently,
-on another core another process of $g_1$ becomes runnable it will be
+virtual time and increases it by 100 ($= 1000/10$).  If concurrently,
+on another core, another process of $g_1$ becomes runnable it will be
 assigned a virtual time that is 100 larger than the first process, and
 $g_1$'s virtual time will be incremented by 100, ensuring the
-processes are correctly spaced by 100 in virtual time.
+processes are correctly spaced in virtual time by 100.
 
 When a process of $g_2$ becomes runnable, it will increases its
-group's virtual time by 50, $ = 1000/20$, and the processes of $g_2$
-will be spaced by 50 in virtual time.  If we look over a window of a
+group's virtual time by 50 ($= 1000/20$), and the processes of $g_2$
+will be spaced in virtual time by 50.  If we look over a window of a
 1000 in virtual time, $g_1$ will run 10 times and $g_2$ will run 20
-times, reflecting their relative weight of 10 and 20.
+times, reflecting their relative weights of 10 and 20.
 
 \begin{figure}
 \input{code/adjust}
@@ -60,13 +64,35 @@ in \autoref{fig:adjust}.  The effect of adjusting is to move the
 group's virtual time backwards so that the next process of the group
 inherits the time that the first process didn't use.
 
+\begin{figure}
+\input{code/lag}
+\caption{Set group's virtual time when it becomes runnable.}
+\label{fig:lag}
+\end{figure}
+
+When the last running process of a group goes to sleep, \sys remembers
+the minimum virtual time of the heap in the process group's
+\cc{min_vt_deq}. It does so that it can set the group's \cc{vruntime} when
+the group becomes runnable again, as shown in \autoref{fig:lag}.  When
+the group becomes runnable, the global virtual runtime may have moved
+ahead since the group went to sleep. To account for this, \sys sets
+the group's virtual time to the current minimum global virtual time,
+adjusted for how much the group was ahead or behind the global minimum
+when the group dequeued.
+
 The way \sys computes virtual time is similar to Linux's fair-share
-scheduler with the main difference being that \sys must account for
-multiple cores concurrently assigning virtual times to processes of
-the same group.  Since in Linux virtual time is per run queue, and
-thus updated only by one core, it doesn't need to handle concurrent
-updates. It, for example, doesn't update the group's virtual
-on enqueue and adjust it if a process doesn't run for its full tick.
+scheduler with the main difference being that \sys must compute the
+virtual time globally, and, for example, account for multiple cores
+concurrently assigning virtual times to processes of the same group.
+Since in Linux virtual time is per run queue (and not global), and
+updated only by one core, it doesn't need to handle concurrent
+updates to virtual times. Linux, for example, doesn't need to update the group's
+virtual on enqueue, doesn't need to adjust it if a process run shorter
+than its full tick, and doesn't need to set a group's virtual time
+when it wakes up.
+
+\subsection{Approximate global heap}
+\label{sec:approximate}
 
 \begin{figure}
 \input{code/schedule}
