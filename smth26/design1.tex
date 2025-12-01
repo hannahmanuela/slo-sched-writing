@@ -82,14 +82,13 @@ when the group dequeued.
 
 The way \sys computes virtual time is similar to Linux's fair-share
 scheduler with the main difference being that \sys must compute the
-virtual time globally, and, for example, account for multiple cores
+virtual time globally, and, handle multiple cores
 concurrently assigning virtual times to processes of the same group.
-Since in Linux virtual time is per run queue (and not global), and
-updated only by one core, it doesn't need to handle concurrent
-updates to virtual times. Linux, for example, doesn't need to update the group's
-virtual on enqueue, doesn't need to adjust it if a process run shorter
-than its full tick, and doesn't need to set a group's virtual time
-when it wakes up.
+In Linux virtual time is per run queue (and not global), and updated
+only by one core. As a result, Linux, for example, doesn't need to
+update the group's virtual on enqueue, doesn't need to adjust it if a
+process runs shorter than its full tick, and doesn't need to set a
+group's virtual time when it wakes up.
 
 \subsection{Approximate global heap}
 \label{sec:approximate}
