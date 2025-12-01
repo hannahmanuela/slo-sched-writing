@@ -90,8 +90,13 @@ update the group's virtual on enqueue, doesn't need to adjust it if a
 process runs shorter than its full tick, and doesn't need to set a
 group's virtual time when it wakes up.
 
-\subsection{Approximate global heap}
+\subsection{\mheap: an approximate global heap}
 \label{sec:approximate}
+
+\sys's heap of global virtual time is written by many cores
+concurrently and often.  Cores select the process with the minimal
+virtual time from the heap and cores insert runnable processes in the
+heap based on their virtual times.
 
 \begin{figure}
 \input{code/schedule}
