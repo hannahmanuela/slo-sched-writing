@@ -1,7 +1,77 @@
 \section{Design of \sys}
 
+\sys is a new design for scheduling processes that enforces group
+weights across cores.  It assign each runnable process a virtual based
+on its weight and maintains a global heap of virtual runtimes, with
+the process with lowest virtual at the front of the heap. To implement
+this global heap in a scalable manner, \sys uses an {\it approximate}
+global heap and may select process that has a virtual time slightly
+higher than the absolute minimum virtual time.  Finally, if several
+processes of the same group are runnable, \sys selects the one that it
+has run recently to provide core affinity so that the selected process
+runs with a warm L1/L2 caches.
+
+\subsection{Virtual time}
+
+\begin{figure}
+\input{code/group}
+\caption{The state for each group}
+\label{fig:group}
+\end{figure}
+
+\autoref{fig:group} shows the state that \sys maintains for each
+cgroup: \cc{weight}, the groups weight, \cc{vruntime}, which is the
+next available virtual runtime for a process in the cgroup to run, and
+\cc{min_vt_deq}, which is the virtual runtime when a group goes to
+  ``sleep'' (i.e., when all group's processes are sleeping).
+
+\begin{figure}
+\input{code/enq}
+\caption{Enqueue a process}
+\label{fig:enq}
+\end{figure}
+
+When a process of in a group becomes runnable, \sys assigns it a
+virtual and inserts it in the global heap, as show in
+\autoref{fig:enq}. Consider a \cc{tick_length} of 1000us and two
+groups, $g_1$ with weight 10 and $g_2$ with weight 20. When a process
+of $g_1$ becomes runnable it will get assigned the current group's
+virtual time and increases it by 100, $ = 1000/10$.  If concurrently,
+on another core another process of $g_1$ becomes runnable it will be
+assigned a virtual time that is 100 larger than the first process, and
+$g_1$'s virtual time will be incremented by 100, ensuring the
+processes are correctly spaced by 100 in virtual time.
+
+When a process of $g_2$ becomes runnable, it will increases its
+group's virtual time by 50, $ = 1000/20$, and the processes of $g_2$
+will be spaced by 50 in virtual time.  If we look over a window of a
+1000 in virtual time, $g_1$ will run 10 times and $g_2$ will run 20
+times, reflecting their relative weight of 10 and 20.
+
+\begin{figure}
+\input{code/adjust}
+\caption{Adjust virtual runtime when a process yield before a full clock tick.}
+\label{fig:adjust}
+\end{figure}
+
+If a process yields its core before \cc{tick_length}, it adjusts the
+group's virtual time to reflect it didn't use the full tick, as shown
+in \autoref{fig:adjust}.  The effect of adjusting is to move the
+group's virtual time backwards so that the next process of the group
+inherits the time that the first process didn't use.
+
+The way \sys computes virtual time is similar to Linux's fair-share
+scheduler with the main difference being that \sys must account for
+multiple cores concurrently assigning virtual times to processes of
+the same group.  Since in Linux virtual time is per run queue, and
+thus updated only by one core, it doesn't need to handle concurrent
+updates. It, for example, doesn't update the group's virtual
+on enqueue and adjust it if a process doesn't run for its full tick.
+
 \begin{figure}
 \input{code/schedule}
 \caption{The schedule function}
 \label{fig:schedule}
 \end{figure}
+
+
