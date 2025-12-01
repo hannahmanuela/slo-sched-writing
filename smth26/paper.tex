@@ -1,50 +1,36 @@
-\documentclass[sigconf,anonymous,natbib=false,10pt]{acmart}
-\settopmatter{printacmref=false}
-\setcopyright{none}
-\renewcommand\footnotetextcopyrightpermission[1]{}
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\PassOptionsToPackage{hyphens}{url}
+\usepackage[style=base]{caption}
+\usepackage[10pt,nocopyright]{sigmin}
+\PassOptionsToPackage{pdfa, breaklinks, pdfborder={0 0 0}}{hyperref}
 
-\acmConference[TBD]{Unclear what}{Sometime
-2026}{Somewhere, Earth}
-
+\usepackage[square,comma,numbers,sort&compress]{natbib}
 
 % to be able to draw some self-contained figs
+\usepackage{times}
 \usepackage{tikz}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{hyperref}
 \usepackage[normalem]{ulem}
 \usepackage{listings}
 \usepackage{xspace}
 \usepackage{booktabs}
 \usepackage{multirow}
-% \usepackage{wasysym}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{enumitem}
+
+\usepackage{xcolor}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\usepackage{listings}
+\usepackage[T1]{fontenc}
+
 \usepackage[utf8]{inputenc}
 % \usepackage[compact, small]{titlesec}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
 
-\captionsetup{labelfont=bf,textfont=rm,belowskip=-8pt,aboveskip=4pt}
-
-% BibLaTeX for bibliography
-\usepackage[
-  backend=biber,
-  style=numeric-comp,
-  minalphanames=3,
-  isbn=false,
-  sortcites=true,
-  sorting=anyt,
-  abbreviate=false,
-  doi=false,
-  maxnames=99,
-  minbibnames=3,
-  maxbibnames=99]{biblatex}
-\addbibresource{paper.bib}
-
-\AtBeginBibliography{\small}
-\setcounter{biburllcpenalty}{7000}
-\setcounter{biburlucpenalty}{8000}
+\newcommand{\sys}{\textsc{GlobalHeap}}
 
 \newcommand{\schedidle}{\texttt{sched\_idle}}
 \newcommand{\schednormal}{\texttt{sched\_normal}}
@@ -68,13 +54,6 @@
 
 \newcommand\hmng[1]{\textcolor{blue!40!red}{[hmng: {#1}]}}
 
-\newcommand{\one}{({\em i}\/)}
-\newcommand{\two}{({\em ii}\/)}
-\newcommand{\three}{({\em iii}\/)}
-\newcommand{\four}{({\em iv}\/)}
-\newcommand{\five}{({\em v}\/)}
-\newcommand{\six}{({\em vi}\/)}
-
 \def\Snospace~{\S{}}
 \def\sectionautorefname{\Snospace}
 \def\subsectionautorefname{\Snospace}
@@ -85,22 +64,7 @@
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 
-\lstdefinestyle{rust}{
-    %backgroundcolor=\color{backcolour},
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{codepurple},
-    stringstyle=\color{blue},
-    basicstyle=\ttfamily\scriptsize,
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    showspaces=false,
-    showstringspaces=false,
-    showtabs=false,
-    tabsize=2
-}
-\lstset{style=rust}
+\input{code/fmt.tex}
 
 %-------------------------------------------------------------------------------
 \begin{document}
@@ -144,14 +108,16 @@
 \input{alternatives}
 \input{approach}
 \input{design}
+\input{design1}
 \input{implementation}
 \input{eval}
 \input{related}
 \input{conclusion}
 
 %-------------------------------------------------------------------------------
-% \bibliography{paper.bib}
-\printbibliography
+
+\bibliography{paper}{}
+\bibliographystyle{plainnat}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}

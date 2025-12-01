@@ -1,0 +1,16 @@
+\begin{Verbatim}[commandchars=\\\{\},numbers=left,firstnumber=1,stepnumber=1,codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax},fontsize=\scriptsize,numbersep=6pt,xleftmargin=0.2in]
+\PY{c+c1}{// Select next process to run}
+\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{gh\PYZus{}schedule}\PY{p}{(}\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{global\PYZus{}heap}\PY{+w}{ }\PY{o}{*}\PY{n}{gh}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{core}\PY{+w}{ }\PY{o}{*}\PY{n}{c}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{+w}{  }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{min\PYZus{}proc}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n+nb}{NULL}\PY{p}{;}
+\PY{+w}{  }\PY{k}{if}\PY{p}{(}\PY{n}{do\PYZus{}affinity}\PY{+w}{ }\PY{o}{\PYZam{}}\PY{o}{\PYZam{}}\PY{+w}{ }\PY{n}{gh}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{mh}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{nheap}\PY{+w}{ }\PY{o}{\PYZgt{}}\PY{+w}{ }\PY{l+m+mi}{1}\PY{+w}{ }\PY{o}{\PYZam{}}\PY{o}{\PYZam{}}\PY{+w}{ }\PY{n}{c}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{process}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{+w}{    }\PY{n}{min\PYZus{}proc}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{mh\PYZus{}min\PYZus{}affinity}\PY{p}{(}\PY{n}{c}\PY{p}{)}\PY{p}{;}
+\PY{+w}{  }\PY{p}{\PYZcb{}}
+\PY{+w}{  }\PY{k}{if}\PY{+w}{ }\PY{p}{(}\PY{n}{min\PYZus{}proc}\PY{+w}{ }\PY{o}{=}\PY{o}{=}\PY{+w}{ }\PY{n+nb}{NULL}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{+w}{    }\PY{n}{min\PYZus{}proc}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{mh\PYZus{}min\PYZus{}proc}\PY{p}{(}\PY{n}{gh}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{mh}\PY{p}{,}\PY{+w}{ }\PY{n}{c}\PY{p}{)}\PY{p}{;}
+\PY{+w}{  }\PY{p}{\PYZcb{}}
+\PY{+w}{  }\PY{k}{if}\PY{+w}{ }\PY{p}{(}\PY{n}{min\PYZus{}proc}\PY{+w}{ }\PY{o}{=}\PY{o}{=}\PY{+w}{ }\PY{n+nb}{NULL}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{+w}{    }\PY{k}{return}\PY{+w}{ }\PY{n+nb}{NULL}\PY{p}{;}
+\PY{+w}{  }\PY{p}{\PYZcb{}}
+\PY{+w}{  }\PY{k}{return}\PY{+w}{ }\PY{n}{min\PYZus{}proc}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+\end{Verbatim}
