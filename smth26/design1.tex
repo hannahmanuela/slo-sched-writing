@@ -14,7 +14,7 @@ schedule, it samples two heaps and chooses the process with the
 smallest virtual time.  It is relaxed in the sense that the chosen
 process may have a higher virtual time than the global virtual time,
 but the random sampling ensures that the chosen process has a virtual
-time that is close to global the minimum.  \sys leverage
+time that is close to global the minimum.  \sys leverages
 the existences of multiple heaps to allow a core to select a process
 that it has run recently so that the process runs with a warm L1/L2
 cache (\autoref{sec:relaxed}). 
@@ -112,7 +112,7 @@ $d$ is a small constant (typically 2).  To find the minimum element to delete,
 concurrent priority queues chooses two random queues and removes the
 smallest one. The intuition behind this idea is from randomized load
 balancing: choosing two randomly-chosen machines and add a ball to the
-least-loaded one results in a maximum load very close to the average
+least-loaded one results in a maximum load close to the average
 load with high
 probability~\cite{mitzenmacher:power,berenbrink:balanced}.
 
@@ -125,11 +125,29 @@ that scales with increasing number of cores and that the rank error (the
 distance of the deleted element to the best element) is in expectation
 $O(c \log c)$ with high probability~\cite{williams:multiqueue}.
 
-\begin{figure}
-\input{code/schedule}
-\caption{The schedule function}
-\label{fig:schedule}
-\end{figure}
+Concurrent priority queues don't provide locality for processes;
+because all processes are totally ordered by virtual time and cores
+randomly sample queues, it is likely that if one core has run a
+process, that process will run next on a different core. This results
+in poor L1/L2 cache performance for all processes.
+
+\sys modifies the select operation of concurrent priority queues to
+allow cores to choose a process that it has run recently so that the
+process can benefit from a warm L1/L2 cache.  A core remembers the PID
+of the last process it ran, which, if it is runnable, is in some
+random heap.  If the process is at the front of that heap, \sys
+samples one random heap.  If the process in the sampled heap belong to
+the same cgroup (i.e., has the same weight) as the recently-run
+process, \sys removes the recently-run process heap and runs it.  This
+process may have a higher virtual time than the non-selected process,
+but since that process is at the front of a heap, another core is likely to
+select it soon.
+
+%\begin{figure}
+%\input{code/schedule}
+%\caption{The schedule function}
+%\label{fig:schedule}
+%\end{figure}
 
 
 
