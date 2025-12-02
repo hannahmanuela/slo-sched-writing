@@ -70,10 +70,11 @@ low-weight process on one core, unaware that a high-weight process is
 runnable and waiting on another.  This happens because Linux uses
 per-core run queues and searching other run queues on each scheduling
 decision doesn't scale with increasing number of cores.  A key
-challenge this paper addresses is enforcing global weights while
+challenge this paper addresses is enforcing global weights (as the
+\cgroups{} documentation specifies) while
 achieving good multi-core scalability for scheduling operations.
 
-\fk{explain \sys}
+\fk{explain \sys: global virtual time and multiqueue}
 
 \fk{summarize implementation and results}
 
