@@ -3,10 +3,10 @@
 \PY{+w}{        }\PY{k}{return}\PY{+w}{ }\PY{n}{delta}\PY{+w}{ }\PY{o}{/}\PY{+w}{ }\PY{n}{weight}\PY{p}{;}
 \PY{p}{\PYZcb{}}
 
-\PY{k+kt}{void}\PY{+w}{ }\PY{n+nf}{enq\PYZus{}proc\PYZus{}vt}\PY{p}{(}\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{global\PYZus{}heap}\PY{+w}{ }\PY{o}{*}\PY{n}{gh}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{core}\PY{+w}{ }\PY{o}{*}\PY{n}{c}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{p}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{heap}\PY{+w}{ }\PY{o}{*}\PY{n}{h}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{k+kt}{void}\PY{+w}{ }\PY{n+nf}{enq\PYZus{}proc\PYZus{}vt}\PY{p}{(}\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{global\PYZus{}heap}\PY{+w}{ }\PY{o}{*}\PY{n}{gh}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{p}\PY{p}{,}\PY{+w}{ }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{heap}\PY{+w}{ }\PY{o}{*}\PY{n}{h}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
 \PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{wvt}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{calc\PYZus{}delta}\PY{p}{(}\PY{n}{gh}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{tick\PYZus{}length}\PY{p}{,}\PY{+w}{ }\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{he}\PY{p}{.}\PY{n}{weight}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{my\PYZus{}vt}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{atomic\PYZus{}fetch\PYZus{}add}\PY{p}{(}\PY{o}{\PYZam{}}\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{group}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{vruntime}\PY{p}{,}\PY{+w}{ }\PY{n}{vt}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{he}\PY{p}{.}\PY{n}{vruntime}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{my\PYZus{}vt}\PY{p}{;}
-\PY{+w}{  }\PY{n}{mh\PYZus{}add\PYZus{}process}\PY{p}{(}\PY{n}{c}\PY{p}{,}\PY{+w}{ }\PY{n}{p}\PY{p}{,}\PY{+w}{ }\PY{n}{h}\PY{p}{)}\PY{p}{;}
+\PY{+w}{  }\PY{n}{mh\PYZus{}add\PYZus{}process}\PY{p}{(}\PY{n}{p}\PY{p}{,}\PY{+w}{ }\PY{n}{h}\PY{p}{)}\PY{p}{;}
 \PY{p}{\PYZcb{}}
 \end{Verbatim}
