@@ -93,18 +93,39 @@ virtual time when it wakes up.
 \subsection{\mheap: an relaxed global heap}
 \label{sec:relaxed}
 
-\sys's heap of global virtual time is written by many cores
-concurrently and often: cores select the process with the minimal
-virtual time from the heap and insert runnable processes in the heap
-based on their virtual times.  To avoid serializing the writes to the
-global heap, \sys uses a multi-heap design with an relaxed global
-minimum, which we call \mheap, and is based on fast relaxed concurrent
-priority queues~\cite{}.
+\sys's heap of runnable processes is often written by many cores
+concurrently: cores remove the process with the minimal virtual time
+from the heap and insert runnable processes in the heap based on their
+virtual times.  To avoid operations contending on the global heap, \sys
+uses a multi-heap design with a relaxed global minimum, which is based
+on relaxed concurrent priority queues~\cite{multiqueue:2015}.
+
+In concurrent priority queues, a core inserts an element in a random
+queue out of $n \times d$ queues, where $n$ is the number of cores and
+$d$ is a small constant (typically 2).  To find the minimum element to delete,
+concurrent priority queues chooses two random queues and removes the
+smallest one. The intuition behind this idea is from randomized load
+balancing: choosing two randomly-chosen machines and add a ball to the
+least-loaded one results in a maximum load very close to the average
+load with high
+probability~\cite{mitzenmacher:power,berenbrink:balanced}.
+
+Concurrent priority queues are attractive for implementing \sys
+because they allow for concurrent write operations.  Each queue has
+its own lock and cores retry choosing a random queue if the chosen
+queue is locked by another core.  Williams et al. show---in theory and
+in practice---that concurrent priority queues can achieve throughout
+that scales with increasing number of cores and that the rank error (the
+distance of the deleted element to the best element) is in expectation
+$O(c \log c)$ with high probability~\cite{williams:multiqueue}.
 
 \begin{figure}
 \input{code/schedule}
 \caption{The schedule function}
 \label{fig:schedule}
 \end{figure}
+
+
+
 
 
