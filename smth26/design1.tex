@@ -133,21 +133,52 @@ in poor L1/L2 cache performance for all processes.
 
 \sys modifies the select operation of concurrent priority queues to
 allow cores to choose a process that it has run recently so that the
-process can benefit from a warm L1/L2 cache.  A core remembers the PID
-of the last process it ran, which, if it is runnable, is in some
+process can benefit from a warm L1/L2 cache.  A core remembers the
+last process it ran, which, if it is runnable, is in some
 random heap.  If the process is at the front of that heap, \sys
-samples one random heap.  If the process in the sampled heap belong to
+samples one random heap.  If the process in the sampled heap belongs to
 the same cgroup (i.e., has the same weight) as the recently-run
-process, \sys removes the recently-run process heap and runs it.  This
+process, \sys removes the recently-run process and runs it.  This
 process may have a higher virtual time than the non-selected process,
 but since that process is at the front of a heap, another core is likely to
 select it soon.
 
-%\begin{figure}
-%\input{code/schedule}
-%\caption{The schedule function}
-%\label{fig:schedule}
-%\end{figure}
+\begin{figure}
+\input{code/schedule}
+\caption{Selecting with affinity}
+\label{fig:schedule}
+\end{figure}
+
+\autoref{fig:schedule} shows the details of core-affinity
+selection. If \cc{cp}, the process that the core has run recently, has
+already been selected by another core, \cc{min_affinity} returns
+immediately and falls back to sampling two heaps
+without consideration of affinity, as described above.
+
+Next, \cc{min_affinity} checks if \cc{cp} is at the front of the
+random heap that it was inserted in. If so, it acquires the lock of
+that heap and re-checks if \cc{cp} is still at the front, in case
+another core slipped between the first check and the lock acquisition.
+Next, \cc{min_affinity} chooses a random heap and invokes
+\cc{select_affinity}, which checks if the min process of the
+randomly-chosen heap belongs to the same cgroup or has a higher
+virtual time. If so, the \cc{min_affinity} ignores the randomly-chosen
+heap and returns \cc{cp}. The process \cc{cp} will now run on the same
+core as it ran recently on and with a warm L1/L2 cache.
+
+If \cc{select_affinity} returns the randomly-chosen heap, \cc{min_affinity}
+tries to acquire the lock of that heap to run its min process.  If it
+fails to lock (because another core just locked it), \cc{min_affinity}
+selects another random heap and starts over again (and may select
+\cc{cp}). If \cc{select_affinity} acquires the heap's lock
+successfully, it returns that heap's min process for the core to run.
+
+The number of retries is likely to be small, because the number of
+heaps is $c \times d$. So, \cc{min_affinity} is likely to quickly find a heap
+that hasn't been locked by another core, even if all other cores have
+locked some heap.
+
+
 
 
 
