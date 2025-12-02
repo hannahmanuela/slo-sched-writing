@@ -119,29 +119,31 @@ probability~\cite{mitzenmacher:power,berenbrink:balanced}.
 Concurrent priority queues are attractive for implementing \sys
 because they allow for concurrent write operations.  Each queue has
 its own lock and cores retry choosing a random queue if the chosen
-queue is locked by another core.  Williams et al. show---in theory and
+queue is locked by another core.  Williams et AL. show---in theory and
 in practice---that concurrent priority queues can achieve throughout
 that scales with increasing number of cores and that the rank error (the
 distance of the deleted element to the best element) is in expectation
 $O(c \log c)$ with high probability~\cite{williams:multiqueue}.
 
-Concurrent priority queues don't provide locality for processes;
-because all processes are totally ordered by virtual time and cores
+Concurrent priority queues don't provide core-affinity for processes.
+Because all processes are totally ordered by virtual time and cores
 randomly sample queues, it is likely that if one core has run a
 process, that process will run next on a different core. This results
-in poor L1/L2 cache performance for all processes.
+in poor L1/L2 cache performance for all processes.  \sys modifies the
+selection procedure to realize some core affinity while preserving
+global weights.
 
-\sys modifies the select operation of concurrent priority queues to
-allow cores to choose a process that it has run recently so that the
-process can benefit from a warm L1/L2 cache.  A core remembers the
-last process it ran, which, if it is runnable, is in some
-random heap.  If the process is at the front of that heap, \sys
-samples one random heap.  If the process in the sampled heap belongs to
-the same cgroup (i.e., has the same weight) as the recently-run
-process, \sys removes the recently-run process and runs it.  This
-process may have a higher virtual time than the non-selected process,
-but since that process is at the front of a heap, another core is likely to
-select it soon.
+Specifically, \sys modifies the select operation of concurrent
+priority queues to allow cores to choose a process that it has run
+recently so that the process can benefit from a warm L1/L2 cache.  A
+core remembers the last process it ran, which, if it is runnable, is
+in some random heap.  If the process is at the front of that heap,
+\sys samples one random heap.  If the process in the sampled heap
+belongs to the same cgroup (i.e., has the same weight) as the
+recently-run process, \sys removes the recently-run process and runs
+it.  This process may have a higher virtual time than the non-selected
+process, but since that process is at the front of a heap, another
+core is likely to select it soon.
 
 \begin{figure}
 \input{code/schedule}
@@ -149,11 +151,11 @@ select it soon.
 \label{fig:schedule}
 \end{figure}
 
-\autoref{fig:schedule} shows the details of core-affinity
-selection. If \cc{cp}, the process that the core has run recently, has
+\autoref{fig:schedule} shows core-affinity selection in more
+detail. If \cc{cp}, the process that the core has run recently, has
 already been selected by another core, \cc{min_affinity} returns
-immediately and falls back to sampling two heaps
-without consideration of affinity, as described above.
+immediately and falls back to sampling two heaps without consideration
+of affinity, as described above.
 
 Next, \cc{min_affinity} checks if \cc{cp} is at the front of the
 random heap that it was inserted in. If so, it acquires the lock of
@@ -178,9 +180,13 @@ heaps is $c \times d$. So, \cc{min_affinity} is likely to quickly find a heap
 that hasn't been locked by another core, even if all other cores have
 locked some heap.
 
-
-
-
-
-
-
+Core-affinity selection favors cache performance of high-weight
+processes over low-weight processes. The highest-weight group with a
+number of processes in the order of number of cores will often see its
+processes run on cores they ran previously on, because high-weight
+processes will have a low virtual time and be at the front of some
+heap.  On the other hand, lower-weight processes are unlikely to see
+much core affinity.  This trade-off reflects that higher-weight
+processes are more important than lower-weight processes.  Note,
+however, that core-affinity selection preserves global weights and
+lower-weight processes will get their CPU share.
