@@ -2,26 +2,26 @@
 \section{Problem}\label{s:problem}
 %-------------------------------------------------------------------------------
 
-We find that the observed behavior when running applications on Kubernetes
-violates the expectation of stable performance for high QOS class pods:
-Guaranteed as well as Burstable pods see latency increases based on load on
-lower QOS classes. We track the issue down to Linux' \cgroups{}, and show that
-its interface is not conducive to supporting the QOS classes.
+This section shows that the observed behavior when running
+applications on Kubernetes violates the expectation of stable
+performance for high QOS class pods: Guaranteed as well as Burstable
+pods see latency increases based on load on lower classes. We
+track the issue down to Linux' \cgroups{}, and show that its
+implementation is not conducive to supporting the classes, and
+violates the behavior that the \cgroups{} documentation specifies.
 
 We use as a case study a small but realistic social network web application,
 which we run using Kubernetes. We use a CPU-bound server for Guaranteed or
 Burstable, and an image resize job for the BestEffort QOS class. In all cases,
 we run two pods, each requesting 2 cores, on the same four cores.
 
-
 \subsection{BestEffort pods impact Burstable and Guaranteed performance}
 
-A key tenet of the QOS classes is that the lowest class, BestEffort, be
+A goal of the QOS classes is that the lowest class, BestEffort, be
 invisible to higher classes. BestEffort tasks need to be preempted as soon as a
-higher class pod has anything to run. If this is correctly enforced, Guaranteed
+higher-class pod has anything to run. If this is correctly enforced, Guaranteed
 and Burstable pods should be able to maintain steady average and tail latency
 in the face of changing load on a BestEffort job.
-
 
 \begin{figure}[t]
     \centering
@@ -74,13 +74,13 @@ given a weight of 157, whereas one that request 2 CPUs was given a weight of 79.
 Kubernetes uses the smallest weight possible, 1, to run BestEffort pods.
 
 The key fact relevant here about \cgroups{} weight is that \textit{weights are a
-local property}. Linux maintains a separate runqueue on each core, and within
-each runqueue, Linux's scheduler works to maintain the correct ratio of received
+local property}. Linux maintains a separate run-queue on each core, and within
+each run-queue, Linux's scheduler works to maintain the correct ratio of received
 CPU time at each scheduling; but Linux does not enforce the weight ratios across
 cores.
 
 The observed inversion happens then because the threading model of the server
-interacts with the per-core runqueues. The server uses a pool of worker threads
+interacts with the per-core run-queues. The server uses a pool of worker threads
 (one per client). The number of threads that the server has is larger than the
 number of cores, which means that each core has multiple server threads. It
 occasionally occurs that all the current requests are on server threads that
@@ -91,7 +91,7 @@ low weight image resize thread, even while other cores have queued high weight
 processes.
 
 
-\subsection{Pods with reservations affect each other's performance}
+\subsection{Burstable pods affect Guaranteed pods}
 
 Another relevant promise of the QOS-class-based interface is that two pods with
 reservations not affect each other. Because Kubernetes never oversubscribes on
@@ -110,9 +110,6 @@ load, irrespective of the load on a Burstable pod running alongside it.
 
 To test this expectation, we run experiments using two servers: service1 runs
 the same web server, and service2 is a simple CPU-bound server. 
-
-\subsubsection{Burstable pods affect Guaranteed pods}
-
 We run the web server in the Guaranteed class, and service2 in the Burstable
 class. Surprisingly, we see a significant latency impact under high load.
 \autoref{fig:kubernetes-lc-burst} shows the web server's latency and the overall
@@ -147,7 +144,7 @@ We conclude that the issue boils down to the locality of weights again: if the
 core with both servers' threads knew service2 had other cores all to itself it
 could compensate, but it doesn't know, so it treats both equally.
 
-
+\if 0
 \subsubsection{Guaranteed pods affect other Guaranteed pods}
 
 One might think that two Guaranteed pods avoid this issue: because they are both
@@ -200,7 +197,9 @@ up.
 limits for exactly this reason, and cite the reddit articles/presentations I
 found}
 
-\subsection{Things that you might think fix it, but don't}
+\fi
+
+\subsection{Existing Linux mechanisms that aren't fixes}
 
 \subsubsection{Load balancing}
 
@@ -242,24 +241,36 @@ much higher for 99th percentile latencies. At a baseline utilization of 95\%,
 those numbers increase to up to 40ms for the the mean latency, and 80ms for the
 tail.
 
+The last experiment underscores the problems identified in this
+previous subsections are unrelated to Kubernetes.  The last experiment
+above doesn't involve Kubernetes, just \cgroups{}.
+
+\subsection{Alternatives to cgroups}
+
+Weights remains the \cgroups{} interface of choice for Kubernetes as
+well as others like Firecracker and libvirt, but Linux also supports
+other mechanisms for scheduling.  The Linux scheduler is hierarchical:
+it supports different \textit{scheduling classes}, within which there
+might be different \textit{policies}. The \normalclass{} scheduling
+class is the one most people know --- it used to run a Completely Fair
+Scheduler (CFS) and now runs a version of Earliest Eligible Virtual
+Deadline First (EEVDF). It is the default scheduler, and \cgroups{}
+weight is only effective within the \normalclass{} class.  In the
+appendix we show that the \schedidle{} policy for the \normalclass{}, and
+other scheduling classes are not satisfactory alternatives to
+\cgroups{}.
+
 \subsection{Summary}
 
-From this section we conclude that the reason why Kubernetes fails to enforce
-reservations as expected is \cgroups{}, and they way Kubernetes uses its
-interface. There are two main ways \cgroups{} fails to provide Kubernetes with
-an interface conducive to enforcing reservations.
+From this section we conclude that \cgroups{} doesn't deliver on what
+the documentation says: each group should get time proportional to its
+weight as a share of the sum of weights of runnable groups.  The
+reason Linux fails to achieve this goal is because Linux uses per-CPU
+run-queues, and enforces weights only per run-queue, violating what the
+documentation says. The per-core weights result in scheduling
+anonamolies where one core doesn't realize that another core has a
+runnable high-weight process.
 
-\textit{\cgroups{} enforces weight splits locally.} Linux uses per-CPU
-runqueues, and enforces weights only per-runqueue. This means that temporary but
-frequent imbalances can lead to frequent priority inversion. The result is that
-a pod with a reservation runs on fewer cores than it reserved.
-
-\textit{\cgroups{} max interface is unintuitive and enforces a meaningfully
-different interface than a reservation.} Because the cpu.max interface is based
-on a runtime quota that is bulk-renewed, pods can still burst, just for a
-limited amount of time. This creates a cyclic dynamic of overloaded Guaranteed
-pods bursting within the runtime period $r$ and affecting other pods, and then
-being throttled.
 
 
 

@@ -22,14 +22,15 @@ What most systems do instead is allow other workloads to run
 opportunistically on temporarily unutilized resources. Such workloads
 include \textit{best effort} ones, which have no reservations, as well
 letting services with reservations temporarily \textit{burst}, meaning
-use more CPUs than they asked for. Having these additional classes
-solves the utilization problem: \textit{guaranteed} services with
-reservations get access to the CPUs they requested when desired, while
-best effort or bursting services can make use of otherwise idle
-resources.  Kubernetes has these three service
-classes~\cite{kubernetes-pod-qos-types}. AWS similarly supports both
-guaranteed- and burstable-style reservations, with their M and T
-instance types~\cite{aws-ec2-burstable,aws-ec2-resources}.
+use more CPUs than they asked for. Having these additional
+Quality-Of-Sercie (QOS) classes solves the utilization problem:
+\textit{guaranteed} services with reservations get access to the CPUs
+they requested when desired, while best effort or bursting services
+can make use of otherwise idle resources.  Kubernetes provides these
+three service classes for pods~\cite{kubernetes-pod-qos-types}, which
+are named BestEffort, Guaranteed, and Burstable. AWS similarly
+supports both guaranteed- and burstable-style reservations, with their
+M and T instance types~\cite{aws-ec2-burstable,aws-ec2-resources}.
 
 To support these classes, many systems use Linux's
 \cgroups{}~\cite{cgroups-kerneldocs} to enforce CPU reservations.  For

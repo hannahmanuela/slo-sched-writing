@@ -2,19 +2,6 @@
 \section{Alternatives to \cgroups{}}\label{s:alternatives}
 %-------------------------------------------------------------------------------
 
-Weights remains the \cgroups{} interface of choice for Kubernetes as well as
-others like Firecracker and libvirt, but Linux also supports other mechanisms
-for scheduling. In this section we discuss the existing alternatives to using
-\cgroups{} weights in Linux, and show that none of them completely address the
-issue.
-
-The Linux scheduler is hierarchical: it supports different \textit{scheduling
-classes}, within which there might be different \textit{policies}. The
-\normalclass{} scheduling class is the one most people know --- it used to run a
-Completely Fair Scheduler (CFS) and now runs a version of Earliest Eligible
-Virtual Deadline First (EEVDF). It is the default scheduler, and \cgroups{}
-weight is only effective within the \normalclass{} class.
-
 \subsection{\schedidle{}}
 
 \begin{figure}[t]
