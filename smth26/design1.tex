@@ -2,16 +2,16 @@
 \label{sec:global}
 
 \sys is a new design for scheduling processes that enforces group
-weights across cores.  It assign each runnable process a global
-virtual time based on its weight and maintains a heap of runnable
-processes based on their virtual runtimes, with the process with
-lowest virtual at the front of the heap (\autoref{sec:vt}) . To
-implement this heap in a scalable manner, \sys uses an {\it
-  approximate} global heap and may select a process that has a virtual
-time higher than the global minimum virtual time
-(\autoref{sec:approximate}).  Finally, if several processes of the
-same group are runnable, \sys selects the one that it has run recently
-to provide core affinity so that the selected process runs with a warm
+weights globally across cores.  It assigns each runnable process a
+global virtual time based on its group weight. \sys maintains a heap
+of these processes based on their virtual runtimes, with the process
+with lowest virtual time at the front of the heap
+(\autoref{sec:vt}). To implement this heap in a scalable manner, \sys
+uses an {\it relaxed} global heap and may select a process that has a
+virtual time higher than the global minimum virtual time
+(\autoref{sec:relaxed}).  Finally, if several processes of the same
+group are runnable, \sys selects the one that it has run recently to
+provide core affinity so that the selected process runs with a warm
 L1/L2 caches.
 
 \subsection{Global virtual time}
@@ -58,9 +58,9 @@ times, reflecting their relative weights of 10 and 20.
 \label{fig:adjust}
 \end{figure}
 
-If a process yields its core before \cc{tick_length}, it adjusts the
-group's virtual time to reflect it didn't use the full tick, as shown
-in \autoref{fig:adjust}.  The effect of adjusting is to move the
+If a process yields its core before \cc{tick_length}, \sys adjusts the
+group's virtual time to reflect that the process didn't use the full
+tick, as shown in \autoref{fig:adjust}.  The adjustment moves move the
 group's virtual time backwards so that the next process of the group
 inherits the time that the first process didn't use.
 
@@ -72,7 +72,7 @@ inherits the time that the first process didn't use.
 
 When the last running process of a group goes to sleep, \sys remembers
 the minimum virtual time of the heap in the process group's
-\cc{min_vt_deq}. It does so that it can set the group's \cc{vruntime} when
+\cc{min_vt_deq}. It does so to set the group's \cc{vruntime} when
 the group becomes runnable again, as shown in \autoref{fig:lag}.  When
 the group becomes runnable, the global virtual runtime may have moved
 ahead since the group went to sleep. To account for this, \sys sets
@@ -82,21 +82,24 @@ when the group dequeued.
 
 The way \sys computes virtual time is similar to Linux's fair-share
 scheduler with the main difference being that \sys must compute the
-virtual time globally, and, handle multiple cores
-concurrently assigning virtual times to processes of the same group.
-In Linux virtual time is per run queue (and not global), and updated
-only by one core. As a result, Linux, for example, doesn't need to
-update the group's virtual on enqueue, doesn't need to adjust it if a
-process runs shorter than its full tick, and doesn't need to set a
-group's virtual time when it wakes up.
+virtual time globally, and, handle multiple cores concurrently
+assigning virtual times to processes of the same group.  In Linux
+virtual time is per run queue (and not global), and updated only by
+one core. As a result, Linux, for example, doesn't need to update the
+group's virtual on enqueue, doesn't need to adjust it if a process
+runs shorter than its full tick, and doesn't need to set a group's
+virtual time when it wakes up.
 
-\subsection{\mheap: an approximate global heap}
-\label{sec:approximate}
+\subsection{\mheap: an relaxed global heap}
+\label{sec:relaxed}
 
 \sys's heap of global virtual time is written by many cores
-concurrently and often.  Cores select the process with the minimal
-virtual time from the heap and cores insert runnable processes in the
-heap based on their virtual times.
+concurrently and often: cores select the process with the minimal
+virtual time from the heap and insert runnable processes in the heap
+based on their virtual times.  To avoid serializing the writes to the
+global heap, \sys uses a multi-heap design with an relaxed global
+minimum, which we call \mheap, and is based on fast relaxed concurrent
+priority queues~\cite{}.
 
 \begin{figure}
 \input{code/schedule}
