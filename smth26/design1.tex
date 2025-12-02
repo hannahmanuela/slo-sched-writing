@@ -7,12 +7,17 @@ global virtual time based on its group weight. \sys maintains a heap
 of these processes based on their virtual runtimes, with the process
 with lowest virtual time at the front of the heap
 (\autoref{sec:vt}). To implement this heap in a scalable manner, \sys
-uses an {\it relaxed} global heap and may select a process that has a
-virtual time higher than the global minimum virtual time
-(\autoref{sec:relaxed}).  Finally, if several processes of the same
-group are runnable, \sys selects the one that it has run recently to
-provide core affinity so that the selected process runs with a warm
-L1/L2 caches.
+uses a {\it relaxed} heap based on concurrent priority
+queues~\cite{multiqueue:2015},
+which internally uses many heaps; when selecting a process to
+schedule, it samples two heaps and chooses the process with the
+smallest virtual time.  It is relaxed in the sense that the chosen
+process may have a higher virtual time than the global virtual time,
+but the random sampling ensures that the chosen process has a virtual
+time that is close to global the minimum.  \sys leverage
+the existences of multiple heaps to allow a core to select a process
+that it has run recently so that the process runs with a warm L1/L2
+cache (\autoref{sec:relaxed}). 
 
 \subsection{Global virtual time}
 \label{sec:vt}
@@ -90,15 +95,16 @@ group's virtual on enqueue, doesn't need to adjust it if a process
 runs shorter than its full tick, and doesn't need to set a group's
 virtual time when it wakes up.
 
-\subsection{\mheap: an relaxed global heap}
+\subsection{\sys's relaxed heap}
 \label{sec:relaxed}
 
 \sys's heap of runnable processes is often written by many cores
 concurrently: cores remove the process with the minimal virtual time
 from the heap and insert runnable processes in the heap based on their
-virtual times.  To avoid operations contending on the global heap, \sys
-uses a multi-heap design with a relaxed global minimum, which is based
-on relaxed concurrent priority queues~\cite{multiqueue:2015}.
+virtual times.  To avoid operations contending on the global heap,
+\sys uses a multi-heap design with a relaxed global minimum, which is
+based on relaxed concurrent priority queues~\cite{multiqueue:2015,
+  williams:arxiv, williams:multiqueue}.
 
 In concurrent priority queues, a core inserts an element in a random
 queue out of $n \times d$ queues, where $n$ is the number of cores and
