@@ -10,10 +10,11 @@ DEPS := \
         $(C_SOURCES:.c=.tex)
 
 LATEXRUN := ./bin/latexrun --bibtex-args=-min-crossrefs=100
+PANDOC   := pandoc
 
 .PHONY: all clean
 
-all: paper.pdf
+all: paper.pdf abstract.txt
 
 %.pdf: %.tex $(DEPS)
 	$(LATEXRUN) -W no-all $<
@@ -21,8 +22,11 @@ all: paper.pdf
 code/%.tex: code/%.c
 	pygmentize -O "linenos=1,tabsize=2" -P mathescape -P verboptions='fontsize=\scriptsize,numbersep=6pt,xleftmargin=0.2in' -f latex $<  > $@
 
-all: paper.pdf
+%.txt: %.tex
+	cat $< | \
+                sed 's/\\sys/GlobalHeap/g' | \
+                $(PANDOC) -o $@ -f latex -t plain --wrap=none
 
 clean:
 	rm -rf latex.out *.aux *.bbl *.blg *.log *.ent *.out *fls *.bcf *.aux\
-	paper.pdf code/*.tex
+	paper.pdf code/*.tex abstract.txt
