@@ -262,14 +262,15 @@ other scheduling classes are not satisfactory alternatives to
 
 \subsection{Summary}
 
-From this section we conclude that \cgroups{} doesn't deliver on what
-the documentation says: each group should get time proportional to its
-weight as a share of the sum of weights of runnable groups.  The
-reason Linux fails to achieve this goal is because Linux uses per-CPU
-run-queues, and enforces weights only per run-queue, violating what the
-documentation says. The per-core weights result in scheduling
-anonamolies where one core doesn't realize that another core has a
-runnable high-weight process.
+From this section we conclude that Linux's \cgroups{} implementation
+doesn't meet the specification stated in the documentation.  The
+reason Linux fails to achieve the specification is because Linux uses
+per-CPU run-queues, and enforces weights only per run-queue.  This
+implementation can result in scheduling anomalies where one core
+doesn't realize that another core has a runnable high-weight process,
+resulting in occasional latency spikes for client requests to the
+high-weight process.
+
 
 
 
