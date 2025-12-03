@@ -1,5 +1,5 @@
 struct group {
-	int weight;
+	w_t weight;
 	vt_t vruntime;
 	vt_t min_vt_deq;
 }

@@ -69,11 +69,12 @@ As we show in more detail in \autoref{s:problem}, the problem that
 leads to the increased latencies observed is that Linux will run a
 low-weight process on one core, unaware that a high-weight process is
 runnable and waiting on another.  This happens because Linux uses
-per-core run queues and searching other run queues on each scheduling
-decision doesn't scale with increasing number of cores.  A key
-challenge this paper addresses is enforcing global weights (as the
-\cgroups{} documentation specifies) while
-achieving good multi-core scalability for scheduling operations.
+per-core run queues and each core searches its own run-queue when
+making a scheduling decision and doesn't search other core's queues
+for runnable heavy-weight processes (which doesn't scale with
+increasing number of cores).  A key challenge this paper addresses is
+enforcing global weights (as the \cgroups{} documentation specifies)
+while achieving good multi-core scalability for scheduling operations.
 
 \fk{explain \sys: global virtual time and multiqueue}
 

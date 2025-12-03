@@ -1,7 +1,7 @@
 \begin{Verbatim}[commandchars=\\\{\},numbers=left,firstnumber=1,stepnumber=1,codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax},fontsize=\scriptsize,numbersep=6pt,xleftmargin=0.2in]
 \PY{k+kt}{void}\PY{+w}{ }\PY{n+nf}{set\PYZus{}vruntime}\PY{p}{(}\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{p}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
 \PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{lag}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{group}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{vruntime}\PY{+w}{ }\PY{o}{\PYZhy{}}\PY{+w}{ }\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{group}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{min\PYZus{}vt\PYZus{}deq}\PY{p}{;}
-\PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{h\PYZus{}min}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{mh\PYZus{}min\PYZus{}vt}\PY{p}{(}\PY{n}{h}\PY{p}{)}\PY{p}{;}
+\PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{h\PYZus{}min}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{min\PYZus{}vt}\PY{p}{(}\PY{n}{h}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{k}{if}\PY{p}{(}\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{group}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{min\PYZus{}vt\PYZus{}deq}\PY{+w}{ }\PY{o}{\PYZgt{}}\PY{+w}{ }\PY{n}{h\PYZus{}min}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
 \PY{+w}{    }\PY{n}{lag}\PY{+w}{ }\PY{o}{+}\PY{o}{=}\PY{+w}{ }\PY{p}{(}\PY{n}{p}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{group}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{min\PYZus{}vt\PYZus{}deq}\PY{o}{\PYZhy{}}\PY{n}{h\PYZus{}min}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{p}{\PYZcb{}}

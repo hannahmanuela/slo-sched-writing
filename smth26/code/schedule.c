@@ -1,8 +1,7 @@
 struct process *min_affinity(struct core *c) {
 	struct process *cp = c->process;
 	struct heap *h = cp->h;
-	int cid = atomic_load(&cp->cid);
-	if (cid != c->cid) {
+	if (atomic_load(&cp->cid) != c->cid)
 		return NULL;
 	}
 	if(atomic_load(&h->heap[0].elem) != cp) {
@@ -15,7 +14,7 @@ struct process *min_affinity(struct core *c) {
 	}
 retry:
 	vt_t vt;
-	int j = mh_rand_heap(cp->mh, c, h->id);
+	int j = mh_rand_heap(NHEAP, c, h->id);
 	struct heap *h1 = select_affinity(h->id, j, &vt);
 	if (h1 == h) {
 		p = remove_min(h);

@@ -2,8 +2,7 @@
 \PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{min\PYZus{}affinity}\PY{p}{(}\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{core}\PY{+w}{ }\PY{o}{*}\PY{n}{c}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
 \PY{+w}{  }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{process}\PY{+w}{ }\PY{o}{*}\PY{n}{cp}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{c}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{process}\PY{p}{;}
 \PY{+w}{  }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{heap}\PY{+w}{ }\PY{o}{*}\PY{n}{h}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{cp}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{h}\PY{p}{;}
-\PY{+w}{  }\PY{k+kt}{int}\PY{+w}{ }\PY{n}{cid}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{atomic\PYZus{}load}\PY{p}{(}\PY{o}{\PYZam{}}\PY{n}{cp}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{cid}\PY{p}{)}\PY{p}{;}
-\PY{+w}{  }\PY{k}{if}\PY{+w}{ }\PY{p}{(}\PY{n}{cid}\PY{+w}{ }\PY{o}{!}\PY{o}{=}\PY{+w}{ }\PY{n}{c}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{cid}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
+\PY{+w}{  }\PY{k}{if}\PY{+w}{ }\PY{p}{(}\PY{n}{atomic\PYZus{}load}\PY{p}{(}\PY{o}{\PYZam{}}\PY{n}{cp}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{cid}\PY{p}{)}\PY{+w}{ }\PY{o}{!}\PY{o}{=}\PY{+w}{ }\PY{n}{c}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{cid}\PY{p}{)}
 \PY{+w}{    }\PY{k}{return}\PY{+w}{ }\PY{n+nb}{NULL}\PY{p}{;}
 \PY{+w}{  }\PY{p}{\PYZcb{}}
 \PY{+w}{  }\PY{k}{if}\PY{p}{(}\PY{n}{atomic\PYZus{}load}\PY{p}{(}\PY{o}{\PYZam{}}\PY{n}{h}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{heap}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]}\PY{p}{.}\PY{n}{elem}\PY{p}{)}\PY{+w}{ }\PY{o}{!}\PY{o}{=}\PY{+w}{ }\PY{n}{cp}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
@@ -16,7 +15,7 @@
 \PY{+w}{  }\PY{p}{\PYZcb{}}
 \PY{n+nl}{retry}\PY{p}{:}
 \PY{+w}{  }\PY{n}{vt\PYZus{}t}\PY{+w}{ }\PY{n}{vt}\PY{p}{;}
-\PY{+w}{  }\PY{k+kt}{int}\PY{+w}{ }\PY{n}{j}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{mh\PYZus{}rand\PYZus{}heap}\PY{p}{(}\PY{n}{cp}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{mh}\PY{p}{,}\PY{+w}{ }\PY{n}{c}\PY{p}{,}\PY{+w}{ }\PY{n}{h}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{id}\PY{p}{)}\PY{p}{;}
+\PY{+w}{  }\PY{k+kt}{int}\PY{+w}{ }\PY{n}{j}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{mh\PYZus{}rand\PYZus{}heap}\PY{p}{(}\PY{n}{NHEAP}\PY{p}{,}\PY{+w}{ }\PY{n}{c}\PY{p}{,}\PY{+w}{ }\PY{n}{h}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{id}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{k}{struct}\PY{+w}{ }\PY{n+nc}{heap}\PY{+w}{ }\PY{o}{*}\PY{n}{h1}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{select\PYZus{}affinity}\PY{p}{(}\PY{n}{h}\PY{o}{\PYZhy{}}\PY{o}{\PYZgt{}}\PY{n}{id}\PY{p}{,}\PY{+w}{ }\PY{n}{j}\PY{p}{,}\PY{+w}{ }\PY{o}{\PYZam{}}\PY{n}{vt}\PY{p}{)}\PY{p}{;}
 \PY{+w}{  }\PY{k}{if}\PY{+w}{ }\PY{p}{(}\PY{n}{h1}\PY{+w}{ }\PY{o}{=}\PY{o}{=}\PY{+w}{ }\PY{n}{h}\PY{p}{)}\PY{+w}{ }\PY{p}{\PYZob{}}
 \PY{+w}{    }\PY{n}{p}\PY{+w}{ }\PY{o}{=}\PY{+w}{ }\PY{n}{remove\PYZus{}min}\PY{p}{(}\PY{n}{h}\PY{p}{)}\PY{p}{;}
