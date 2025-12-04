@@ -2,15 +2,15 @@ Many providers use \cgroups{} weights to run a mix of \textit{guaranteed} applic
 that have CPU reservations (such as servers) and \textit{best effort}
 applications on the same machine.
 This approach allows providers to run machines at a high
-utilization. The \cgroups{} implementation must ensure, however, that
+utilization by donating unused guaranteed CPU time to best-effort
+applications.  The \cgroups{} implementation must ensure, however, that
 if the load on a guaranteed application goes up, the application can use its full
 reservation quickly.
 
 This paper finds that Linux's implementation of \cgroups{} weights fails to
 achieve this goal.
 We show that guaranteed servers can experience increased
-latencies in the presence of other workloads, both other guaranteed applications
-and best effort ones.
+latencies in the presence of other workloads.
 This is because sometimes guaranteed servers are not scheduled, even
 though they are runnable and their group is under-using its reservation. The
 core reason for such scheduling anomalies is that Linux's scheduler has a
