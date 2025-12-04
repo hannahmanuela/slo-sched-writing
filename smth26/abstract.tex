@@ -1,7 +1,7 @@
 Many providers use \cgroups{} to separate the applications of tenants
 in different CPU classes: for example \textit{guaranteed} for applications
-with CPU reservations (such as servers) and \textit{best-effort} (for
-applications with no CPU reservations such as back-ground
+with CPU reservations (such as servers) and \textit{best-effort} for
+applications with no CPU reservations (such as back-ground
 tasks). They offer the lower-class at lower price than the higher
 class. This approach allows the provider to obtain high CPU utilization,
 because they can pack best-effort applications with guaranteed
@@ -11,7 +11,7 @@ load.
 
 This paper finds that Linux's implementation of \cgroups{} doesn't
 meet its specification, and as a result guaranteed servers can
-experience high tail latencies occasionally, because they are not
+experience high tail-latencies occasionally, because they are not
 being scheduled, even though they are runnable.  The core reason for
 such scheduling anomalies is that Linux's scheduler has a
 decentralized design to be efficient on today's machines with large
@@ -29,6 +29,6 @@ it to take core-affinity into account when selecting a process to run, so
 that the selected process can benefit from warm L1/L2 caches.
 
 Experimental results with an implementation of \sys in Linux on a
-56-core machines shows that \sys correctly implements the \cgroups{}
+56-core machine shows that \sys correctly implements the \cgroups{}
 specification, avoids the scheduling anomalies that Linux suffers
 from, and consistently provides low tail-latencies for guaranteed servers.
