@@ -1,34 +1,60 @@
-Many providers use \cgroups{} to separate the applications of tenants
-in different CPU classes: for example \textit{guaranteed} for applications
-with CPU reservations (such as servers) and \textit{best-effort} for
-applications with no CPU reservations (such as back-ground
-tasks). They offer the lower-class at lower price than the higher
-class. This approach allows the provider to obtain high CPU utilization,
-because they can pack best-effort applications with guaranteed
-applications when the guaranteed applications isn't using its full
-reservation, which is often the case because tenants provision for peak
-load.
+Many providers use \cgroups{} to separate the applications of tenants, both to
+isolate between \textit{guaranteed} applications that have CPU reservations
+(such as servers) and \textit{best effort} applications without, and to enforce
+CPU reservations among guaranteed applications. The \cgroups{} interface that
+orchestrators use for this is weights, where the CPU time a group is entitled to
+is the fraction it represents of total weight on the machine. Kubernetes, for
+example, enforces reservations by mapping the number of cores an application
+reserves to a weight: each core is worth weight 1024, and an application's
+weight is the number of cores it reserved * 1024. As long as the machine is not
+oversubscribed on reservations, \ie{} the total weight on the machine is not
+greater than its core count times 1024, the weight of the application should
+entitle it to at least the number of cores it asked for. Applications without
+any reservations share the resources of a single group that has the smallest
+weight possible.
 
-This paper finds that Linux's implementation of \cgroups{} doesn't
-meet its specification, and as a result guaranteed servers can
-experience high tail-latencies occasionally, because they are not
-being scheduled, even though they are runnable.  The core reason for
-such scheduling anomalies is that Linux's scheduler has a
-decentralized design to be efficient on today's machines with large
-number of core, and doesn't search other cores' runqueues for runnable
-high-class processes when making a scheduling decision, relying on a
-load balancer to once in a while shuffle processes between runqueues.
+Weights are a desirable interface for many reasons. Unlike strict core
+assignments, weights allow applications to burst beyond the exact number of
+cores they asked for. This leads to higher CPU utilization: guaranteed servers
+with bursting load, as well as best effort applications, can make use of unused
+cores when load on reserved applications is low; this is a common case because
+tenants provision for peak load. Weights also keep their relative values even
+when the total weight in the system changes, and thus define bursting behavior:
+if one application is not using the full number of cores its weight would
+entitle it to, the remaining cores are divied up by weight, meaning a bursting
+other guaranteed server still has precedent over a best effort application. 
 
-This paper introduces \sys a new centralized scheduler that implements
-the \cgroups{} specification correctly in a scalable manner.  It
-maintains a global virtual time to order all runnable processes by
-their CPU weight, and uses the approximate \textit{multiqueues} data
-structure~\cite{multiqueue:2015} to implement a global heap of
-processes sorted by virtual time.  \sys augments multiqueues to allow
-it to take core-affinity into account when selecting a process to run, so
-that the selected process can benefit from warm L1/L2 caches.
+This paper finds that Linux's implementation of \cgroups{} doesn't meet its
+specification. We show that guaranteed servers can experience increased
+latencies in the presence of other workloads, both other guaranteed applications
+and best effort ones. This is because sometimes tasks are not scheduled, even
+though they are runnable and their group is under-using its reservation. The
+core reason for such scheduling anomalies is that Linux's scheduler has a
+decentralized design. It accounts groups on a per-core basis, and doesn't
+consult other cores' runqueues when making a scheduling decision. Linux relies
+on a load balancer to once in a while shuffle tasks between runqueues, and
+then balances load, rather than weight.
 
-Experimental results with an implementation of \sys in Linux on a
-56-core machine shows that \sys correctly implements the \cgroups{}
-specification, avoids the scheduling anomalies that Linux suffers
-from, and consistently provides low tail-latencies for guaranteed servers.
+This paper introduces \sys{}, a new centralized scheduler that implements the
+\cgroups{} specification of weights correctly, and in a scalable manner. 
+
+In order to get the correct behavior, \sys{} has at the core of its design a
+logical global heap that orders all runnable tasks. The accounting for tasks in
+the global heap is based off the way Linux accounts on each core, but with
+modifications necessary to maintain correct behavior in the presence of multiple
+cores running different tasks and groups. For instance, Linux only accounts the
+time a task got once it has completed running. This is not possible in a global
+heap, because in the meantime many other cores will have scheduled, and
+erroneously seen that group is owed time, unaware that it is currently getting
+it on a different core.
+
+In order to achieve scalability, \sys{} uses the approximate
+\textit{multiqueues} data structure~\cite{multiqueue:2015} to implement the
+global heap. \sys{} augments multiqueues to allow take core-affinity into
+account when selecting a task to run, so that hot tasks can benefit from warm
+L1/L2 caches.
+
+Experimental results with an implementation of \sys in Linux on a 56-core
+machine shows that \sys correctly implements the \cgroups{} specification,
+avoids the scheduling anomalies that Linux suffers from, and consistently
+provides low tail-latencies for guaranteed servers.
