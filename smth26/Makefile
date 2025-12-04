@@ -22,7 +22,7 @@ all: paper.pdf abstract.txt
 code/%.tex: code/%.c
 	pygmentize -O "linenos=1,tabsize=2" -P mathescape -P verboptions='fontsize=\scriptsize,numbersep=6pt,xleftmargin=0.2in' -f latex $<  > $@
 
-%.txt: %.tex
+%.txt: %.tex $(DEPS)
 	cat $< | \
                 sed 's/\\sys/GlobalHeap/g' | \
                 $(PANDOC) -o $@ -f latex -t plain --wrap=none
