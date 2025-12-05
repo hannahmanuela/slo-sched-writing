@@ -20,7 +20,7 @@ consult other cores' runqueues when making a scheduling decision.
 This paper introduces \sys{}, a new scheduler with {\it global
 design} that implements \cgroups{} weights correctly, and in a
 scalable manner. It assigns each runnable process a virtual time, and
-uses the approximate \textit{multiqueues} data
+uses the relaxed \textit{multiqueues} data
 structure~\cite{multiqueue:2015} to implement a global heap of
 processes sorted by virtual time.  \sys augments multiqueues 
 to take core-affinity into account when selecting a process to run,

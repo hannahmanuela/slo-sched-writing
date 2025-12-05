@@ -33,7 +33,7 @@ Guaranteed, and Burstable. AWS similarly supports both guaranteed- and
 burstable-style reservations, with their M and T instance
 types~\cite{aws-ec2-burstable,aws-ec2-resources}.
 
-To support these classes, many systems use Linux's
+\paragraph{\cgroups{} weights.} To support these classes, many systems use Linux's
 \cgroups{}~\cite{cgroups-kerneldocs} to enforce CPU reservations.  For
 example, most modern containers rely on \cgroups{} for CPU isolation:
 all Open Container Initiative (OCI) compliant containers, including
@@ -43,19 +43,32 @@ frameworks, including Firecracker, AFaas and libvirt, also rely on
 \cgroups{} to manage CPU time
 reservation~\cite{firecracker-cgroups,afaas,libvirt-cgroups}.
 
-Weight is the part of the \cgroups{} interface these systems use for
-enforcing the reservations guaranteed applications have, while still
-allowing best-efforts applications without reservations to run
-opportunistically.\footnote{Other operating systems expose a similar
-interface, for instance Windows exposes a number of shares.}  For
-example, Kubernetes creates one top level group for all best effort
-services, called \texttt{kubepods-besteffort}, inside which all
-best-effort
-pods are placed, and assigns it the lowest possible weight of 1.
-Kubernetes calculates the weight that guaranteed
-pod gets based on the amount of milliCPUs it requests.
+Weight is the part of the \cgroups{} interface these systems use to
+separate applications in different QOS classes and enforce CPU
+reservations.  The CPU time a group (the processes in one class) is
+entitled to is the fraction it represents of total weight on the
+machine. Kubernetes, for example, enforces reservations by mapping the
+number of cores an application reserves to a weight: each core is
+worth weight 1024, and an application's weight is the number of cores
+it reserved * 1024. As long as the machine is not oversubscribed on
+reservations, \ie{} the total weight on the machine is not greater
+than its core count times 1024, the weight of the application should
+entitle it to at least the number of cores it asked for. Applications
+without any reservations share the resources of a single group that
+has the smallest weight possible.
 
-The \cgroups{} documentation specifies that each group should get CPU
+Weights are a desirable interface for several reasons. Unlike strict core
+assignments, weights allow applications to burst beyond the exact number of
+cores they asked for. This leads to higher CPU utilization: guaranteed servers
+with bursting load, as well as best effort applications, can make use of unused
+cores when load on reserved applications is low; this is a common case because
+tenants provision for peak load. Weights also keep their relative values even
+when the total weight in the system changes, and thus define bursting behavior:
+if one application is not using the full number of cores its weight would
+entitle it to, the remaining cores are divided up by weight, and thus a bursting
+or a guaranteed server still has precedent over a best effort application. 
+
+\paragraph{Problem.} The \cgroups{} documentation specifies that each group should get CPU
 time proportional to its weight as a share of the sum of weights of
 runnable groups~\cite{cgroups-kerneldocs}. But, we find that Linux
 doesn't meet this specification.  For example, in the
@@ -66,18 +79,44 @@ starting the best effort tasks in \autoref{fig:kubernetes-unedited} is
 much more than the 1\% CPU time the server should be losing out on
 based on its weight.
 
-As we show in more detail in \autoref{s:problem}, the problem that
-leads to the increased latencies observed is that Linux will run a
-low-weight process on one core, unaware that a high-weight process is
-runnable and waiting on another.  This happens because Linux uses
-per-core run queues and each core searches its own run-queue when
-making a scheduling decision and doesn't search other core's queues
-for runnable heavy-weight processes (which doesn't scale with
-increasing number of cores).  A key challenge this paper addresses is
-enforcing global weights (as the \cgroups{} documentation specifies)
-while achieving good multi-core scalability for scheduling operations.
+As we show in more detail in \autoref{s:problem}, the root cause of
+increases latencies is that the Linux schedule has a {\it per-core}
+design: each core maintains its own run-queues and makes scheduling
+decisions based on its local run queue.  This design scales well with
+increasing number of cores, because no coordination with other cores
+is required between cores, and results in good core affinity: a
+process runs frequently on the same core using with warm L1/L2 caches.
+But, because each core makes its scheduling decisions independently,
+one core may schedule a low-weight process, unaware that a high-weight
+process is runnable and waiting on another. This results in a delay
+for the heavy-weight process to run and causes increased latencies for
+client requests.  The Linux load balancer periodically moves processes
+between run-queues, but at a slower time scale than it makes
+scheduling decisions and it balances load, not weight.
 
-\fk{explain \sys: global virtual time and multiqueue}
+\paragraph{\sys.} A key challenge this paper addresses is
+enforcing weights globally as the \cgroups{} documentation specifies,
+while achieving good multi-core scalability and providing
+core-affinity for processes.  To enforce weights globally, \sys has a
+{\it global} design: \sys assigns each runnable process a virtual time
+based on its weight and maintains a heap of processes sorted by their
+virtual times.  Each core consults the heap and runs a process with a
+low virtual time. Since the heap is global, a core will not miss a
+runnable high-weight process and thus avoids the scheduling
+anomalies that Linux experiences.
+
+To implement the global heap in scalable manner, \sys uses the relaxed
+\textit{multiqueues} data
+structure~\cite{multiqueue:2015}. Multiqueues use a power-of-two
+approach~\cite{mitzenmacher:power} to achieve scalability: it
+maintains $c \times d$ queues (where $c$ is the number of cores and
+$d$ a small constant), inserts in a random queue, and consults two
+queues to pick the lowest number. The power-of-two approach guarantees
+that the ensures that the chosen number is close to the global minimum
+(with high probability).  As described in detail in
+\autoref{sec:global}, \sys augments multiqueues to take core-affinity
+into account when selecting a process to run, so that hot processes
+can benefit from warm L1/L2 caches. 
 
 \fk{summarize implementation and results}
 
