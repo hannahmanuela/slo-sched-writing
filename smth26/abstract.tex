@@ -14,10 +14,10 @@ latencies in the presence of other workloads.
 This is because sometimes guaranteed servers are not scheduled, even
 though they are runnable and their group is under-using its reservation. The
 core reason for such scheduling anomalies is that Linux's scheduler has a
-{\it decentralized} design: it accounts \cgroups{} on a per-core basis, and doesn't
+{\it per-core} design: it accounts \cgroups{} on a per-core basis, and doesn't
 consult other cores' runqueues when making a scheduling decision.
 
-This paper introduces \sys{}, a new scheduler with {\it centralized
+This paper introduces \sys{}, a new scheduler with {\it global
 design} that implements \cgroups{} weights correctly, and in a
 scalable manner. It assigns each runnable process a virtual time, and
 uses the approximate \textit{multiqueues} data
