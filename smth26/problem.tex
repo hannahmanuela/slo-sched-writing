@@ -175,6 +175,7 @@ balancing is not enough.
 \end{figure}
 
 \subsubsection{Bigger weight splits}
+\label{s:bigger}
 
 As we saw in our experiment, Kubernetes uses a weight split of around 79:1,
 whereas Linux supports weights in the range of [10000,1]. We show that a larger
@@ -235,11 +236,11 @@ support best effort workloads. It was also recently extended to have a
 \end{figure}
 
 To determine whether \schedidle{} solves the problem with \cgroups{}
-weights, we run the same microbenchmark, using \schedidle{} for the
+weights, we run the same microbenchmark as in \autoref{s:bigger}, using \schedidle{} for the
 image resize job instead of using a low \cgroups{} weight;
 \autoref{fig:srv-bg-idle} shows the results.  The \schedidle{} policy
 for the \normalclass{} reduces the impact of the scheduling anomalies
-but doesn't fix them.  In the appendix \autoref{s:alternatives} we also show that other
+but doesn't fix them.  In \autoref{s:alternatives} we also show that other
 scheduling classes are not satisfactory alternatives to \cgroups{}.
 
 \subsection{Summary}
