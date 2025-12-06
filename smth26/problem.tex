@@ -50,7 +50,8 @@ Burstable pods get access to reserved CPUs when they could use them.
     all have runnable and queued server threads}\label{fig:schedviz-be-problem}
 \end{figure}
 
-To understand where the performance impact is coming from, we visualize the
+To understand the cause of the above violation,
+we visualize the
 trace of the experiment using schedviz~\cite{schedviz-tool}. What we find is
 that frequently \textit{one core is running a best effort process, while threads
 of processes with resource reservations are queued on another}.
@@ -73,10 +74,10 @@ instance, on a 56 core machine we found that a pod that requested 4 cores was
 given a weight of 157, whereas one that request 2 CPUs was given a weight of 79.
 Kubernetes uses the smallest weight possible, 1, to run BestEffort pods.
 
-The key fact relevant here about \cgroups{} weight is that \textit{weights are a
-local property}. Linux maintains a separate run-queue on each core, and within
+The key fact relevant is that Linux implements \cgroups{} weight as a
+{\it local} property: Linux maintains a separate run-queue on each core, and within
 each run-queue, Linux's scheduler works to maintain the correct ratio of received
-CPU time at each scheduling; but Linux does not enforce the weight ratios across
+CPU time at each scheduling. Linux, however, does not enforce the weight ratios across
 cores.
 
 The observed inversion happens then because the threading model of the server
@@ -144,60 +145,9 @@ We conclude that the issue boils down to the locality of weights again: if the
 core with both servers' threads knew service2 had other cores all to itself it
 could compensate, but it doesn't know, so it treats both equally.
 
-\if 0
-\subsubsection{Guaranteed pods affect other Guaranteed pods}
+\subsection{\cgroups{} in isolation }
 
-One might think that two Guaranteed pods avoid this issue: because they are both
-limited to the amount of CPUs they requested, one can't burst and be a contender
-on many more cores than the other.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-guar.png}
-    \caption{In Kubernetes, running a Guaranteed service2 alongside the
-    Guaranteed service1 affects service1's
-    performance}\label{fig:kubernetes-lc-guar}
-\end{figure}
-
-However, we find that even a Guaranteed pod can impact anothers performance. We
-run the same two servers, both now in the Guaranteed class.
-\autoref{fig:kubernetes-lc-guar} shows the result: average latency jumps up by
-$\sim$4ms, and 99th pctile by $\sim$ 20ms.
-
-The reason this problem happens is related to how Kubernetes uses \cgroups{} to
-enforce limits on pods. Kubernetes uses cpu.max, but the interface to \cgroups{}
-cpu.max is different from that of Kuberentes' milliCPUs: \cgroups{} asks instead
-for a runtime $r$ and a period $p$, and ensures that the group never gets more
-than $r$ CPU time per $p$ time period. Because multiple threads can run at the
-same time, it is possible that $r>p$.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{graphs/schedviz-lc-guar-problem.png}
-    \caption{When service1 is running alone, it has all the cores to itself, but
-    after service2 starts it gets only half of whatever core it runs on, even if
-    that is a fraction of the cores available and service2 is running uncontended
-    on the other cores}\label{fig:schedviz-lc-guar-problem}
-\end{figure}
-
-Enforcing a limit of 2 vCPUs is different than enforcing that a group only get
-2ms of CPU time every 1ms. If a pod is restricted to 2 vCPUs, then it can run up
-to two things at the same time, and thus use only up to two cores. However, if a
-group is limited to 2ms every 1ms, it could also fill its quota by running four
-things on four cores for half a ms. In the time when one group is running on all
-four cores, Kubernetes relies on weights to separate the two, which can lead to
-significant delays for other services. \autoref{fig:schedviz-lc-guar-problem}
-shows this happening in a trace from the experiment from
-\autoref{fig:kubernetes-lc-guar}. We can see the phases of service2 threads,
-which are shown in grey: they run for a while on all four cores, disrupting the
-colorful service1 threads, before being throttled until that runtime period is
-up.
-
-\hmng{I should add a note somewhere that lots of people caution against using
-limits for exactly this reason, and cite the reddit articles/presentations I
-found}
-
-\fi
+\fk{results from microbenchmark with 5 processes and 2 cores}
 
 \subsection{Existing Linux mechanisms that aren't fixes}
 
@@ -208,7 +158,8 @@ across different cores. However, load balancing runs significiantly less
 frequently than scheduling does, especially during high load. How often load
 balancing runs in general is a complicated number that is dependent on how close
 the two cores are in the CPU architecture hierarchy, as well as how loaded the
-machine is. This means that in the context of a stable set of long-running
+machine is.  \fk{load balancer balances load, not weights}
+This means that in the context of a stable set of long-running
 processes, load balancing can ensure that no two cores have wildly different
 total weights and thus that the time each thread gets on each core reflects the
 time it should get overall. However, in the context of short-lived request
@@ -241,35 +192,67 @@ much higher for 99th percentile latencies. At a baseline utilization of 95\%,
 those numbers increase to up to 40ms for the the mean latency, and 80ms for the
 tail.
 
-The last experiment underscores the problems identified in this
-previous subsections are unrelated to Kubernetes.  The last experiment
-above doesn't involve Kubernetes, just \cgroups{}.
-
-\subsection{Alternatives to cgroups}
+\subsubsection{Alternatives to \cgroups{}}
 
 Weights remains the \cgroups{} interface of choice for Kubernetes as
 well as others like Firecracker and libvirt, but Linux also supports
 other mechanisms for scheduling.  The Linux scheduler is hierarchical:
 it supports different \textit{scheduling classes}, within which there
 might be different \textit{policies}. The \normalclass{} scheduling
-class is the one most people know --- it used to run a Completely Fair
+class is the one most people know---it used to run a Completely Fair
 Scheduler (CFS) and now runs a version of Earliest Eligible Virtual
 Deadline First (EEVDF). It is the default scheduler, and \cgroups{}
-weight is only effective within the \normalclass{} class.  In the
-appendix we show that the \schedidle{} policy for the \normalclass{}, and
-other scheduling classes are not satisfactory alternatives to
-\cgroups{}.
+weight is only effective within the \normalclass{} class.
+
+\schedidle{} is Linux's one answer to doing a better job of separating best
+effort tasks from those with reservations.
+\schedidle{} is a scheduling policy that lives within the \normalclass{} class
+alongside the default policy, which is \schednormal{}.\footnote{There is,
+confusingly, also an Idle scheduling \textit{class}, but that is inaccessible to
+userspace and exists solely to manage the core's transition in and out of being
+actually idle (\ie{} running nothing).} 
+
+Linux developers have improved \schedidle{} over the years, and it is meant to
+support best effort workloads. It was also recently extended to have a
+\cgroups{} interface file ~\cite{lkml-idle-cgroup}, so setting cpu.idle to
+contain 1 puts the whole group under the \schedidle{} policy.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
+        \caption{\schedidle{} in low load (85\%)}\label{fig:srv-bg-idle-low}
+        \vspace{12pt}
+    \end{subfigure}
+    \hspace{\fill}
+    \begin{subfigure}[t]{\columnwidth}
+        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
+        \caption{\schedidle{} in high load (95\%)}\label{fig:srv-bg-idle-high}
+        \vspace{12pt}
+    \end{subfigure}
+    \vspace{4pt}
+    \caption{\fk{XXX}}\label{fig:srv-bg-idle}
+\end{figure}
+
+To determine whether \schedidle{} solves the problem with \cgroups{}
+weights, we run the same microbenchmark, using \schedidle{} for the
+image resize job instead of using a low \cgroups{} weight;
+\autoref{fig:srv-bg-idle} shows the results.  The \schedidle{} policy
+for the \normalclass{} reduces the impact of the scheduling anomalies
+but doesn't fix them.  In the appendix \autoref{s:alternatives} we also show that other
+scheduling classes are not satisfactory alternatives to \cgroups{}.
 
 \subsection{Summary}
 
 From this section we conclude that Linux's \cgroups{} implementation
-doesn't meet the specification stated in the documentation.  The
-reason Linux fails to achieve the specification is because Linux uses
-per-CPU run-queues, and enforces weights only per run-queue.  This
-implementation can result in scheduling anomalies where one core
-doesn't realize that another core has a runnable high-weight process,
-resulting in occasional latency spikes for client requests to the
-high-weight process.
+doesn't meet the specification stated in the documentation: each group
+doesn't get time proportional to its weight as a share of the sum of
+weights of runnable groups.  The reason Linux fails to achieve the
+specification is because Linux uses per-CPU run-queues, and enforces
+weights only per run-queue.  This implementation can result in
+scheduling anomalies where one core doesn't realize that another core
+has a runnable high-weight process, resulting in occasional latency
+spikes for client requests to the high-weight process.
 
 
 

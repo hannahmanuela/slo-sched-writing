@@ -51,8 +51,8 @@ machine. Kubernetes, for example, enforces reservations by mapping the
 number of cores an application reserves to a weight: each core is
 worth weight 1024, and an application's weight is the number of cores
 it reserved * 1024. As long as the machine is not oversubscribed on
-reservations, \ie{} the total weight on the machine is not greater
-than its core count times 1024, the weight of the application should
+reservations (\ie{} the total weight on the machine is not greater
+than its core count times 1024), the weight of the application should
 entitle it to at least the number of cores it asked for. Applications
 without any reservations share the resources of a single group that
 has the smallest weight possible.
@@ -84,7 +84,7 @@ increases latencies is that the Linux schedule has a {\it per-core}
 design: each core maintains its own run-queues and makes scheduling
 decisions based on its local run queue.  This design scales well with
 increasing number of cores, because no coordination with other cores
-is required between cores, and results in good core affinity: a
+is required, and results in good core affinity: a
 process runs frequently on the same core using with warm L1/L2 caches.
 But, because each core makes its scheduling decisions independently,
 one core may schedule a low-weight process, unaware that a high-weight
@@ -98,25 +98,25 @@ scheduling decisions and it balances load, not weight.
 enforcing weights globally as the \cgroups{} documentation specifies,
 while achieving good multi-core scalability and providing
 core-affinity for processes.  To enforce weights globally, \sys has a
-novel, {\it global} design: \sys assigns each runnable process a virtual time
-based on its weight and maintains a heap of processes sorted by their
-virtual times.  Each core consults the heap and runs a process with a
-low virtual time. Since the heap is global, a core will not miss a
-runnable high-weight process and thus avoids the scheduling
-anomalies that Linux experiences.
+novel, {\it global} design: \sys assigns each runnable process a
+virtual time based on its weight and maintains a heap of processes
+sorted by their virtual times.  Each core consults the heap and runs
+the process at the front of the heap. Since the heap is global and
+sorted, a core will not miss a runnable high-weight process and thus
+avoids the scheduling anomalies that Linux experiences.
 
 To implement the global heap in scalable manner, \sys uses the relaxed
-\textit{multiqueues} data
-structure~\cite{multiqueue:2015}. Multiqueues use a power-of-two
+\textit{multiqueues} data structure~\cite{multiqueue:2015} for
+scheduling processes. Multiqueues use a power-of-two
 approach~\cite{mitzenmacher:power} to achieve scalability: it
 maintains $c \times d$ queues (where $c$ is the number of cores and
-$d$ a small constant), inserts in a random queue, and consults two
-queues to pick the lowest number. The power-of-two approach guarantees
-that the ensures that the chosen number is close to the global minimum
-(with high probability).  As described in detail in
-\autoref{sec:global}, \sys augments multiqueues to take core-affinity
-into account when selecting a process to run, so that hot processes
-can benefit from warm L1/L2 caches. 
+$d$ a small constant, typically 2), inserts in a random queue, and
+consults two queues to pick the lowest number. The power-of-two
+approach guarantees that the ensures that the chosen number is close
+to the global minimum (with high probability).  As described in detail
+in \autoref{sec:global}, \sys augments multiqueues to take
+core-affinity into account when selecting a process to run, so that
+hot processes can benefit from warm L1/L2 caches.
 
 \fk{summarize implementation and results}
 

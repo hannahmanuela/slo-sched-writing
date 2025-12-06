@@ -2,46 +2,6 @@
 \section{Alternatives to \cgroups{}}\label{s:alternatives}
 %-------------------------------------------------------------------------------
 
-\subsection{\schedidle{}}
-
-\begin{figure}[t]
-    \centering
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-low.png}
-        \caption{\schedidle{} in low load (85\%)}\label{fig:srv-bg-idle-low}
-        \vspace{12pt}
-    \end{subfigure}
-    \hspace{\fill}
-    \begin{subfigure}[t]{\columnwidth}
-        \includegraphics[width=\columnwidth]{graphs/srv-bg-idle-high.png}
-        \caption{\schedidle{} in high load (95\%)}\label{fig:srv-bg-idle-high}
-        \vspace{12pt}
-    \end{subfigure}
-    \vspace{4pt}
-    \caption{}\label{fig:srv-bg-idle}
-\end{figure}
-
-\schedidle{} is Linux's current answer to doing a better job of separating best
-effort tasks from those with reservations.
-
-\schedidle{} is a scheduling policy that lives within the \normalclass{} class
-alongside the default policy, which is \schednormal{}.\footnote{There is,
-confusingly, also an Idle scheduling \textit{class}, but that is inaccessible to
-userspace and exists solely to manage the core's transition in and out of being
-actually idle (\ie{} running nothing).} 
-
-Linux developers have improved \schedidle{} over the years, and it is meant to
-support best effort workloads. It was also recently extended to have a
-\cgroups{} interface file ~\cite{lkml-idle-cgroup}, so setting cpu.idle to
-contain 1 puts the whole group under the \schedidle{} policy.
-
-To determine whether \schedidle{} solves the problem with \cgroups{} weights, we
-run the same microbenchmark, using \schedidle{} for the image resize job instead
-of using a low \cgroups{} weight; \autoref{fig:srv-bg-idle} shows the results.
-
-
-\subsection{Other scheduling classes}
-
 
 \begin{figure}[t]
     \centering
