@@ -1,0 +1,52 @@
+\subsubsection{Guaranteed pods affect other Guaranteed pods}
+
+One might think that two Guaranteed pods avoid this issue: because they are both
+limited to the amount of CPUs they requested, one can't burst and be a contender
+on many more cores than the other.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/kubernetes-lc-guar.png}
+    \caption{In Kubernetes, running a Guaranteed service2 alongside the
+    Guaranteed service1 affects service1's
+    performance}\label{fig:kubernetes-lc-guar}
+\end{figure}
+
+However, we find that even a Guaranteed pod can impact anothers performance. We
+run the same two servers, both now in the Guaranteed class.
+\autoref{fig:kubernetes-lc-guar} shows the result: average latency jumps up by
+$\sim$4ms, and 99th pctile by $\sim$ 20ms.
+
+The reason this problem happens is related to how Kubernetes uses \cgroups{} to
+enforce limits on pods. Kubernetes uses cpu.max, but the interface to \cgroups{}
+cpu.max is different from that of Kuberentes' milliCPUs: \cgroups{} asks instead
+for a runtime $r$ and a period $p$, and ensures that the group never gets more
+than $r$ CPU time per $p$ time period. Because multiple threads can run at the
+same time, it is possible that $r>p$.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{graphs/schedviz-lc-guar-problem.png}
+    \caption{When service1 is running alone, it has all the cores to itself, but
+    after service2 starts it gets only half of whatever core it runs on, even if
+    that is a fraction of the cores available and service2 is running uncontended
+    on the other cores}\label{fig:schedviz-lc-guar-problem}
+\end{figure}
+
+Enforcing a limit of 2 vCPUs is different than enforcing that a group only get
+2ms of CPU time every 1ms. If a pod is restricted to 2 vCPUs, then it can run up
+to two things at the same time, and thus use only up to two cores. However, if a
+group is limited to 2ms every 1ms, it could also fill its quota by running four
+things on four cores for half a ms. In the time when one group is running on all
+four cores, Kubernetes relies on weights to separate the two, which can lead to
+significant delays for other services. \autoref{fig:schedviz-lc-guar-problem}
+shows this happening in a trace from the experiment from
+\autoref{fig:kubernetes-lc-guar}. We can see the phases of service2 threads,
+which are shown in grey: they run for a while on all four cores, disrupting the
+colorful service1 threads, before being throttled until that runtime period is
+up.
+
+\hmng{I should add a note somewhere that lots of people caution against using
+limits for exactly this reason, and cite the reddit articles/presentations I
+found}
+
