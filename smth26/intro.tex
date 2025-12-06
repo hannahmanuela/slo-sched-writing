@@ -98,7 +98,7 @@ scheduling decisions and it balances load, not weight.
 enforcing weights globally as the \cgroups{} documentation specifies,
 while achieving good multi-core scalability and providing
 core-affinity for processes.  To enforce weights globally, \sys has a
-{\it global} design: \sys assigns each runnable process a virtual time
+novel, {\it global} design: \sys assigns each runnable process a virtual time
 based on its weight and maintains a heap of processes sorted by their
 virtual times.  Each core consults the heap and runs a process with a
 low virtual time. Since the heap is global, a core will not miss a
@@ -120,10 +120,17 @@ can benefit from warm L1/L2 caches.
 
 \fk{summarize implementation and results}
 
-The contributions of this paper are thus as
+The contributions of this paper are as
 follows: 
 \begin{enumerate}
-    \item identifying as the reason weights  are often violated is
-    that \cgroups{} does a poor job of enforcing the weights across cores;
-    \item \sys
+    \item identifying as the reason for Linux scheduling anomalies
+      that Linux fails to implement \cgroups{} correctly and doesn't
+      enforce weights across cores;
+    \item an algorithm for assigning a global virtual time to runnable
+      processes based on their weights 
+    \item using multiqueues for process scheduling based on their
+      assigned virtual time and augmenting
+      multiqueues to support core-affinity for processes
+    \item \fk{an implementation}
+    \item \fk{an eval}
 \end{enumerate}
